@@ -15,7 +15,7 @@ import android.os.SystemClock
 class EmulatorLoop(
     private val emulator: E0C6200,
     private val displayBridge: DisplayBridge,
-    private val onFrame: (Bitmap) -> Unit
+    private val onFrame: (Bitmap, IntArray) -> Unit
 ) {
     companion object {
         private const val TARGET_FPS = 15
@@ -64,7 +64,7 @@ class EmulatorLoop(
             // Render and push frame
             val vram = emulator.getVRAM()
             val bitmap = displayBridge.renderFrame(vram)
-            onFrame(bitmap)
+            onFrame(bitmap, vram)
 
             // Sleep for remainder of frame budget
             val elapsed = System.nanoTime() - now

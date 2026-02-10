@@ -25,6 +25,8 @@ class DisplayBridge {
         const val GLYPH_SIZE = 25
         const val LCD_WIDTH = 32
         const val LCD_HEIGHT = 16
+        const val FULL_DEBUG_WIDTH = 32
+        const val FULL_DEBUG_HEIGHT = 24
 
         // Green-on-black LCD aesthetic
         private val PIXEL_ON = Color.rgb(0, 255, 80)
@@ -37,6 +39,7 @@ class DisplayBridge {
 
         // Center-crop from 32 -> 25, dropping side pixels first.
         private const val H_CROP_LEFT = (LCD_WIDTH - GLYPH_SIZE) / 2 // 3
+        private const val FULL_GAME_Y_OFFSET = 4
     }
 
     // Exact per-column mapping from DigimonV3.svg (<g id="col_X"> blocks).
@@ -106,9 +109,36 @@ class DisplayBridge {
         }
 
         // Render all 8 indicator dots (4 top + 4 bottom).
-        renderMenuDots(pixels, vramData)
+        renderMenuDots(pixels, readMenuDotStates(vramData))
 
         bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
+        return bitmap
+    }
+
+    /**
+     * Render an uncropped digivice-style debug frame:
+     * 32x16 LCD plus 8 menu icons in a 32x24 canvas.
+     */
+    fun renderFullDebugFrame(vramData: IntArray): Bitmap {
+        extractPixels(vramData)
+
+        val bitmap = Bitmap.createBitmap(FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT, Bitmap.Config.ARGB_8888)
+        val pixels = IntArray(FULL_DEBUG_WIDTH * FULL_DEBUG_HEIGHT)
+        pixels.fill(PIXEL_OFF)
+
+        for (row in 0 until LCD_HEIGHT) {
+            val outY = row + FULL_GAME_Y_OFFSET
+            if (outY >= FULL_DEBUG_HEIGHT) break
+            for (col in 0 until LCD_WIDTH) {
+                if (lcdPixels[row][col]) {
+                    pixels[outY * FULL_DEBUG_WIDTH + col] = PIXEL_ON
+                }
+            }
+        }
+
+        renderFullDebugIcons(pixels, readMenuDotStates(vramData))
+
+        bitmap.setPixels(pixels, 0, FULL_DEBUG_WIDTH, 0, 0, FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT)
         return bitmap
     }
 
@@ -133,12 +163,22 @@ class DisplayBridge {
         }
     }
 
-    private fun renderMenuDots(pixels: IntArray, vramData: IntArray) {
+    private fun readMenuDotStates(vramData: IntArray): BooleanArray {
         // Exactly 8 indicator bits in DigimonV3.svg:
         // Top:    nibble 0/18/20/22, bit 0
         // Bottom: nibble 137/155/157/159, bit 3
         val nibbles = intArrayOf(0, 18, 20, 22, 137, 155, 157, 159)
         val masks = intArrayOf(0x1, 0x1, 0x1, 0x1, 0x8, 0x8, 0x8, 0x8)
+        val active = BooleanArray(8)
+        for (i in 0 until 8) {
+            val nibbleIdx = nibbles[i]
+            val mask = masks[i]
+            active[i] = nibbleIdx < vramData.size && (vramData[nibbleIdx] and mask) != 0
+        }
+        return active
+    }
+
+    private fun renderMenuDots(pixels: IntArray, states: BooleanArray) {
         // Layout for circular visible area:
         // 0-1: top pair, 2-3: upper side pair, 4-5: lower side pair, 6-7: bottom pair
         val positions = arrayOf(
@@ -155,30 +195,54 @@ class DisplayBridge {
         for (i in 0 until 8) {
             val cx = positions[i][0]
             val cy = positions[i][1]
-            val nibbleIdx = nibbles[i]
-            val mask = masks[i]
-            val active = nibbleIdx < vramData.size && (vramData[nibbleIdx] and mask) != 0
-            drawDot(pixels, cx, cy, active)
+            drawDot(pixels, cx, cy, states.getOrElse(i) { false }, GLYPH_SIZE, GLYPH_SIZE)
         }
     }
 
-    private fun drawDot(pixels: IntArray, cx: Int, cy: Int, active: Boolean) {
+    private fun renderFullDebugIcons(pixels: IntArray, states: BooleanArray) {
+        // Show all 8 indicator states in a compact "full device" strip:
+        // 4 top + 4 bottom across full 32-pixel width.
+        val positions = arrayOf(
+            intArrayOf(4, 1),
+            intArrayOf(10, 1),
+            intArrayOf(21, 1),
+            intArrayOf(27, 1),
+            intArrayOf(4, 22),
+            intArrayOf(10, 22),
+            intArrayOf(21, 22),
+            intArrayOf(27, 22),
+        )
+        for (i in 0 until 8) {
+            val cx = positions[i][0]
+            val cy = positions[i][1]
+            drawDot(pixels, cx, cy, states.getOrElse(i) { false }, FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT)
+        }
+    }
+
+    private fun drawDot(
+        pixels: IntArray,
+        cx: Int,
+        cy: Int,
+        active: Boolean,
+        width: Int,
+        height: Int
+    ) {
         val color = if (active) ICON_ON else ICON_OFF
-        val px = cx.coerceIn(0, GLYPH_SIZE - 1)
-        val py = cy.coerceIn(0, GLYPH_SIZE - 1)
+        val px = cx.coerceIn(0, width - 1)
+        val py = cy.coerceIn(0, height - 1)
 
         // Keep inactive dots subtle; make active dots easier to spot.
-        setPixelSafe(pixels, px, py, color)
+        setPixelSafe(pixels, px, py, color, width, height)
         if (active) {
-            setPixelSafe(pixels, px - 1, py, color)
-            setPixelSafe(pixels, px + 1, py, color)
-            setPixelSafe(pixels, px, py - 1, color)
-            setPixelSafe(pixels, px, py + 1, color)
+            setPixelSafe(pixels, px - 1, py, color, width, height)
+            setPixelSafe(pixels, px + 1, py, color, width, height)
+            setPixelSafe(pixels, px, py - 1, color, width, height)
+            setPixelSafe(pixels, px, py + 1, color, width, height)
         }
     }
 
-    private fun setPixelSafe(pixels: IntArray, x: Int, y: Int, color: Int) {
-        if (x !in 0 until GLYPH_SIZE || y !in 0 until GLYPH_SIZE) return
-        pixels[y * GLYPH_SIZE + x] = color
+    private fun setPixelSafe(pixels: IntArray, x: Int, y: Int, color: Int, width: Int, height: Int) {
+        if (x !in 0 until width || y !in 0 until height) return
+        pixels[y * width + x] = color
     }
 }

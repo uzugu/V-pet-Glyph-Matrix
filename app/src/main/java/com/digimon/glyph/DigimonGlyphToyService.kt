@@ -10,10 +10,12 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.os.SystemClock
 import android.util.Log
 import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.E0C6200
 import com.digimon.glyph.emulator.EmulatorLoop
+import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.StateManager
 import com.digimon.glyph.input.InputController
 import com.nothing.ketchum.GlyphMatrixManager
@@ -32,6 +34,7 @@ class DigimonGlyphToyService : Service() {
     companion object {
         private const val TAG = "DigimonGlyphToy"
         private const val AUTOSAVE_INTERVAL_MS = 60_000L
+        private const val DEBUG_FRAME_INTERVAL_MS = 120L
     }
 
     private lateinit var glyphManager: GlyphMatrixManager
@@ -42,6 +45,7 @@ class DigimonGlyphToyService : Service() {
     private var glyphRenderer: GlyphRenderer? = null
     private var inputController: InputController? = null
     private var romName: String? = null
+    private var lastDebugFramePublishMs: Long = 0L
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val autosaveRunnable = object : Runnable {
@@ -165,8 +169,14 @@ class DigimonGlyphToyService : Service() {
         input.start()
         inputController = input
 
-        val loop = EmulatorLoop(emu, bridge) { bitmap ->
+        val loop = EmulatorLoop(emu, bridge) { bitmap, vram ->
             renderer.pushFrame(bitmap)
+            val now = SystemClock.uptimeMillis()
+            if (now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
+                val fullDebug = bridge.renderFullDebugFrame(vram)
+                FrameDebugState.update(bitmap, fullDebug, now)
+                lastDebugFramePublishMs = now
+            }
         }
         emulatorLoop = loop
         loop.start()
@@ -184,6 +194,8 @@ class DigimonGlyphToyService : Service() {
         inputController?.stop()
         inputController = null
         glyphRenderer?.turnOff()
+        lastDebugFramePublishMs = 0L
+        FrameDebugState.clear()
     }
 
     private fun pushStaticFrame() {

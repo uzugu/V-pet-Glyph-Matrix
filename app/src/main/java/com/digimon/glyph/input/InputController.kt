@@ -12,37 +12,39 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.digimon.glyph.emulator.E0C6200
+import kotlin.math.abs
 
 /**
- * Maps Nothing Phone 3 motion + Glyph Button to Digimon A/B/C buttons.
+ * Maps motion + Glyph Button to Digimon A/B/C buttons.
  *
- * Digimon V3 button mapping on K0 port:
- *   Pin 2 = Button A (top/left)    — Tilt left (hold)
- *   Pin 1 = Button B (center)      — Glyph Button hold
- *   Pin 0 = Button C (bottom/right) — Tilt right (hold)
- *
- * Buttons are active-low (level 0 = pressed).
- *
- * A/C use a small dwell + hysteresis:
- * - tilt past activate threshold for a short time -> press
- * - remain held while tilted
- * - release when returned near neutral
+ * Flick mode:
+ * - detect a short acceleration impulse and opposite rebound (A/C)
+ * - works in portrait/landscape by taking dominant X or Y device axis
  */
 class InputController(context: Context) : SensorEventListener {
 
+    private enum class FlickAxis { NONE, X, Y }
+
     companion object {
         private const val TAG = "DigimonInput"
-        private const val TILT_ACTIVATE_DEG = 24f
-        private const val TILT_RELEASE_DEG = 14f
-        private const val TILT_DWELL_MS = 120L
-        private const val REARM_NEUTRAL_DEG = 10f
-        private const val REARM_NEUTRAL_MS = 140L
-        private const val ACTIVATION_COOLDOWN_MS = 220L
-        // Phone posture with Glyph usage can rotate perceived left/right.
-        // Use pitch axis here so side-tilt (for this posture) controls A/C.
-        private const val USE_PITCH_AXIS = true
-        private const val INVERT_TILT_AXIS = false
+
+        private const val FLICK_START_THRESHOLD = 4.2f
+        private const val FLICK_REBOUND_THRESHOLD = 2.2f
+        private const val FLICK_WINDOW_MS = 260L
+        private const val FLICK_COOLDOWN_MS = 180L
+        private const val FLICK_PRESS_MS = 85L
+        private const val ACCEL_SMOOTH_ALPHA = 0.35f
+        private const val ACCEL_GRAVITY_ALPHA = 0.82f
+
+        // Sign mapping per dominant axis.
+        private const val AXIS_X_POSITIVE_IS_C = true
+        private const val AXIS_Y_POSITIVE_IS_C = true
+
+        private const val DEBUG_PUSH_INTERVAL_MS = 80L
         private const val B_HOLD_ARM_MS = 200L
+
+        private const val FLICK_VIBRATE_MS = 160L
+        private const val FLICK_VIBRATE_AMPLITUDE = 255
 
         // K0 port pins for Digimon buttons (active-low: 0=pressed)
         private const val BUTTON_A_PIN = 2
@@ -50,31 +52,70 @@ class InputController(context: Context) : SensorEventListener {
         private const val BUTTON_C_PIN = 0
     }
 
+    private val appContext = context.applicationContext
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
     private val rotationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+    private val linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
+    private val accelerometerFallback =
+        if (linearAccelerationSensor == null) sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) else null
     private val mainHandler = Handler(Looper.getMainLooper())
     private val vibrator: Vibrator? =
         (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
 
     private var emulator: E0C6200? = null
 
-    // Tilt-hold state
+    // Button state
     private var buttonAActive = false
-    private var buttonCActive = false
-    private var pendingALeftSinceMs: Long = 0L
-    private var pendingCRightSinceMs: Long = 0L
-    private var neutralSinceMs: Long = 0L
-    private var directionalArmed = true
-    private var lastDirectionalActivationMs: Long = 0L
-
-    // Glyph button state
-    private var glyphPhysicalDown = false
     private var buttonBActive = false
+    private var buttonCActive = false
+    private var buttonALatchedByB = false
+    private var buttonCLatchedByB = false
+    private var glyphPhysicalDown = false
+
+    // Orientation debug values (from rotation vector)
+    private var latestPitchDeg = 0f
+    private var latestRollDeg = 0f
+
+    // Acceleration values
+    private var linearX = 0f
+    private var linearY = 0f
+    private var linearZ = 0f
+    private var filteredX = 0f
+    private var filteredY = 0f
+    private var filteredZ = 0f
+    private var gravityX = 0f
+    private var gravityY = 0f
+    private var gravityZ = 0f
+
+    // Flick state
+    private var pendingAxis = FlickAxis.NONE
+    private var pendingDirection = 0
+    private var pendingSinceMs = 0L
+    private var lastFlickMs = 0L
+    private var lastTriggerButton = "NONE"
+    private var lastTriggerAtMs = 0L
+
+    private var lastDebugPushMs = 0L
 
     private val armBHold = Runnable {
         if (glyphPhysicalDown && !buttonBActive) {
             buttonBActive = true
             emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+            lastTriggerButton = "B"
+            lastTriggerAtMs = System.currentTimeMillis()
+            publishDebugSnapshot(force = true)
+        }
+    }
+
+    private val releaseATap = Runnable {
+        if (buttonAActive) {
+            releaseA()
+        }
+    }
+
+    private val releaseCTap = Runnable {
+        if (buttonCActive) {
+            releaseC()
         }
     }
 
@@ -86,22 +127,26 @@ class InputController(context: Context) : SensorEventListener {
         rotationSensor?.let {
             sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
         }
+        linearAccelerationSensor?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
+        accelerometerFallback?.let {
+            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
+        }
     }
 
     fun stop() {
         sensorManager.unregisterListener(this)
-        // Release all buttons
         releaseAll()
     }
 
-    /** Called when the Glyph Button is pressed (from service EVENT_ACTION_DOWN). */
     fun onGlyphButtonDown() {
         glyphPhysicalDown = true
         mainHandler.removeCallbacks(armBHold)
         mainHandler.postDelayed(armBHold, B_HOLD_ARM_MS)
+        publishDebugSnapshot(force = true)
     }
 
-    /** Called when the Glyph Button is released (from service EVENT_ACTION_UP). */
     fun onGlyphButtonUp() {
         glyphPhysicalDown = false
         mainHandler.removeCallbacks(armBHold)
@@ -109,134 +154,238 @@ class InputController(context: Context) : SensorEventListener {
             buttonBActive = false
             emulator?.pinRelease("K0", BUTTON_B_PIN)
         }
+        if (buttonALatchedByB) {
+            releaseA()
+        }
+        if (buttonCLatchedByB) {
+            releaseC()
+        }
+        publishDebugSnapshot(force = true)
     }
 
     private fun releaseAll() {
         mainHandler.removeCallbacks(armBHold)
+        mainHandler.removeCallbacks(releaseATap)
+        mainHandler.removeCallbacks(releaseCTap)
         glyphPhysicalDown = false
-        pendingALeftSinceMs = 0L
-        pendingCRightSinceMs = 0L
-        neutralSinceMs = 0L
-        directionalArmed = true
-        lastDirectionalActivationMs = 0L
-        if (buttonAActive) {
-            buttonAActive = false
-            emulator?.pinRelease("K0", BUTTON_A_PIN)
-        }
-        if (buttonCActive) {
-            buttonCActive = false
-            emulator?.pinRelease("K0", BUTTON_C_PIN)
-        }
-        if (buttonBActive) {
-            buttonBActive = false
-            emulator?.pinRelease("K0", BUTTON_B_PIN)
-        }
+        buttonAActive = false
+        buttonBActive = false
+        buttonCActive = false
+        buttonALatchedByB = false
+        buttonCLatchedByB = false
+        emulator?.pinRelease("K0", BUTTON_A_PIN)
+        emulator?.pinRelease("K0", BUTTON_B_PIN)
+        emulator?.pinRelease("K0", BUTTON_C_PIN)
+
+        pendingAxis = FlickAxis.NONE
+        pendingDirection = 0
+        pendingSinceMs = 0L
+        lastFlickMs = 0L
+        lastTriggerButton = "NONE"
+        lastTriggerAtMs = 0L
+        lastDebugPushMs = 0L
+        publishDebugSnapshot(force = true)
     }
 
-    // ========== SensorEventListener ==========
-
     override fun onSensorChanged(event: SensorEvent) {
-        if (event.sensor.type != Sensor.TYPE_GAME_ROTATION_VECTOR) return
-
-        // Convert rotation vector to orientation angles.
-        val rotationMatrix = FloatArray(9)
-        SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
-        val orientation = FloatArray(3)
-        SensorManager.getOrientation(rotationMatrix, orientation)
-
-        // Pitch = orientation[1], Roll = orientation[2], in radians.
-        val pitchDeg = Math.toDegrees(orientation[1].toDouble()).toFloat()
-        val rollDeg = Math.toDegrees(orientation[2].toDouble()).toFloat()
-        val rawTiltDeg = if (USE_PITCH_AXIS) pitchDeg else rollDeg
-        val tiltDeg = if (INVERT_TILT_AXIS) -rawTiltDeg else rawTiltDeg
-        val now = System.currentTimeMillis()
-
-        // Rearm only after the device settles near center for a short dwell.
-        if (kotlin.math.abs(tiltDeg) <= REARM_NEUTRAL_DEG) {
-            if (neutralSinceMs == 0L) neutralSinceMs = now
-            if (!directionalArmed && now - neutralSinceMs >= REARM_NEUTRAL_MS) {
-                directionalArmed = true
+        when (event.sensor.type) {
+            Sensor.TYPE_GAME_ROTATION_VECTOR -> {
+                updateOrientation(event.values)
+                publishDebugSnapshot()
             }
-        } else {
-            neutralSinceMs = 0L
-        }
-
-        // Hysteresis release to neutral
-        if (buttonAActive && tiltDeg > -TILT_RELEASE_DEG) {
-            releaseA()
-        }
-        if (buttonCActive && tiltDeg < TILT_RELEASE_DEG) {
-            releaseC()
-        }
-
-        // Left tilt -> A
-        val inCooldown = now - lastDirectionalActivationMs < ACTIVATION_COOLDOWN_MS
-
-        if (directionalArmed && !inCooldown && !buttonAActive && tiltDeg <= -TILT_ACTIVATE_DEG) {
-            if (pendingALeftSinceMs == 0L) pendingALeftSinceMs = now
-            if (now - pendingALeftSinceMs >= TILT_DWELL_MS) {
-                activateA()
+            Sensor.TYPE_LINEAR_ACCELERATION -> {
+                linearX = event.values[0]
+                linearY = event.values[1]
+                linearZ = event.values[2]
+                updateFilteredLinear()
+                processFlick()
+                publishDebugSnapshot()
             }
-        } else {
-            pendingALeftSinceMs = 0L
-        }
-
-        // Right tilt -> C
-        if (directionalArmed && !inCooldown && !buttonCActive && tiltDeg >= TILT_ACTIVATE_DEG) {
-            if (pendingCRightSinceMs == 0L) pendingCRightSinceMs = now
-            if (now - pendingCRightSinceMs >= TILT_DWELL_MS) {
-                activateC()
+            Sensor.TYPE_ACCELEROMETER -> {
+                // Fallback when TYPE_LINEAR_ACCELERATION is unavailable.
+                gravityX = ACCEL_GRAVITY_ALPHA * gravityX + (1f - ACCEL_GRAVITY_ALPHA) * event.values[0]
+                gravityY = ACCEL_GRAVITY_ALPHA * gravityY + (1f - ACCEL_GRAVITY_ALPHA) * event.values[1]
+                gravityZ = ACCEL_GRAVITY_ALPHA * gravityZ + (1f - ACCEL_GRAVITY_ALPHA) * event.values[2]
+                linearX = event.values[0] - gravityX
+                linearY = event.values[1] - gravityY
+                linearZ = event.values[2] - gravityZ
+                updateFilteredLinear()
+                processFlick()
+                publishDebugSnapshot()
             }
-        } else {
-            pendingCRightSinceMs = 0L
         }
     }
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
-    private fun activateA() {
-        if (buttonAActive) return
-        if (buttonCActive) releaseC()
-        buttonAActive = true
-        directionalArmed = false
-        neutralSinceMs = 0L
-        lastDirectionalActivationMs = System.currentTimeMillis()
-        Log.d(TAG, "activate A tilt")
-        emulator?.pinSet("K0", BUTTON_A_PIN, 0)
-        pendingALeftSinceMs = 0L
-        pendingCRightSinceMs = 0L
-        vibrateTiltConfirm()
+    private fun updateOrientation(values: FloatArray) {
+        val rotationMatrix = FloatArray(9)
+        SensorManager.getRotationMatrixFromVector(rotationMatrix, values)
+        val orientation = FloatArray(3)
+        SensorManager.getOrientation(rotationMatrix, orientation)
+        latestPitchDeg = Math.toDegrees(orientation[1].toDouble()).toFloat()
+        latestRollDeg = Math.toDegrees(orientation[2].toDouble()).toFloat()
     }
 
-    private fun activateC() {
-        if (buttonCActive) return
+    private fun updateFilteredLinear() {
+        filteredX += (linearX - filteredX) * ACCEL_SMOOTH_ALPHA
+        filteredY += (linearY - filteredY) * ACCEL_SMOOTH_ALPHA
+        filteredZ += (linearZ - filteredZ) * ACCEL_SMOOTH_ALPHA
+    }
+
+    private fun processFlick() {
+        val now = System.currentTimeMillis()
+
+        if (pendingAxis == FlickAxis.NONE) {
+            if (now - lastFlickMs < FLICK_COOLDOWN_MS) return
+
+            val (axis, value) = dominantAxisAndValue(filteredX, filteredY)
+            if (axis != FlickAxis.NONE && abs(value) >= FLICK_START_THRESHOLD) {
+                pendingAxis = axis
+                pendingDirection = if (value >= 0f) 1 else -1
+                pendingSinceMs = now
+            }
+            return
+        }
+
+        if (now - pendingSinceMs > FLICK_WINDOW_MS) {
+            clearPending()
+            return
+        }
+
+        val value = when (pendingAxis) {
+            FlickAxis.X -> filteredX
+            FlickAxis.Y -> filteredY
+            FlickAxis.NONE -> 0f
+        }
+        val direction = signedDirection(value)
+        if (direction == -pendingDirection && abs(value) >= FLICK_REBOUND_THRESHOLD) {
+            triggerFlick(pendingAxis, pendingDirection, now)
+            clearPending()
+        }
+    }
+
+    private fun dominantAxisAndValue(x: Float, y: Float): Pair<FlickAxis, Float> {
+        return if (abs(x) >= abs(y)) {
+            Pair(FlickAxis.X, x)
+        } else {
+            Pair(FlickAxis.Y, y)
+        }
+    }
+
+    private fun signedDirection(value: Float): Int {
+        return when {
+            value > 0.15f -> 1
+            value < -0.15f -> -1
+            else -> 0
+        }
+    }
+
+    private fun triggerFlick(axis: FlickAxis, direction: Int, now: Long) {
+        val positiveIsC = when (axis) {
+            FlickAxis.X -> AXIS_X_POSITIVE_IS_C
+            FlickAxis.Y -> AXIS_Y_POSITIVE_IS_C
+            FlickAxis.NONE -> true
+        }
+        val triggerC = (direction > 0) == positiveIsC
+        if (triggerC) {
+            pressC()
+            lastTriggerButton = "C"
+        } else {
+            pressA()
+            lastTriggerButton = "A"
+        }
+        lastTriggerAtMs = now
+        lastFlickMs = now
+        Log.d(TAG, "flick axis=$axis direction=$direction -> $lastTriggerButton")
+        vibrateFlickConfirm()
+        publishDebugSnapshot(force = true)
+    }
+
+    private fun pressA() {
+        if (buttonCActive) releaseC()
+        if (!buttonAActive) {
+            buttonAActive = true
+            emulator?.pinSet("K0", BUTTON_A_PIN, 0)
+        }
+        mainHandler.removeCallbacks(releaseATap)
+        buttonALatchedByB = glyphPhysicalDown
+        if (!buttonALatchedByB) {
+            mainHandler.postDelayed(releaseATap, FLICK_PRESS_MS)
+        }
+    }
+
+    private fun pressC() {
         if (buttonAActive) releaseA()
-        buttonCActive = true
-        directionalArmed = false
-        neutralSinceMs = 0L
-        lastDirectionalActivationMs = System.currentTimeMillis()
-        Log.d(TAG, "activate C tilt")
-        emulator?.pinSet("K0", BUTTON_C_PIN, 0)
-        pendingALeftSinceMs = 0L
-        pendingCRightSinceMs = 0L
-        vibrateTiltConfirm()
+        if (!buttonCActive) {
+            buttonCActive = true
+            emulator?.pinSet("K0", BUTTON_C_PIN, 0)
+        }
+        mainHandler.removeCallbacks(releaseCTap)
+        buttonCLatchedByB = glyphPhysicalDown
+        if (!buttonCLatchedByB) {
+            mainHandler.postDelayed(releaseCTap, FLICK_PRESS_MS)
+        }
+    }
+
+    private fun clearPending() {
+        pendingAxis = FlickAxis.NONE
+        pendingDirection = 0
+        pendingSinceMs = 0L
     }
 
     private fun releaseA() {
         if (!buttonAActive) return
+        mainHandler.removeCallbacks(releaseATap)
         buttonAActive = false
+        buttonALatchedByB = false
         emulator?.pinRelease("K0", BUTTON_A_PIN)
     }
 
     private fun releaseC() {
         if (!buttonCActive) return
+        mainHandler.removeCallbacks(releaseCTap)
         buttonCActive = false
+        buttonCLatchedByB = false
         emulator?.pinRelease("K0", BUTTON_C_PIN)
     }
 
-    private fun vibrateTiltConfirm() {
+    private fun vibrateFlickConfirm() {
         val v = vibrator ?: return
         if (!v.hasVibrator()) return
-        v.vibrate(VibrationEffect.createOneShot(16L, 120))
+        v.vibrate(VibrationEffect.createOneShot(FLICK_VIBRATE_MS, FLICK_VIBRATE_AMPLITUDE))
+    }
+
+    private fun publishDebugSnapshot(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastDebugPushMs < DEBUG_PUSH_INTERVAL_MS) return
+        lastDebugPushMs = now
+        val pendingAgeMs = if (pendingSinceMs == 0L) 0L else (now - pendingSinceMs)
+        InputDebugState.write(
+            appContext,
+            InputDebugState.Snapshot(
+                timestampMs = now,
+                mode = "flick",
+                pitchDeg = latestPitchDeg,
+                rollDeg = latestRollDeg,
+                linearX = linearX,
+                linearY = linearY,
+                linearZ = linearZ,
+                filteredX = filteredX,
+                filteredY = filteredY,
+                filteredZ = filteredZ,
+                pendingAxis = pendingAxis.name,
+                pendingDir = pendingDirection,
+                pendingAgeMs = pendingAgeMs,
+                lastTriggerButton = lastTriggerButton,
+                lastTriggerAtMs = lastTriggerAtMs,
+                buttonAActive = buttonAActive,
+                buttonALatchedByB = buttonALatchedByB,
+                buttonBActive = buttonBActive,
+                buttonCActive = buttonCActive,
+                buttonCLatchedByB = buttonCLatchedByB,
+                glyphPhysicalDown = glyphPhysicalDown
+            )
+        )
     }
 }
