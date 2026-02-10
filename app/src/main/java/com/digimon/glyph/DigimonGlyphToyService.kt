@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -52,7 +53,9 @@ class DigimonGlyphToyService : Service() {
 
     // Messenger handler for Glyph Toy messages from the system
     private val toyHandler = Handler(Looper.getMainLooper()) { msg ->
-        if (msg.what == GlyphToy.MSG_GLYPH_TOY) {
+        val event = msg.data?.getString(GlyphToy.MSG_GLYPH_TOY_DATA)
+        Log.d(TAG, "Toy message what=${msg.what}, event=$event")
+        if (msg.what == GlyphToy.MSG_GLYPH_TOY || event != null) {
             handleToyMessage(msg)
         }
         true
@@ -113,7 +116,12 @@ class DigimonGlyphToyService : Service() {
         glyphManager.init(object : GlyphMatrixManager.Callback {
             override fun onServiceConnected(name: ComponentName?) {
                 Log.d(TAG, "Glyph service connected")
-                glyphManager.register(BuildConfig.APPLICATION_ID)
+                val targetDevice = Build.MODEL ?: "A024"
+                glyphManager.register(targetDevice)
+                Log.d(TAG, "Glyph manager registered with target=$targetDevice")
+                // Some firmware builds may not dispatch STATUS_START reliably.
+                // Ensure emulator starts once the glyph service is ready.
+                startEmulator()
             }
             override fun onServiceDisconnected(name: ComponentName?) {
                 Log.d(TAG, "Glyph service disconnected")

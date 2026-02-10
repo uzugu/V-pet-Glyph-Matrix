@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.digimon.glyph">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-feature android:name="android.hardware.sensor.gyroscope" android:required="true" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/ic_digimon_preview"
+        android:roundIcon="@drawable/ic_digimon_preview"
         android:label="@string/app_name"
         android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
 
@@ -40,7 +41,7 @@
                 android:resource="@string/toy_summary" />
             <meta-data
                 android:name="com.nothing.glyph.toy.longpress"
-                android:value="0" />
+                android:value="1" />
             <meta-data
                 android:name="com.nothing.glyph.toy.aod_support"
                 android:value="1" />

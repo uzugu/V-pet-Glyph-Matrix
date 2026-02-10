@@ -56,7 +56,7 @@ class EmulatorLoop(
             accumulatedNs += deltaNs.coerceAtMost(FRAME_TIME_NS * 2)
 
             // Execute CPU cycles for the accumulated time
-            while (accumulatedNs > 0) {
+            while (accumulatedNs >= CYCLE_TIME_NS) {
                 val cycles = emulator.clock()
                 accumulatedNs -= cycles * CYCLE_TIME_NS
             }

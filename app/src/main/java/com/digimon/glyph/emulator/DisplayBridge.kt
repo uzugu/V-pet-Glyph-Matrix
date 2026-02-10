@@ -15,9 +15,9 @@ import android.graphics.Color
  *
  * For the 25x25 Glyph Matrix, we:
  * 1. Extract the 32x16 game area from VRAM
- * 2. Scale 32 columns -> 25 columns (nearest-neighbor)
+ * 2. Center-crop 32 columns -> 25 columns (preserve middle gameplay area)
  * 3. Center the 16 rows vertically in the 25-row grid
- * 4. Render icons in top and bottom rows
+ * 4. Render overlay menu dots in top and bottom rows
  */
 class DisplayBridge {
 
@@ -30,27 +30,51 @@ class DisplayBridge {
         private val PIXEL_ON = Color.rgb(0, 255, 80)
         private val PIXEL_OFF = Color.BLACK
         private val ICON_ON = Color.rgb(255, 200, 0)
+        private val ICON_OFF = Color.rgb(120, 90, 24)
 
         // Vertical offset: center 16 rows in 25 (pad 4 top for icons, 5 bottom for icons)
         private const val GAME_Y_OFFSET = 4
 
-        // Horizontal mapping: 25 glyph columns -> 32 LCD columns (nearest-neighbor)
-        private val H_MAP = IntArray(GLYPH_SIZE) { col ->
-            (col * LCD_WIDTH / GLYPH_SIZE).coerceIn(0, LCD_WIDTH - 1)
-        }
+        // Center-crop from 32 -> 25, dropping side pixels first.
+        private const val H_CROP_LEFT = (LCD_WIDTH - GLYPH_SIZE) / 2 // 3
     }
 
-    // VRAM segment-to-pixel mapping table.
-    // Built from DigimonV3.svg: segment ID "{nibble}_{bit}" -> pixel (col, row).
-    // The SVG maps VRAM nibbles to specific X,Y positions on the display.
-    //
-    // The LCD is organized as:
-    //   Columns 0-15 (left half): VRAM nibbles 24-73 (pairs: each pair = 1 column, 8 rows)
-    //   Columns 16-31 (right half): VRAM nibbles 2-17 + 82-153
-    //   Top row icons: nibbles 0, 18, 20, 22 (partial)
-    //   Bottom row icons: nibbles 137, 155, 157, 159 (partial)
-    //
-    // We extract pixel state: pixel[row][col] = (VRAM[nibble] >> bit) & 1
+    // Exact per-column mapping from DigimonV3.svg (<g id="col_X"> blocks).
+    // Each column has four nibbles listed bottom->top, while each nibble's bit0 is bottom pixel.
+    private val lcdColNibblesBottomToTop = arrayOf(
+        intArrayOf(40, 41, 120, 121),
+        intArrayOf(42, 43, 122, 123),
+        intArrayOf(44, 45, 124, 125),
+        intArrayOf(46, 47, 126, 127),
+        intArrayOf(48, 49, 128, 129),
+        intArrayOf(50, 51, 130, 131),
+        intArrayOf(52, 53, 132, 133),
+        intArrayOf(54, 55, 134, 135),
+        intArrayOf(58, 59, 138, 139),
+        intArrayOf(60, 61, 140, 141),
+        intArrayOf(62, 63, 142, 143),
+        intArrayOf(64, 65, 144, 145),
+        intArrayOf(66, 67, 146, 147),
+        intArrayOf(68, 69, 148, 149),
+        intArrayOf(70, 71, 150, 151),
+        intArrayOf(72, 73, 152, 153),
+        intArrayOf(38, 39, 118, 119),
+        intArrayOf(36, 37, 116, 117),
+        intArrayOf(34, 35, 114, 115),
+        intArrayOf(32, 33, 112, 113),
+        intArrayOf(30, 31, 110, 111),
+        intArrayOf(28, 29, 108, 109),
+        intArrayOf(26, 27, 106, 107),
+        intArrayOf(24, 25, 104, 105),
+        intArrayOf(16, 17, 96, 97),
+        intArrayOf(14, 15, 94, 95),
+        intArrayOf(12, 13, 92, 93),
+        intArrayOf(10, 11, 90, 91),
+        intArrayOf(8, 9, 88, 89),
+        intArrayOf(6, 7, 86, 87),
+        intArrayOf(4, 5, 84, 85),
+        intArrayOf(2, 3, 82, 83),
+    )
 
     // Game area pixel extraction: returns 16x32 boolean grid
     private val lcdPixels = Array(LCD_HEIGHT) { BooleanArray(LCD_WIDTH) }
@@ -69,140 +93,92 @@ class DisplayBridge {
         // Fill background
         pixels.fill(PIXEL_OFF)
 
-        // Render game area: 16 rows, scaled from 32 to 25 columns
+        // Render game area: 16 rows, center-cropped from 32 to 25 columns
         for (row in 0 until LCD_HEIGHT) {
             val outY = row + GAME_Y_OFFSET
             if (outY >= GLYPH_SIZE) break
             for (col in 0 until GLYPH_SIZE) {
-                val srcCol = H_MAP[col]
+                val srcCol = col + H_CROP_LEFT
                 if (lcdPixels[row][srcCol]) {
                     pixels[outY * GLYPH_SIZE + col] = PIXEL_ON
                 }
             }
         }
 
-        // Render top icons (4 icons in rows 0-2)
-        renderIcons(pixels, vramData, topRow = true)
-
-        // Render bottom icons (4 icons in rows 22-24)
-        renderIcons(pixels, vramData, topRow = false)
+        // Render all 8 indicator dots (4 top + 4 bottom).
+        renderMenuDots(pixels, vramData)
 
         bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
         return bitmap
     }
 
-    /**
-     * Extract the 32x16 pixel grid from VRAM nibbles.
-     *
-     * Based on the DigimonV3.svg segment layout:
-     * - The display has two halves stacked: top 8 rows and bottom 8 rows
-     * - Each column is represented by 2 VRAM nibbles (4 bits each = 8 rows)
-     *
-     * Column mapping (from SVG coordinate analysis):
-     *   LCD col 0:  VRAM[24] (bits 0-3 = rows 0-3), VRAM[25] (bits 0-3 = rows 4-7)
-     *   LCD col 1:  VRAM[26], VRAM[27]
-     *   ...
-     *   LCD col 15: VRAM[54], VRAM[55]  (left half, 16 columns)
-     *   LCD col 16: VRAM[2], VRAM[3] + VRAM[82], VRAM[83]
-     *   ...etc for right half
-     *
-     * Simplified: Each column pair at offset i uses:
-     *   Top 4 rows: VRAM[base + i*2], bits 0-3
-     *   Next 4 rows: VRAM[base + i*2 + 1], bits 0-3
-     *   Bottom 8 rows: VRAM[base2 + i*2], VRAM[base2 + i*2 + 1]
-     */
     private fun extractPixels(vramData: IntArray) {
         // Clear
         for (row in lcdPixels) row.fill(false)
 
         if (vramData.size < 160) return
 
-        // Left half columns 0-15: VRAM nibbles 24-55 (top 8 rows)
-        for (col in 0 until 16) {
-            val nibbleTop = 24 + col * 2      // rows 0-3
-            val nibbleBot = 24 + col * 2 + 1  // rows 4-7
-            if (nibbleTop < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[bit][col] = (vramData[nibbleTop] shr bit) and 1 == 1
-                }
-            }
-            if (nibbleBot < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[4 + bit][col] = (vramData[nibbleBot] shr bit) and 1 == 1
-                }
-            }
-        }
-
-        // Right half columns 16-31: VRAM nibbles 2-17 (top 8 rows)
-        for (col in 0 until 8) {
-            val nibbleTop = 2 + col * 2
-            val nibbleBot = 2 + col * 2 + 1
-            if (nibbleTop < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[bit][16 + col] = (vramData[nibbleTop] shr bit) and 1 == 1
-                }
-            }
-            if (nibbleBot < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[4 + bit][16 + col] = (vramData[nibbleBot] shr bit) and 1 == 1
-                }
-            }
-        }
-
-        // Columns 24-31 right side: also from top VRAM section (nibbles continuing)
-        for (col in 0 until 8) {
-            val nibbleTop = 56 + col * 2
-            val nibbleBot = 56 + col * 2 + 1
-            if (nibbleTop < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[bit][24 + col] = (vramData[nibbleTop] shr bit) and 1 == 1
-                }
-            }
-            if (nibbleBot < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[4 + bit][24 + col] = (vramData[nibbleBot] shr bit) and 1 == 1
-                }
-            }
-        }
-
-        // Bottom 8 rows: VRAM nibbles 82-145
-        for (col in 0 until 32) {
-            val nibbleTop = 82 + col * 2      // rows 8-11
-            val nibbleBot = 82 + col * 2 + 1  // rows 12-15
-            if (nibbleTop < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[8 + bit][col] = (vramData[nibbleTop] shr bit) and 1 == 1
-                }
-            }
-            if (nibbleBot < vramData.size) {
-                for (bit in 0 until 4) {
-                    lcdPixels[12 + bit][col] = (vramData[nibbleBot] shr bit) and 1 == 1
+        // Top->bottom rows use reversed nibble order and reversed bit order.
+        for (col in 0 until LCD_WIDTH) {
+            val nibbleStack = lcdColNibblesBottomToTop[col]
+            for (stackIdxTopDown in 0 until 4) {
+                val nibble = nibbleStack[3 - stackIdxTopDown]
+                if (nibble >= vramData.size) continue
+                for (bitTopDown in 0 until 4) {
+                    val row = stackIdxTopDown * 4 + bitTopDown
+                    val bit = 3 - bitTopDown
+                    lcdPixels[row][col] = (vramData[nibble] shr bit) and 1 == 1
                 }
             }
         }
     }
 
-    private fun renderIcons(pixels: IntArray, vramData: IntArray, topRow: Boolean) {
-        // 8 icons total (4 top, 4 bottom)
-        // Top icons use VRAM nibbles: 0, 18, 20, 22
-        // Bottom icons use VRAM nibbles: 137, 155, 157, 159
-        val iconNibbles = if (topRow) intArrayOf(0, 18, 20, 22) else intArrayOf(137, 155, 157, 159)
-        val baseY = if (topRow) 1 else 22
-        val spacing = GLYPH_SIZE / 4  // 6 pixels per icon
+    private fun renderMenuDots(pixels: IntArray, vramData: IntArray) {
+        // Exactly 8 indicator bits in DigimonV3.svg:
+        // Top:    nibble 0/18/20/22, bit 0
+        // Bottom: nibble 137/155/157/159, bit 3
+        val nibbles = intArrayOf(0, 18, 20, 22, 137, 155, 157, 159)
+        val masks = intArrayOf(0x1, 0x1, 0x1, 0x1, 0x8, 0x8, 0x8, 0x8)
+        // Layout for circular visible area:
+        // 0-1: top pair, 2-3: upper side pair, 4-5: lower side pair, 6-7: bottom pair
+        val positions = arrayOf(
+            intArrayOf(8, 1),   // top-left
+            intArrayOf(16, 1),  // top-right
+            intArrayOf(2, 7),   // upper-left side
+            intArrayOf(22, 7),  // upper-right side
+            intArrayOf(2, 17),  // lower-left side
+            intArrayOf(22, 17), // lower-right side
+            intArrayOf(8, 23),  // bottom-left
+            intArrayOf(16, 23), // bottom-right
+        )
 
-        for (i in 0 until 4) {
-            val nibbleIdx = iconNibbles[i]
-            if (nibbleIdx < vramData.size && vramData[nibbleIdx] != 0) {
-                val cx = spacing / 2 + i * spacing
-                // Draw a small 3x2 dot for active icon
-                for (dy in -1..0) {
-                    for (dx in -1..1) {
-                        val px = (cx + dx).coerceIn(0, GLYPH_SIZE - 1)
-                        val py = (baseY + dy).coerceIn(0, GLYPH_SIZE - 1)
-                        pixels[py * GLYPH_SIZE + px] = ICON_ON
-                    }
-                }
-            }
+        for (i in 0 until 8) {
+            val cx = positions[i][0]
+            val cy = positions[i][1]
+            val nibbleIdx = nibbles[i]
+            val mask = masks[i]
+            val active = nibbleIdx < vramData.size && (vramData[nibbleIdx] and mask) != 0
+            drawDot(pixels, cx, cy, active)
         }
+    }
+
+    private fun drawDot(pixels: IntArray, cx: Int, cy: Int, active: Boolean) {
+        val color = if (active) ICON_ON else ICON_OFF
+        val px = cx.coerceIn(0, GLYPH_SIZE - 1)
+        val py = cy.coerceIn(0, GLYPH_SIZE - 1)
+
+        // Keep inactive dots subtle; make active dots easier to spot.
+        setPixelSafe(pixels, px, py, color)
+        if (active) {
+            setPixelSafe(pixels, px - 1, py, color)
+            setPixelSafe(pixels, px + 1, py, color)
+            setPixelSafe(pixels, px, py - 1, color)
+            setPixelSafe(pixels, px, py + 1, color)
+        }
+    }
+
+    private fun setPixelSafe(pixels: IntArray, x: Int, y: Int, color: Int) {
+        if (x !in 0 until GLYPH_SIZE || y !in 0 until GLYPH_SIZE) return
+        pixels[y * GLYPH_SIZE + x] = color
     }
 }

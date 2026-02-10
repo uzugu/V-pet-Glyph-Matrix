@@ -371,6 +371,7 @@ class E0C6200(
 
     fun clock(): Double {
         var execCycles = 7
+        var elapsedCycles = execCycles.toDouble()
         if (RESET == 0) {
             if (HALT == 0) {
                 ifDelay = false
@@ -386,15 +387,15 @@ class E0C6200(
                 else if (ISW and EISW != 0) execCycles += interrupt(0x4)
                 else if (IT and EIT != 0) execCycles += interrupt(0x2)
             }
-            var ec = execCycles.toDouble()
-            if (CTRL_OSC and IO_CLKCHG == 0) ec *= osc1ClockDiv
-            osc1Counter -= ec
+            elapsedCycles = execCycles.toDouble()
+            if (CTRL_OSC and IO_CLKCHG == 0) elapsedCycles *= osc1ClockDiv
+            osc1Counter -= elapsedCycles
             while (osc1Counter <= 0) {
                 osc1Counter += osc1ClockDiv
                 clockOSC1()
             }
         }
-        return execCycles.toDouble()
+        return elapsedCycles
     }
 
     fun resetCpu() {
