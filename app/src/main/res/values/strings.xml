@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Digimon V3</string>
+    <string name="toy_name">Digimon V3</string>
+    <string name="toy_summary">Digimon Virtual Pet Ver.3 Emulator</string>
+    <string name="rom_loaded">ROM loaded successfully</string>
+    <string name="rom_not_found">No ROM file found. Please load a ROM.</string>
+    <string name="pick_rom">Select ROM File</string>
+    <string name="rom_invalid">Invalid ROM file (expected 8192 or 16384 bytes)</string>
+</resources>

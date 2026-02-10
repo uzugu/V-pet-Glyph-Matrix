@@ -1,0 +1,15 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+/build
+/app/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+_gradle_temp/
+reference/
+*.zip
+*.bin
+sdk_extracted/
