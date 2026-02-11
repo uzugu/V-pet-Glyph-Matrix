@@ -19,6 +19,7 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
 - Session controls:
   - Restart emulator
   - Full reset (cold reset + autosave rewrite)
+  - Explicit combo taps from launcher: `A+B`, `A+C`, `B+C`
 - Audio:
   - Buzzer playback with envelope/one-shot behavior
   - In-app audio toggle
@@ -34,7 +35,9 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
   - Haptic feedback on successful flick trigger
   - Combined holds supported (for example A+B and B+C)
 - Debug and diagnostics:
-  - Live input/frame debug panel in launcher
+  - Launcher reorganized with main gameplay controls + live screen previews first
+  - Debug tools moved to collapsible **Show Debug / Hide Debug** section
+  - Live input/frame debug panel inside collapsible section
   - Optional debug telemetry toggle (off by default)
   - On-device command bus for runtime setting refresh and save/load commands
 
@@ -78,6 +81,7 @@ chmod +x gradlew
 `Settings -> Glyph -> Glyph Toys`
 4. Enable **Digimon V3** toy.
 5. Start the toy and check the back Glyph Matrix.
+6. Optional: use launcher combo buttons (`A+B`, `A+C`, `B+C`) for precise combo inputs.
 
 ## Controls
 
@@ -85,6 +89,7 @@ chmod +x gradlew
 - Flick toward/away from you -> quick **B**
 - Glyph button hold -> **B** hold
 - Hold Glyph button while triggering A or C for combo-style input timing
+- Use launcher **Combo Buttons** for direct `A+B`, `A+C`, `B+C` taps
 
 Notes:
 - Flick uses impulse + rebound detection with cooldown/hysteresis.

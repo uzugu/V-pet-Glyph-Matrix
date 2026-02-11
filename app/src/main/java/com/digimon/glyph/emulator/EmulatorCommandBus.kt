@@ -26,7 +26,12 @@ object EmulatorCommandBus {
     const val CMD_LOAD_SLOT = "load_slot"
     const val CMD_RESTART = "restart"
     const val CMD_FULL_RESET = "full_reset"
+    const val CMD_PRESS_COMBO = "press_combo"
     const val CMD_REFRESH_SETTINGS = "refresh_settings"
+
+    const val COMBO_AB = 1
+    const val COMBO_AC = 2
+    const val COMBO_BC = 3
 
     private const val PREFS_NAME = "emulator_command_bus"
     private const val KEY_CMD_ID = "cmd_id"

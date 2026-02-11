@@ -36,6 +36,7 @@ class InputController(context: Context) : SensorEventListener {
         private const val FLICK_COOLDOWN_MS = 180L
         private const val FLICK_PRESS_MS = 85L
         private const val B_FLICK_PRESS_MS = 75L
+        private const val COMBO_PRESS_MS = 95L
         private const val ACCEL_SMOOTH_ALPHA = 0.35f
         private const val ACCEL_GRAVITY_ALPHA = 0.82f
 
@@ -357,6 +358,75 @@ class InputController(context: Context) : SensorEventListener {
         emulator?.pinSet("K0", BUTTON_B_PIN, 0)
         mainHandler.removeCallbacks(releaseBTap)
         mainHandler.postDelayed(releaseBTap, B_FLICK_PRESS_MS)
+    }
+
+    fun triggerComboTap(combo: Int): Boolean {
+        val includeA: Boolean
+        val includeB: Boolean
+        val includeC: Boolean
+        val triggerName: String
+        when (combo) {
+            1 -> {
+                includeA = true
+                includeB = true
+                includeC = false
+                triggerName = "A+B"
+            }
+            2 -> {
+                includeA = true
+                includeB = false
+                includeC = true
+                triggerName = "A+C"
+            }
+            3 -> {
+                includeA = false
+                includeB = true
+                includeC = true
+                triggerName = "B+C"
+            }
+            else -> return false
+        }
+
+        val pressA = includeA && !buttonAActive
+        val pressB = includeB && !buttonBActive
+        val pressC = includeC && !buttonCActive
+
+        if (pressA) {
+            buttonAActive = true
+            emulator?.pinSet("K0", BUTTON_A_PIN, 0)
+            mainHandler.removeCallbacks(releaseATap)
+        }
+        if (pressB) {
+            buttonBActive = true
+            emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+            mainHandler.removeCallbacks(releaseBTap)
+        }
+        if (pressC) {
+            buttonCActive = true
+            emulator?.pinSet("K0", BUTTON_C_PIN, 0)
+            mainHandler.removeCallbacks(releaseCTap)
+        }
+
+        if (pressA || pressB || pressC) {
+            mainHandler.postDelayed({
+                if (pressA && !buttonALatchedByB) {
+                    releaseA()
+                }
+                if (pressB && !glyphPhysicalDown) {
+                    buttonBActive = false
+                    emulator?.pinRelease("K0", BUTTON_B_PIN)
+                }
+                if (pressC && !buttonCLatchedByB) {
+                    releaseC()
+                }
+                publishDebugSnapshot(force = true)
+            }, COMBO_PRESS_MS)
+        }
+
+        lastTriggerButton = triggerName
+        lastTriggerAtMs = System.currentTimeMillis()
+        publishDebugSnapshot(force = true)
+        return true
     }
 
     private fun clearPending() {

@@ -1,7 +1,5 @@
 package com.digimon.glyph
 
-import android.app.Activity
-import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.net.Uri
@@ -11,6 +9,7 @@ import android.os.Looper
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
@@ -75,21 +74,25 @@ class RomLoaderActivity : AppCompatActivity() {
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
 
+        val scrollView = ScrollView(this).apply {
+            isFillViewport = true
+        }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(48, 96, 48, 48)
         }
+        scrollView.addView(layout)
 
         val title = TextView(this).apply {
             text = "Digimon Glyph Emulator"
             textSize = 24f
-            setPadding(0, 0, 0, 32)
+            setPadding(0, 0, 0, 20)
         }
         layout.addView(title)
 
         statusText = TextView(this).apply {
             textSize = 16f
-            setPadding(0, 0, 0, 32)
+            setPadding(0, 0, 0, 16)
         }
         layout.addView(statusText)
 
@@ -106,10 +109,78 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         layout.addView(loadButton)
 
+        val infoText = TextView(this).apply {
+            text = buildString {
+                appendLine("How to use:")
+                appendLine("1. Select a Digimon ROM (.bin or .zip)")
+                appendLine("2. Enable Digimon V3 in Glyph Toys")
+                appendLine("3. Start the toy from Glyph settings")
+                appendLine()
+                appendLine("Controls:")
+                appendLine("  Flick left/right = A/C")
+                appendLine("  Flick toward/away = quick B")
+                appendLine("  Glyph button hold = B hold")
+                appendLine("  Combo Buttons = explicit A+B / A+C / B+C")
+            }
+            textSize = 14f
+            setPadding(0, 18, 0, 18)
+        }
+        layout.addView(infoText)
+
+        val screenTitle = TextView(this).apply {
+            text = "Live Screens"
+            textSize = 16f
+            setPadding(0, 0, 0, 8)
+        }
+        layout.addView(screenTitle)
+
+        val frameRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 18)
+        }
+        val fullCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = lp
+        }
+        val glyphCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = lp
+        }
+        fullCol.addView(TextView(this).apply {
+            text = "Full Digivice"
+            textSize = 13f
+            setPadding(0, 0, 0, 6)
+        })
+        glyphCol.addView(TextView(this).apply {
+            text = "Glyph + Overlay"
+            textSize = 13f
+            setPadding(0, 0, 0, 6)
+        })
+
+        fullDebugImage = ImageView(this).apply {
+            setBackgroundColor(Color.BLACK)
+            adjustViewBounds = true
+            minimumHeight = 170
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        glyphDebugImage = ImageView(this).apply {
+            setBackgroundColor(Color.BLACK)
+            adjustViewBounds = true
+            minimumHeight = 170
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        }
+        fullCol.addView(fullDebugImage)
+        glyphCol.addView(glyphDebugImage)
+        frameRow.addView(fullCol)
+        frameRow.addView(glyphCol)
+        layout.addView(frameRow)
+
         val zoomModeSwitch = Switch(this).apply {
             text = "Auto zoom-out for menu text"
             isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
-            setPadding(0, 16, 0, 0)
+            setPadding(0, 0, 0, 0)
             setOnCheckedChangeListener { _, isChecked ->
                 DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
                 EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
@@ -127,17 +198,6 @@ class RomLoaderActivity : AppCompatActivity() {
             }
         }
         layout.addView(audioSwitch)
-
-        val debugSwitch = Switch(this).apply {
-            text = "Emulator debug telemetry"
-            isChecked = EmulatorDebugSettings.isDebugEnabled()
-            setPadding(0, 8, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
-        }
-        layout.addView(debugSwitch)
 
         autosaveText = TextView(this).apply {
             textSize = 14f
@@ -192,6 +252,37 @@ class RomLoaderActivity : AppCompatActivity() {
         })
         layout.addView(controlRow)
 
+        val comboTitle = TextView(this).apply {
+            text = "Combo Buttons"
+            textSize = 15f
+            setPadding(0, 8, 0, 8)
+        }
+        layout.addView(comboTitle)
+
+        val comboRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 8)
+        }
+        comboRow.addView(Button(this).apply {
+            text = "A+B"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AB, "Combo A+B")
+            }
+        })
+        comboRow.addView(Button(this).apply {
+            text = "A+C"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AC, "Combo A+C")
+            }
+        })
+        comboRow.addView(Button(this).apply {
+            text = "B+C"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
+            }
+        })
+        layout.addView(comboRow)
+
         commandStatusText = TextView(this).apply {
             textSize = 13f
             typeface = Typeface.MONOSPACE
@@ -199,80 +290,35 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         layout.addView(commandStatusText)
 
-        val infoText = TextView(this).apply {
-            text = buildString {
-                appendLine("How to use:")
-                appendLine("1. Tap 'Select ROM File' and pick a Digimon ROM (.bin or .zip)")
-                appendLine("2. Open Glyph Toys Manager on your phone")
-                appendLine("3. Enable 'Digimon V3' toy")
-                appendLine()
-                appendLine("Controls:")
-                appendLine("  Flick = Button A/C (cycle/cancel by direction)")
-                appendLine("  Glyph Button = Button B (confirm)")
-                appendLine("  See Live Input Debug for trigger direction and states")
-            }
-            textSize = 14f
-            setPadding(0, 32, 0, 0)
+        val debugToggle = Button(this).apply {
+            text = "Show Debug"
+            setPadding(0, 8, 0, 8)
         }
-        layout.addView(infoText)
+        layout.addView(debugToggle)
+
+        val debugContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = LinearLayout.GONE
+        }
+        layout.addView(debugContainer)
+
+        val debugSwitch = Switch(this).apply {
+            text = "Emulator debug telemetry"
+            isChecked = EmulatorDebugSettings.isDebugEnabled()
+            setPadding(0, 0, 0, 8)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        debugContainer.addView(debugSwitch)
 
         val debugTitle = TextView(this).apply {
             text = "Live Input Debug"
             textSize = 16f
-            setPadding(0, 36, 0, 12)
+            setPadding(0, 8, 0, 10)
         }
-        layout.addView(debugTitle)
-
-        val frameTitle = TextView(this).apply {
-            text = "Live Display Debug"
-            textSize = 16f
-            setPadding(0, 12, 0, 8)
-        }
-        layout.addView(frameTitle)
-
-        val frameRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 16)
-        }
-        val fullCol = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            layoutParams = lp
-        }
-        val glyphCol = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            layoutParams = lp
-        }
-
-        fullCol.addView(TextView(this).apply {
-            text = "Full Digivice"
-            textSize = 13f
-            setPadding(0, 0, 0, 6)
-        })
-        glyphCol.addView(TextView(this).apply {
-            text = "Glyph + Overlay"
-            textSize = 13f
-            setPadding(0, 0, 0, 6)
-        })
-
-        fullDebugImage = ImageView(this).apply {
-            setBackgroundColor(Color.BLACK)
-            adjustViewBounds = true
-            minimumHeight = 170
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-        glyphDebugImage = ImageView(this).apply {
-            setBackgroundColor(Color.BLACK)
-            adjustViewBounds = true
-            minimumHeight = 170
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-        fullCol.addView(fullDebugImage)
-        glyphCol.addView(glyphDebugImage)
-        frameRow.addView(fullCol)
-        frameRow.addView(glyphCol)
-        layout.addView(frameRow)
+        debugContainer.addView(debugTitle)
 
         val indicatorRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -284,16 +330,22 @@ class RomLoaderActivity : AppCompatActivity() {
         indicatorRow.addView(indicatorA)
         indicatorRow.addView(indicatorB)
         indicatorRow.addView(indicatorC)
-        layout.addView(indicatorRow)
+        debugContainer.addView(indicatorRow)
 
         debugText = TextView(this).apply {
             textSize = 13f
             typeface = Typeface.MONOSPACE
             setPadding(0, 0, 0, 32)
         }
-        layout.addView(debugText)
+        debugContainer.addView(debugText)
 
-        setContentView(layout)
+        debugToggle.setOnClickListener {
+            val showing = debugContainer.visibility == LinearLayout.VISIBLE
+            debugContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
+            debugToggle.text = if (showing) "Show Debug" else "Hide Debug"
+        }
+
+        setContentView(scrollView)
         updateStatus()
         refreshSaveAndCommandInfo()
         renderDebugState()
@@ -321,22 +373,24 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun renderDebugState() {
+        val frameSnap = FrameDebugState.snapshot()
+        if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
+            lastFrameUpdateMs = frameSnap.updatedAtMs
+            fullDebugImage.setImageBitmap(frameSnap.fullFrame)
+            glyphDebugImage.setImageBitmap(frameSnap.glyphFrame)
+        }
+
+        refreshSaveAndCommandInfo()
+
         if (!EmulatorDebugSettings.isDebugEnabled()) {
             setIndicatorState(indicatorA, "A", false, Color.parseColor("#00C853"))
             setIndicatorState(indicatorB, "B", false, Color.parseColor("#FFD600"))
             setIndicatorState(indicatorC, "C", false, Color.parseColor("#00B0FF"))
-            if (lastFrameUpdateMs != -1L) {
-                lastFrameUpdateMs = -1L
-                fullDebugImage.setImageBitmap(null)
-                glyphDebugImage.setImageBitmap(null)
-            }
-            refreshSaveAndCommandInfo()
-            debugText.text = "debug telemetry disabled (enable the switch above to capture live input/frame diagnostics)"
+            debugText.text = "debug telemetry disabled (open Debug and enable it to view live input diagnostics)"
             return
         }
 
         val snap = InputDebugState.read(this)
-        val frameSnap = FrameDebugState.snapshot()
         val ageMs = System.currentTimeMillis() - snap.timestampMs
         val frameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE else (System.currentTimeMillis() - frameSnap.updatedAtMs)
         val triggerAgeMs = if (snap.lastTriggerAtMs == 0L) Long.MAX_VALUE else (System.currentTimeMillis() - snap.lastTriggerAtMs)
@@ -349,14 +403,6 @@ class RomLoaderActivity : AppCompatActivity() {
         setIndicatorState(indicatorA, "A", aLit, Color.parseColor("#00C853"))
         setIndicatorState(indicatorB, "B", bLit, Color.parseColor("#FFD600"))
         setIndicatorState(indicatorC, "C", cLit, Color.parseColor("#00B0FF"))
-
-        if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
-            lastFrameUpdateMs = frameSnap.updatedAtMs
-            fullDebugImage.setImageBitmap(frameSnap.fullFrame)
-            glyphDebugImage.setImageBitmap(frameSnap.glyphFrame)
-        }
-
-        refreshSaveAndCommandInfo()
 
         debugText.text = buildString {
             appendLine("mode=${snap.mode}  stream=$streamState  age=${ageMs}ms")

@@ -234,9 +234,14 @@ class DigimonGlyphToyService : Service() {
 
         val loop = EmulatorLoop(emu, bridge) { bitmap, vram ->
             renderer.pushFrame(bitmap)
+            val now = SystemClock.uptimeMillis()
+            if (now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
+                val fullDebug = bridge.renderFullDebugFrame(vram)
+                FrameDebugState.update(bitmap, fullDebug, now)
+                lastDebugFramePublishMs = now
+            }
             if (debugTelemetryEnabled) {
                 frameHeartbeatCount++
-                val now = SystemClock.uptimeMillis()
                 if (now - lastFrameHeartbeatLogMs >= 1000L) {
                     Log.d(
                         TAG,
@@ -244,11 +249,6 @@ class DigimonGlyphToyService : Service() {
                             formatCoreStateForLog(emu)
                     )
                     lastFrameHeartbeatLogMs = now
-                }
-                if (now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
-                    val fullDebug = bridge.renderFullDebugFrame(vram)
-                    FrameDebugState.update(bitmap, fullDebug, now)
-                    lastDebugFramePublishMs = now
                 }
             }
         }
@@ -333,6 +333,7 @@ class DigimonGlyphToyService : Service() {
             EmulatorCommandBus.CMD_LOAD_SLOT -> loadSlot(cmd.arg)
             EmulatorCommandBus.CMD_RESTART -> restartEmulator()
             EmulatorCommandBus.CMD_FULL_RESET -> fullResetEmulator()
+            EmulatorCommandBus.CMD_PRESS_COMBO -> pressCombo(cmd.arg)
             EmulatorCommandBus.CMD_REFRESH_SETTINGS -> {
                 DisplayRenderSettings.init(this)
                 EmulatorAudioSettings.init(this)
@@ -398,6 +399,18 @@ class DigimonGlyphToyService : Service() {
         return "full reset complete"
     }
 
+    private fun pressCombo(combo: Int): String {
+        val input = inputController ?: return "combo failed: input not running"
+        val name = when (combo) {
+            EmulatorCommandBus.COMBO_AB -> "A+B"
+            EmulatorCommandBus.COMBO_AC -> "A+C"
+            EmulatorCommandBus.COMBO_BC -> "B+C"
+            else -> return "combo failed: unknown combo"
+        }
+        val ok = input.triggerComboTap(combo)
+        return if (ok) "combo $name triggered" else "combo $name failed"
+    }
+
     private fun applyAudioSettingIfChanged(force: Boolean = false) {
         val enabled = EmulatorAudioSettings.isAudioEnabled()
         if (!force && enabled == lastAudioEnabled) return
@@ -411,10 +424,8 @@ class DigimonGlyphToyService : Service() {
         debugTelemetryEnabled = enabled
         inputController?.setDebugEnabled(enabled)
         if (!enabled) {
-            FrameDebugState.clear()
             frameHeartbeatCount = 0L
             lastFrameHeartbeatLogMs = 0L
-            lastDebugFramePublishMs = 0L
         }
     }
 
