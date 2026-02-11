@@ -9,17 +9,41 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
 ## Features
 
 - ROM loader for `.bin` and `.zip` (extracts first `.bin` found)
-- Real-time emulator loop with state autosave/restore
-- Menu indicator overlay (8 positions around the circular matrix)
-- Tilt-hold controls with haptic confirmation
-- Supports combined button holds (for example A+B, B+C)
+- Full E0C6200 emulation pipeline ported from BrickEmuPy architecture
+- Emulator stability fixes for training flow soft-locks
+- Real-time emulator loop with autosave and state restore
+- Save system:
+  - Rolling autosave with timestamp/ROM identity checks
+  - 3 manual save slots
+  - Manual save/load commands from launcher UI
+- Session controls:
+  - Restart emulator
+  - Full reset (cold reset + autosave rewrite)
+- Audio:
+  - Buzzer playback with envelope/one-shot behavior
+  - In-app audio toggle
+- Display:
+  - Center-priority render/crop tuning for circular Glyph area
+  - Auto text zoom-out heuristic mode
+  - Toggle for text zoom heuristic
+  - 8-position menu ring overlay around the matrix
+- Input:
+  - Glyph button hold -> **B** hold
+  - Flick left/right -> **A/C**
+  - Flick toward/away from user -> quick **B** tap
+  - Haptic feedback on successful flick trigger
+  - Combined holds supported (for example A+B and B+C)
+- Debug and diagnostics:
+  - Live input/frame debug panel in launcher
+  - Optional debug telemetry toggle (off by default)
+  - On-device command bus for runtime setting refresh and save/load commands
 
 ## Requirements
 
 - Android Studio (Hedgehog+ recommended)
 - Android SDK 35
 - JDK 17
-- A Nothing Phone (3) with Glyph Toys support
+- A Nothing phone with Glyph Toys support
 - Digimon ROM file (`8192` or `16384` bytes)
 
 ## Project Setup
@@ -57,14 +81,15 @@ chmod +x gradlew
 
 ## Controls
 
-- Tilt left and hold -> **A**
-- Glyph button hold -> **B**
-- Tilt right and hold -> **C**
+- Flick left/right -> **A/C**
+- Flick toward/away from you -> quick **B**
+- Glyph button hold -> **B** hold
+- Hold Glyph button while triggering A or C for combo-style input timing
 
 Notes:
-- A/C use dwell + hysteresis to reduce accidental triggers.
-- A short vibration confirms A/C activation.
-- You can hold combinations by holding tilt + Glyph button (A+B or B+C).
+- Flick uses impulse + rebound detection with cooldown/hysteresis.
+- A short vibration confirms successful flick trigger.
+- You can hold combinations by holding Glyph button with A/C actions (A+B or B+C).
 
 ## ROM Notes
 
@@ -106,7 +131,7 @@ adb logcat | grep -E "DigimonGlyphToy|DigimonInput|GlyphRenderer|AndroidRuntime"
   - Re-enable the toy in Glyph Toys settings.
   - Check logs for `DigimonGlyphToy`.
 - Controls feel wrong direction:
-  - Update tilt axis flags in `app/src/main/java/com/digimon/glyph/input/InputController.kt`.
+  - Tune axis/sign mapping in `app/src/main/java/com/digimon/glyph/input/InputController.kt`.
 - Build fails with SDK/JDK errors:
   - Ensure SDK 35 and JDK 17 are installed and selected in Android Studio/Gradle.
 
@@ -115,4 +140,3 @@ adb logcat | grep -E "DigimonGlyphToy|DigimonInput|GlyphRenderer|AndroidRuntime"
 - Kotlin
 - Android SDK / Gradle
 - Nothing Glyph Matrix SDK (`app/libs/glyph-matrix-sdk-1.0.aar`)
-
