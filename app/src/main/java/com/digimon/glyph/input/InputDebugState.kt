@@ -86,4 +86,11 @@ object InputDebugState {
             glyphPhysicalDown = prefs.getBoolean("glyphPhysicalDown", false)
         )
     }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
 }

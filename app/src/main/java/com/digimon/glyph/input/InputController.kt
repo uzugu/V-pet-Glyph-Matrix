@@ -12,18 +12,20 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.digimon.glyph.emulator.E0C6200
+import com.digimon.glyph.emulator.EmulatorDebugSettings
 import kotlin.math.abs
 
 /**
  * Maps motion + Glyph Button to Digimon A/B/C buttons.
  *
  * Flick mode:
- * - detect a short acceleration impulse and opposite rebound (A/C)
- * - works in portrait/landscape by taking dominant X or Y device axis
+ * - detect a short acceleration impulse and opposite rebound
+ * - left/right (X axis) => A/C
+ * - toward/away (Z axis) => B
  */
 class InputController(context: Context) : SensorEventListener {
 
-    private enum class FlickAxis { NONE, X, Y }
+    private enum class FlickAxis { NONE, X, Z }
 
     companion object {
         private const val TAG = "DigimonInput"
@@ -33,16 +35,14 @@ class InputController(context: Context) : SensorEventListener {
         private const val FLICK_WINDOW_MS = 260L
         private const val FLICK_COOLDOWN_MS = 180L
         private const val FLICK_PRESS_MS = 85L
+        private const val B_FLICK_PRESS_MS = 75L
         private const val ACCEL_SMOOTH_ALPHA = 0.35f
         private const val ACCEL_GRAVITY_ALPHA = 0.82f
 
-        // Sign mapping per dominant axis.
+        // Sign mapping for horizontal flick axis.
         private const val AXIS_X_POSITIVE_IS_C = true
-        private const val AXIS_Y_POSITIVE_IS_C = true
 
         private const val DEBUG_PUSH_INTERVAL_MS = 80L
-        private const val B_HOLD_ARM_MS = 200L
-
         private const val FLICK_VIBRATE_MS = 160L
         private const val FLICK_VIBRATE_AMPLITUDE = 255
 
@@ -96,16 +96,7 @@ class InputController(context: Context) : SensorEventListener {
     private var lastTriggerAtMs = 0L
 
     private var lastDebugPushMs = 0L
-
-    private val armBHold = Runnable {
-        if (glyphPhysicalDown && !buttonBActive) {
-            buttonBActive = true
-            emulator?.pinSet("K0", BUTTON_B_PIN, 0)
-            lastTriggerButton = "B"
-            lastTriggerAtMs = System.currentTimeMillis()
-            publishDebugSnapshot(force = true)
-        }
-    }
+    private var debugEnabled = EmulatorDebugSettings.isDebugEnabled()
 
     private val releaseATap = Runnable {
         if (buttonAActive) {
@@ -119,8 +110,25 @@ class InputController(context: Context) : SensorEventListener {
         }
     }
 
+    private val releaseBTap = Runnable {
+        if (buttonBActive && !glyphPhysicalDown) {
+            buttonBActive = false
+            emulator?.pinRelease("K0", BUTTON_B_PIN)
+        }
+    }
+
     fun attach(emu: E0C6200) {
         emulator = emu
+    }
+
+    fun setDebugEnabled(enabled: Boolean) {
+        debugEnabled = enabled
+        if (!enabled) {
+            InputDebugState.clear(appContext)
+            lastDebugPushMs = 0L
+        } else {
+            publishDebugSnapshot(force = true)
+        }
     }
 
     fun start() {
@@ -142,17 +150,26 @@ class InputController(context: Context) : SensorEventListener {
 
     fun onGlyphButtonDown() {
         glyphPhysicalDown = true
-        mainHandler.removeCallbacks(armBHold)
-        mainHandler.postDelayed(armBHold, B_HOLD_ARM_MS)
+        if (!buttonBActive) {
+            buttonBActive = true
+            emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+            lastTriggerButton = "B"
+            lastTriggerAtMs = System.currentTimeMillis()
+            if (debugEnabled) {
+                Log.d(TAG, "glyph button -> B down")
+            }
+        }
         publishDebugSnapshot(force = true)
     }
 
     fun onGlyphButtonUp() {
         glyphPhysicalDown = false
-        mainHandler.removeCallbacks(armBHold)
         if (buttonBActive) {
             buttonBActive = false
             emulator?.pinRelease("K0", BUTTON_B_PIN)
+            if (debugEnabled) {
+                Log.d(TAG, "glyph button -> B up")
+            }
         }
         if (buttonALatchedByB) {
             releaseA()
@@ -164,7 +181,7 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     private fun releaseAll() {
-        mainHandler.removeCallbacks(armBHold)
+        mainHandler.removeCallbacks(releaseBTap)
         mainHandler.removeCallbacks(releaseATap)
         mainHandler.removeCallbacks(releaseCTap)
         glyphPhysicalDown = false
@@ -239,7 +256,7 @@ class InputController(context: Context) : SensorEventListener {
         if (pendingAxis == FlickAxis.NONE) {
             if (now - lastFlickMs < FLICK_COOLDOWN_MS) return
 
-            val (axis, value) = dominantAxisAndValue(filteredX, filteredY)
+            val (axis, value) = dominantAxisAndValue(filteredX, filteredZ)
             if (axis != FlickAxis.NONE && abs(value) >= FLICK_START_THRESHOLD) {
                 pendingAxis = axis
                 pendingDirection = if (value >= 0f) 1 else -1
@@ -255,7 +272,7 @@ class InputController(context: Context) : SensorEventListener {
 
         val value = when (pendingAxis) {
             FlickAxis.X -> filteredX
-            FlickAxis.Y -> filteredY
+            FlickAxis.Z -> filteredZ
             FlickAxis.NONE -> 0f
         }
         val direction = signedDirection(value)
@@ -265,11 +282,11 @@ class InputController(context: Context) : SensorEventListener {
         }
     }
 
-    private fun dominantAxisAndValue(x: Float, y: Float): Pair<FlickAxis, Float> {
-        return if (abs(x) >= abs(y)) {
+    private fun dominantAxisAndValue(x: Float, z: Float): Pair<FlickAxis, Float> {
+        return if (abs(x) >= abs(z)) {
             Pair(FlickAxis.X, x)
         } else {
-            Pair(FlickAxis.Y, y)
+            Pair(FlickAxis.Z, z)
         }
     }
 
@@ -282,22 +299,28 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     private fun triggerFlick(axis: FlickAxis, direction: Int, now: Long) {
-        val positiveIsC = when (axis) {
-            FlickAxis.X -> AXIS_X_POSITIVE_IS_C
-            FlickAxis.Y -> AXIS_Y_POSITIVE_IS_C
-            FlickAxis.NONE -> true
-        }
-        val triggerC = (direction > 0) == positiveIsC
-        if (triggerC) {
-            pressC()
-            lastTriggerButton = "C"
-        } else {
-            pressA()
-            lastTriggerButton = "A"
+        when (axis) {
+            FlickAxis.Z -> {
+                pressBTap()
+                lastTriggerButton = "B"
+            }
+            FlickAxis.X -> {
+                val triggerC = (direction > 0) == AXIS_X_POSITIVE_IS_C
+                if (triggerC) {
+                    pressC()
+                    lastTriggerButton = "C"
+                } else {
+                    pressA()
+                    lastTriggerButton = "A"
+                }
+            }
+            FlickAxis.NONE -> return
         }
         lastTriggerAtMs = now
         lastFlickMs = now
-        Log.d(TAG, "flick axis=$axis direction=$direction -> $lastTriggerButton")
+        if (debugEnabled) {
+            Log.d(TAG, "flick axis=$axis direction=$direction -> $lastTriggerButton")
+        }
         vibrateFlickConfirm()
         publishDebugSnapshot(force = true)
     }
@@ -326,6 +349,14 @@ class InputController(context: Context) : SensorEventListener {
         if (!buttonCLatchedByB) {
             mainHandler.postDelayed(releaseCTap, FLICK_PRESS_MS)
         }
+    }
+
+    private fun pressBTap() {
+        if (glyphPhysicalDown || buttonBActive) return
+        buttonBActive = true
+        emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+        mainHandler.removeCallbacks(releaseBTap)
+        mainHandler.postDelayed(releaseBTap, B_FLICK_PRESS_MS)
     }
 
     private fun clearPending() {
@@ -357,6 +388,7 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     private fun publishDebugSnapshot(force: Boolean = false) {
+        if (!debugEnabled) return
         val now = System.currentTimeMillis()
         if (!force && now - lastDebugPushMs < DEBUG_PUSH_INTERVAL_MS) return
         lastDebugPushMs = now

@@ -32,6 +32,9 @@ class E0C6200(
             OSC1_CLOCK.toDouble() / 256, OSC1_CLOCK.toDouble() / 512,
             OSC1_CLOCK.toDouble() / 1024, OSC1_CLOCK.toDouble() / 2048,
             OSC1_CLOCK.toDouble() / 4096, OSC1_CLOCK.toDouble() / 8192)
+        val BUZZER_FREQ_DIV = intArrayOf(8, 10, 12, 14, 16, 20, 24, 28)
+        val ONE_SHOT_PULSE_WIDTH_DIV = intArrayOf(8 * 128, 16 * 128)
+        val ENVELOPE_CYCLE_DIV = intArrayOf(16 * 128, 32 * 128)
 
         const val RAM_SIZE = 0x300
         const val VRAM_SIZE = 0x0A0
@@ -99,8 +102,30 @@ class E0C6200(
     private var ptimerCounter = 0.0
     private var stopwatchCounter = 0.0
 
-    // Buzzer callback (optional)
-    var onBuzzerChange: ((on: Boolean, freq: Int) -> Unit)? = null
+    // Buzzer state (ported from BrickEmuPy E0C6200sound timing model)
+    private var buzzerSoundOn = false
+    private var buzzerFreqHz = OSC1_CLOCK / BUZZER_FREQ_DIV[0]
+    private var buzzerEnvelopeOn = false
+    private var buzzerEnvelopeStep = 7
+    private var buzzerEnvelopeCycle = ENVELOPE_CYCLE_DIV[0]
+    private var buzzerEnvelopeCounter = 0
+    private var buzzerOneShotCounter = 0
+    private var buzzerOutputOn = false
+    private var buzzerOutputGain = 1f
+    private var lastBuzzerEmitOn = false
+    private var lastBuzzerEmitFreq = -1
+    private var lastBuzzerEmitGain = -1f
+
+    // Debug counters for interrupt/timer diagnostics.
+    private var dbgInterruptCount = 0
+    private var dbgLastInterruptVector = 0
+    private var dbgIt32SetCount = 0
+    private var dbgIt8SetCount = 0
+    private var dbgIt2SetCount = 0
+    private var dbgIt1SetCount = 0
+
+    // Buzzer callback (optional): on/off, frequency in Hz, gain [0..1]
+    var onBuzzerChange: ((on: Boolean, freqHz: Int, gain: Float) -> Unit)? = null
 
     // 4096-entry dispatch table
     private val execute: Array<(Int) -> Int>
@@ -116,6 +141,99 @@ class E0C6200(
 
     init {
         execute = buildDispatchTable()
+    }
+
+    private fun emitBuzzerStateIfChanged(force: Boolean = false) {
+        val on = buzzerOutputOn && buzzerFreqHz > 0
+        if (!force &&
+            on == lastBuzzerEmitOn &&
+            buzzerFreqHz == lastBuzzerEmitFreq &&
+            kotlin.math.abs(buzzerOutputGain - lastBuzzerEmitGain) < 0.001f
+        ) {
+            return
+        }
+        lastBuzzerEmitOn = on
+        lastBuzzerEmitFreq = buzzerFreqHz
+        lastBuzzerEmitGain = buzzerOutputGain
+        onBuzzerChange?.invoke(on, buzzerFreqHz, buzzerOutputGain)
+    }
+
+    private fun setBuzzerOutput(on: Boolean, gain: Float = buzzerOutputGain) {
+        buzzerOutputOn = on
+        buzzerOutputGain = gain.coerceIn(0f, 1f)
+        emitBuzzerStateIfChanged()
+    }
+
+    private fun updateBuzzerFreqFromCtrl() {
+        val idx = (CTRL_BZ1 and IO_BZFQ).coerceIn(0, BUZZER_FREQ_DIV.lastIndex)
+        buzzerFreqHz = OSC1_CLOCK / BUZZER_FREQ_DIV[idx]
+        emitBuzzerStateIfChanged()
+    }
+
+    private fun setBuzzerOn() {
+        buzzerSoundOn = true
+        buzzerOneShotCounter = 0
+        setBuzzerOutput(true, buzzerEnvelopeStep / 7f)
+        if (buzzerEnvelopeOn) {
+            buzzerEnvelopeCounter = buzzerEnvelopeCycle
+        }
+    }
+
+    private fun setBuzzerOff() {
+        buzzerSoundOn = false
+        buzzerEnvelopeCounter = 0
+        buzzerOneShotCounter = 0
+        setBuzzerOutput(false, 0f)
+    }
+
+    private fun setBuzzerEnvelopeOn() {
+        buzzerEnvelopeOn = true
+        buzzerEnvelopeStep = 7
+    }
+
+    private fun setBuzzerEnvelopeOff() {
+        buzzerEnvelopeOn = false
+        buzzerEnvelopeStep = 7
+        buzzerEnvelopeCounter = 0
+        setBuzzerOutput(false, 0f)
+    }
+
+    private fun setBuzzerEnvelopeCycle(cycle: Int) {
+        val idx = cycle.coerceIn(0, ENVELOPE_CYCLE_DIV.lastIndex)
+        buzzerEnvelopeCycle = ENVELOPE_CYCLE_DIV[idx]
+    }
+
+    private fun resetBuzzerEnvelope() {
+        buzzerEnvelopeStep = 7
+    }
+
+    private fun triggerBuzzerOneShot(longPulse: Boolean) {
+        if (buzzerOneShotCounter != 0) return
+        buzzerOneShotCounter = ONE_SHOT_PULSE_WIDTH_DIV[if (longPulse) 1 else 0]
+        if (!buzzerSoundOn) {
+            setBuzzerOutput(true, buzzerEnvelopeStep / 7f)
+        }
+    }
+
+    private fun isOneShotRinging(): Boolean = buzzerOneShotCounter > 0
+
+    private fun clockBuzzer() {
+        if (buzzerOneShotCounter > 0) {
+            buzzerOneShotCounter--
+            if (buzzerOneShotCounter <= 0 && !buzzerSoundOn) {
+                setBuzzerOutput(false, 0f)
+            }
+        }
+        if (buzzerEnvelopeCounter > 0) {
+            buzzerEnvelopeCounter--
+            if (buzzerEnvelopeCounter <= 0) {
+                if (buzzerEnvelopeStep > 0) {
+                    setBuzzerOutput(true, buzzerEnvelopeStep / 7f)
+                    buzzerEnvelopeStep--
+                }
+                buzzerEnvelopeCounter = buzzerEnvelopeCycle
+            }
+        }
     }
 
     // ========== Memory access ==========
@@ -171,7 +289,8 @@ class E0C6200(
         0xF50 -> R0; 0xF51 -> R1; 0xF52 -> R2; 0xF53 -> R3; 0xF54 -> R4
         0xF60 -> P0; 0xF61 -> P1; 0xF62 -> P2; 0xF63 -> P3
         0xF70 -> CTRL_OSC; 0xF71 -> CTRL_LCD; 0xF72 -> LC; 0xF73 -> 0
-        0xF74 -> CTRL_BZ1; 0xF75 -> CTRL_BZ2 and (IO_ENVRT or IO_ENVON)
+        0xF74 -> CTRL_BZ1
+        0xF75 -> (CTRL_BZ2 and (IO_ENVRT or IO_ENVON)) or (if (isOneShotRinging()) IO_BZSHOT else 0)
         0xF77 -> CTRL_SW and IO_SWRUN; 0xF78 -> CTRL_PT and IO_PTRUN
         0xF79 -> PTC; 0xF7D -> IOC; 0xF7E -> PUP
         else -> 0
@@ -193,7 +312,7 @@ class E0C6200(
             0xF50 -> R0 = value; 0xF51 -> R1 = value; 0xF52 -> R2 = value; 0xF53 -> R3 = value
             0xF54 -> {
                 R4 = value
-                onBuzzerChange?.invoke((value and IO_R43) == 0, CTRL_BZ1 and IO_BZFQ)
+                if ((value and IO_R43) != 0) setBuzzerOff() else setBuzzerOn()
             }
             0xF60 -> { P0_OUT = value; if (IOC and IO_IOC0 != 0) P0 = value }
             0xF61 -> { P1_OUT = value; if (IOC and IO_IOC1 != 0) P1 = value }
@@ -207,10 +326,22 @@ class E0C6200(
             0xF72 -> LC = value
             0xF74 -> {
                 CTRL_BZ1 = value
-                onBuzzerChange?.invoke((R4 and IO_R43) == 0, value and IO_BZFQ)
+                updateBuzzerFreqFromCtrl()
             }
             0xF75 -> {
                 CTRL_BZ2 = value and (IO_ENVRT or IO_ENVON)
+                setBuzzerEnvelopeCycle(if ((value and IO_ENVRT) != 0) 1 else 0)
+                if ((value and IO_BZSHOT) != 0) {
+                    triggerBuzzerOneShot((CTRL_BZ1 and IO_SHOTPW) != 0)
+                }
+                if ((value and IO_ENVON) != 0) {
+                    setBuzzerEnvelopeOn()
+                } else {
+                    setBuzzerEnvelopeOff()
+                }
+                if ((value and IO_ENVRST) != 0) {
+                    resetBuzzerEnvelope()
+                }
             }
             0xF76 -> { if (value and IO_TMRST != 0) TM = 0 }
             0xF77 -> {
@@ -235,6 +366,7 @@ class E0C6200(
 
     // ========== Button input ==========
 
+    @Synchronized
     fun pinSet(port: String, pin: Int, level: Int) {
         when (port) {
             "K0" -> {
@@ -262,6 +394,7 @@ class E0C6200(
         }
     }
 
+    @Synchronized
     fun pinRelease(port: String, pin: Int) {
         when (port) {
             "K0" -> {
@@ -293,6 +426,7 @@ class E0C6200(
 
     // ========== VRAM access for display ==========
 
+    @Synchronized
     fun getVRAM(): IntArray {
         if ((CTRL_LCD and IO_ALOFF) != 0 || RESET != 0) return IntArray(VRAM_SIZE)
         if ((CTRL_LCD and IO_ALON) != 0) return IntArray(VRAM_SIZE) { 0xF }
@@ -327,14 +461,27 @@ class E0C6200(
 
     private fun processTimer() {
         val newTM = (TM + 1) and 0xFF
-        if ((newTM and IO_TM2) < (TM and IO_TM2)) IT = IT or IO_IT32
-        if (((newTM shr 4) and IO_TM4) < ((TM shr 4) and IO_TM4)) IT = IT or IO_IT8
-        if (((newTM shr 4) and IO_TM6) < ((TM shr 4) and IO_TM6)) IT = IT or IO_IT2
-        if (((newTM shr 4) and IO_TM7) < ((TM shr 4) and IO_TM7)) IT = IT or IO_IT1
+        if ((newTM and IO_TM2) < (TM and IO_TM2)) {
+            IT = IT or IO_IT32
+            dbgIt32SetCount++
+        }
+        if (((newTM shr 4) and IO_TM4) < ((TM shr 4) and IO_TM4)) {
+            IT = IT or IO_IT8
+            dbgIt8SetCount++
+        }
+        if (((newTM shr 4) and IO_TM6) < ((TM shr 4) and IO_TM6)) {
+            IT = IT or IO_IT2
+            dbgIt2SetCount++
+        }
+        if (((newTM shr 4) and IO_TM7) < ((TM shr 4) and IO_TM7)) {
+            IT = IT or IO_IT1
+            dbgIt1SetCount++
+        }
         TM = newTM
     }
 
     private fun clockOSC1() {
+        clockBuzzer()
         if ((PTC and IO_PTC) > 1) {
             ptimerCounter -= 1
             if (ptimerCounter <= 0) {
@@ -357,6 +504,8 @@ class E0C6200(
     // ========== Interrupt ==========
 
     private fun interrupt(vector: Int): Int {
+        dbgInterruptCount++
+        dbgLastInterruptVector = vector
         setMem((SP - 1) and 0xFF, (PC shr 8) and 0x0F)
         setMem((SP - 2) and 0xFF, (PC shr 4) and 0x0F)
         SP = (SP - 3) and 0xFF
@@ -369,6 +518,7 @@ class E0C6200(
 
     // ========== Main clock ==========
 
+    @Synchronized
     fun clock(): Double {
         var execCycles = 7
         var elapsedCycles = execCycles.toDouble()
@@ -398,6 +548,7 @@ class E0C6200(
         return elapsedCycles
     }
 
+    @Synchronized
     fun resetCpu() {
         A = 0; B = 0; IX = 0; IY = 0; SP = 0
         PC = 0x100; NPC = 0x100
@@ -416,11 +567,31 @@ class E0C6200(
         CTRL_SW = 0; CTRL_PT = 0; PTC = 0
         SC = 0; HZR = 0; IOC = 0; PUP = 0
         osc1Counter = 0.0; timerCounter = 0.0; stopwatchCounter = 0.0; ptimerCounter = 0.0
+        buzzerSoundOn = false
+        buzzerFreqHz = OSC1_CLOCK / BUZZER_FREQ_DIV[0]
+        buzzerEnvelopeOn = false
+        buzzerEnvelopeStep = 7
+        buzzerEnvelopeCycle = ENVELOPE_CYCLE_DIV[0]
+        buzzerEnvelopeCounter = 0
+        buzzerOneShotCounter = 0
+        buzzerOutputOn = false
+        buzzerOutputGain = 1f
+        lastBuzzerEmitOn = false
+        lastBuzzerEmitFreq = -1
+        lastBuzzerEmitGain = -1f
+        dbgInterruptCount = 0
+        dbgLastInterruptVector = 0
+        dbgIt32SetCount = 0
+        dbgIt8SetCount = 0
+        dbgIt2SetCount = 0
+        dbgIt1SetCount = 0
+        emitBuzzerStateIfChanged(force = true)
         instrCounter = 0
     }
 
     // ========== State serialization ==========
 
+    @Synchronized
     fun getState(): Map<String, Any> = mapOf(
         "A" to A, "B" to B, "IX" to IX, "IY" to IY, "SP" to SP,
         "PC" to PC, "NPC" to NPC,
@@ -437,10 +608,17 @@ class E0C6200(
         "CTRL_OSC" to CTRL_OSC, "CTRL_LCD" to CTRL_LCD, "LC" to LC,
         "CTRL_BZ1" to CTRL_BZ1, "CTRL_BZ2" to CTRL_BZ2,
         "CTRL_SW" to CTRL_SW, "CTRL_PT" to CTRL_PT, "PTC" to PTC,
-        "IOC" to IOC, "PUP" to PUP
+        "IOC" to IOC, "PUP" to PUP,
+        "DBG_INT_COUNT" to dbgInterruptCount,
+        "DBG_INT_VEC" to dbgLastInterruptVector,
+        "DBG_IT32_SET" to dbgIt32SetCount,
+        "DBG_IT8_SET" to dbgIt8SetCount,
+        "DBG_IT2_SET" to dbgIt2SetCount,
+        "DBG_IT1_SET" to dbgIt1SetCount
     )
 
     @Suppress("UNCHECKED_CAST")
+    @Synchronized
     fun restoreState(state: Map<String, Any>) {
         A = state["A"] as? Int ?: 0; B = state["B"] as? Int ?: 0
         IX = state["IX"] as? Int ?: 0; IY = state["IY"] as? Int ?: 0
@@ -469,6 +647,18 @@ class E0C6200(
         CTRL_BZ2 = state["CTRL_BZ2"] as? Int ?: 0; CTRL_SW = state["CTRL_SW"] as? Int ?: 0
         CTRL_PT = state["CTRL_PT"] as? Int ?: 0; PTC = state["PTC"] as? Int ?: 0
         IOC = state["IOC"] as? Int ?: 0; PUP = state["PUP"] as? Int ?: 0
+        updateBuzzerFreqFromCtrl()
+        setBuzzerEnvelopeCycle(if ((CTRL_BZ2 and IO_ENVRT) != 0) 1 else 0)
+        if ((CTRL_BZ2 and IO_ENVON) != 0) {
+            setBuzzerEnvelopeOn()
+        } else {
+            setBuzzerEnvelopeOff()
+        }
+        if ((R4 and IO_R43) == 0) {
+            setBuzzerOn()
+        } else {
+            setBuzzerOff()
+        }
     }
 
     // ========== PC advance helper ==========
@@ -594,12 +784,12 @@ class E0C6200(
         for (i in 0xF00..0xF0F) table[i] = ::cpRQ
         // 0xF10-0xF1F: FAN r,q
         for (i in 0xF10..0xF1F) table[i] = ::fanRQ
-        // 0xF2A-0xF2B: ACPX M(X),r
-        for (i in 0xF2A..0xF2B) table[i] = ::acpxMXR
+        // 0xF28-0xF2B: ACPX M(X),r
+        for (i in 0xF28..0xF2B) table[i] = ::acpxMXR
         // 0xF2C-0xF2F: ACPY M(Y),r (corrected: bits 1100-1111)
         for (i in 0xF2C..0xF2F) table[i] = ::acpyMYR
-        // 0xF3A-0xF3B: SCPX M(X),r
-        for (i in 0xF3A..0xF3B) table[i] = ::scpxMXR
+        // 0xF38-0xF3B: SCPX M(X),r
+        for (i in 0xF38..0xF3B) table[i] = ::scpxMXR
         // 0xF3C-0xF3F: SCPY M(Y),r
         for (i in 0xF3C..0xF3F) table[i] = ::scpyMYR
         // 0xF40-0xF4F: SET F,i

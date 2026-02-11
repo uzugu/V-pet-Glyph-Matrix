@@ -39,7 +39,16 @@ class DisplayBridge {
 
         // Center-crop from 32 -> 25, dropping side pixels first.
         private const val H_CROP_LEFT = (LCD_WIDTH - GLYPH_SIZE) / 2 // 3
+        // Proper zoom-out mode: fit full 32-pixel LCD width into a safer inner
+        // band so text is not cut by the circular view area.
+        private const val ZOOM_OUT_WIDTH = 21
+        private const val ZOOM_OUT_X_OFFSET = (GLYPH_SIZE - ZOOM_OUT_WIDTH) / 2
         private const val FULL_GAME_Y_OFFSET = 4
+
+        // Auto zoom-out heuristics.
+        private const val EDGE_SIDE_TRIGGER_ON_PIXELS = 1
+        private const val WIDE_SPAN_TRIGGER_PIXELS = 26
+        private const val ZOOM_OUT_HOLD_FRAMES = 10
     }
 
     // Exact per-column mapping from DigimonV3.svg (<g id="col_X"> blocks).
@@ -81,6 +90,8 @@ class DisplayBridge {
 
     // Game area pixel extraction: returns 16x32 boolean grid
     private val lcdPixels = Array(LCD_HEIGHT) { BooleanArray(LCD_WIDTH) }
+    private var zoomOutActive = false
+    private var zoomOutHoldFrames = 0
 
     /**
      * Render VRAM data to a 25x25 Bitmap.
@@ -96,7 +107,65 @@ class DisplayBridge {
         // Fill background
         pixels.fill(PIXEL_OFF)
 
-        // Render game area: 16 rows, center-cropped from 32 to 25 columns
+        val menuStates = readMenuDotStates(vramData)
+        val autoZoomEnabled = DisplayRenderSettings.isTextZoomOutEnabled()
+        if (!autoZoomEnabled) {
+            zoomOutActive = false
+            zoomOutHoldFrames = 0
+        }
+        val useZoomOut = autoZoomEnabled && shouldUseZoomOut()
+        if (useZoomOut) {
+            renderZoomedOutGameArea(pixels)
+        } else {
+            renderCroppedGameArea(pixels)
+        }
+
+        // Render all 8 indicator dots (4 top + 4 bottom).
+        renderMenuDots(pixels, menuStates)
+
+        bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
+        return bitmap
+    }
+
+    private fun shouldUseZoomOut(): Boolean {
+        var leftEdgeOn = 0
+        var rightEdgeOn = 0
+        var minLitCol = LCD_WIDTH
+        var maxLitCol = -1
+
+        for (row in 0 until LCD_HEIGHT) {
+            for (col in 0 until LCD_WIDTH) {
+                if (!lcdPixels[row][col]) continue
+                if (col < H_CROP_LEFT) leftEdgeOn++
+                if (col >= H_CROP_LEFT + GLYPH_SIZE) rightEdgeOn++
+                if (col < minLitCol) minLitCol = col
+                if (col > maxLitCol) maxLitCol = col
+            }
+        }
+
+        val edgeDenseBothSides =
+            leftEdgeOn >= EDGE_SIDE_TRIGGER_ON_PIXELS && rightEdgeOn >= EDGE_SIDE_TRIGGER_ON_PIXELS
+        val hasCroppedSidePixels =
+            leftEdgeOn >= EDGE_SIDE_TRIGGER_ON_PIXELS || rightEdgeOn >= EDGE_SIDE_TRIGGER_ON_PIXELS
+        val litSpan = if (maxLitCol >= minLitCol) (maxLitCol - minLitCol + 1) else 0
+        val wideContent = litSpan >= WIDE_SPAN_TRIGGER_PIXELS
+        val shouldEnable = edgeDenseBothSides || (wideContent && hasCroppedSidePixels)
+
+        if (shouldEnable) {
+            zoomOutActive = true
+            zoomOutHoldFrames = ZOOM_OUT_HOLD_FRAMES
+        } else if (zoomOutActive) {
+            if (zoomOutHoldFrames > 0) {
+                zoomOutHoldFrames--
+            } else {
+                zoomOutActive = false
+            }
+        }
+
+        return zoomOutActive
+    }
+
+    private fun renderCroppedGameArea(pixels: IntArray) {
         for (row in 0 until LCD_HEIGHT) {
             val outY = row + GAME_Y_OFFSET
             if (outY >= GLYPH_SIZE) break
@@ -107,12 +176,29 @@ class DisplayBridge {
                 }
             }
         }
+    }
 
-        // Render all 8 indicator dots (4 top + 4 bottom).
-        renderMenuDots(pixels, readMenuDotStates(vramData))
-
-        bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
-        return bitmap
+    private fun renderZoomedOutGameArea(pixels: IntArray) {
+        for (row in 0 until LCD_HEIGHT) {
+            val outY = row + GAME_Y_OFFSET
+            if (outY >= GLYPH_SIZE) break
+            for (dstCol in 0 until ZOOM_OUT_WIDTH) {
+                val srcStart = dstCol * LCD_WIDTH / ZOOM_OUT_WIDTH
+                val srcEndExclusive =
+                    ((dstCol + 1) * LCD_WIDTH + ZOOM_OUT_WIDTH - 1) / ZOOM_OUT_WIDTH
+                var on = false
+                for (srcCol in srcStart until srcEndExclusive.coerceAtMost(LCD_WIDTH)) {
+                    if (lcdPixels[row][srcCol]) {
+                        on = true
+                        break
+                    }
+                }
+                if (on) {
+                    val outX = ZOOM_OUT_X_OFFSET + dstCol
+                    pixels[outY * GLYPH_SIZE + outX] = PIXEL_ON
+                }
+            }
+        }
     }
 
     /**
@@ -164,11 +250,21 @@ class DisplayBridge {
     }
 
     private fun readMenuDotStates(vramData: IntArray): BooleanArray {
-        // Exactly 8 indicator bits in DigimonV3.svg:
-        // Top:    nibble 0/18/20/22, bit 0
-        // Bottom: nibble 137/155/157/159, bit 3
-        val nibbles = intArrayOf(0, 18, 20, 22, 137, 155, 157, 159)
-        val masks = intArrayOf(0x1, 0x1, 0x1, 0x1, 0x8, 0x8, 0x8, 0x8)
+        // Rearranged order (user-calibrated):
+        // - First 4 active states on upper arc.
+        // - Last 4 states on lower arc, reversed.
+        //
+        // Source bits in DigimonV3.svg:
+        // Group A: 0/18/20/22 (bit 0)
+        // Group B: 137/155/157/159 (bit 3)
+        val nibbles = intArrayOf(
+            137, 155, 157, 159, // first four
+            22, 20, 18, 0       // last four (reversed)
+        )
+        val masks = intArrayOf(
+            0x8, 0x8, 0x8, 0x8,
+            0x1, 0x1, 0x1, 0x1
+        )
         val active = BooleanArray(8)
         for (i in 0 until 8) {
             val nibbleIdx = nibbles[i]
@@ -179,17 +275,18 @@ class DisplayBridge {
     }
 
     private fun renderMenuDots(pixels: IntArray, states: BooleanArray) {
-        // Layout for circular visible area:
-        // 0-1: top pair, 2-3: upper side pair, 4-5: lower side pair, 6-7: bottom pair
+        // User-calibrated order around the circular visible area:
+        // 1: left-mid, 2: top-left, 3: top-right, 4: upper-right-mid,
+        // 5: lower-left-mid, 6: bottom-left, 7: bottom-right, 8: lower-right-mid.
         val positions = arrayOf(
-            intArrayOf(8, 1),   // top-left
-            intArrayOf(16, 1),  // top-right
-            intArrayOf(2, 7),   // upper-left side
-            intArrayOf(22, 7),  // upper-right side
-            intArrayOf(2, 17),  // lower-left side
-            intArrayOf(22, 17), // lower-right side
-            intArrayOf(8, 23),  // bottom-left
-            intArrayOf(16, 23), // bottom-right
+            intArrayOf(2, 7),   // 1: left-mid (upper-left side)
+            intArrayOf(8, 1),   // 2: top-left
+            intArrayOf(16, 1),  // 3: top-right
+            intArrayOf(22, 7),  // 4: upper-right-mid
+            intArrayOf(2, 17),  // 5: lower-left-mid
+            intArrayOf(8, 23),  // 6: bottom-left
+            intArrayOf(16, 23), // 7: bottom-right
+            intArrayOf(22, 17), // 8: lower-right-mid
         )
 
         for (i in 0 until 8) {

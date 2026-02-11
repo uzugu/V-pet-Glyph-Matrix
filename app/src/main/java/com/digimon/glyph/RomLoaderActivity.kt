@@ -11,13 +11,23 @@ import android.os.Looper
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.digimon.glyph.emulator.EmulatorAudioSettings
+import com.digimon.glyph.emulator.EmulatorCommandBus
+import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.FrameDebugState
+import com.digimon.glyph.emulator.DisplayRenderSettings
+import com.digimon.glyph.emulator.StateManager
 import com.digimon.glyph.input.InputDebugState
 import java.io.File
+import java.security.MessageDigest
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.zip.ZipInputStream
 
 /**
@@ -28,13 +38,21 @@ import java.util.zip.ZipInputStream
 class RomLoaderActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
+    private lateinit var autosaveText: TextView
+    private lateinit var commandStatusText: TextView
     private lateinit var debugText: TextView
     private lateinit var indicatorA: TextView
     private lateinit var indicatorB: TextView
     private lateinit var indicatorC: TextView
     private lateinit var fullDebugImage: ImageView
     private lateinit var glyphDebugImage: ImageView
+    private lateinit var slot1Text: TextView
+    private lateinit var slot2Text: TextView
+    private lateinit var slot3Text: TextView
     private var lastFrameUpdateMs: Long = -1L
+    private var lastAckId: Long = 0L
+    private var lastAckText: String = "-"
+    private val stateManager by lazy { StateManager(this) }
     private val mainHandler = Handler(Looper.getMainLooper())
     private val debugRefresh = object : Runnable {
         override fun run() {
@@ -53,6 +71,9 @@ class RomLoaderActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        DisplayRenderSettings.init(this)
+        EmulatorAudioSettings.init(this)
+        EmulatorDebugSettings.init(this)
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -84,6 +105,99 @@ class RomLoaderActivity : AppCompatActivity() {
             }
         }
         layout.addView(loadButton)
+
+        val zoomModeSwitch = Switch(this).apply {
+            text = "Auto zoom-out for menu text"
+            isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
+            setPadding(0, 16, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(zoomModeSwitch)
+
+        val audioSwitch = Switch(this).apply {
+            text = "Emulator audio"
+            isChecked = EmulatorAudioSettings.isAudioEnabled()
+            setPadding(0, 8, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorAudioSettings.setAudioEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(audioSwitch)
+
+        val debugSwitch = Switch(this).apply {
+            text = "Emulator debug telemetry"
+            isChecked = EmulatorDebugSettings.isDebugEnabled()
+            setPadding(0, 8, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(debugSwitch)
+
+        autosaveText = TextView(this).apply {
+            textSize = 14f
+            setPadding(0, 20, 0, 4)
+        }
+        layout.addView(autosaveText)
+
+        val autosaveButtons = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 10)
+        }
+        autosaveButtons.addView(Button(this).apply {
+            text = "Save Now"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, "Save autosave")
+            }
+        })
+        autosaveButtons.addView(Button(this).apply {
+            text = "Load Auto"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_LOAD_AUTOSAVE, 0, "Load autosave")
+            }
+        })
+        layout.addView(autosaveButtons)
+
+        val slotTitle = TextView(this).apply {
+            text = "Manual Save Slots"
+            textSize = 15f
+            setPadding(0, 4, 0, 8)
+        }
+        layout.addView(slotTitle)
+
+        slot1Text = addSlotRow(layout, 1)
+        slot2Text = addSlotRow(layout, 2)
+        slot3Text = addSlotRow(layout, 3)
+
+        val controlRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 8, 0, 8)
+        }
+        controlRow.addView(Button(this).apply {
+            text = "Restart"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_RESTART, 0, "Restart emulator")
+            }
+        })
+        controlRow.addView(Button(this).apply {
+            text = "Full Reset"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Full reset")
+            }
+        })
+        layout.addView(controlRow)
+
+        commandStatusText = TextView(this).apply {
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setPadding(0, 0, 0, 14)
+        }
+        layout.addView(commandStatusText)
 
         val infoText = TextView(this).apply {
             text = buildString {
@@ -181,6 +295,7 @@ class RomLoaderActivity : AppCompatActivity() {
 
         setContentView(layout)
         updateStatus()
+        refreshSaveAndCommandInfo()
         renderDebugState()
     }
 
@@ -206,6 +321,20 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun renderDebugState() {
+        if (!EmulatorDebugSettings.isDebugEnabled()) {
+            setIndicatorState(indicatorA, "A", false, Color.parseColor("#00C853"))
+            setIndicatorState(indicatorB, "B", false, Color.parseColor("#FFD600"))
+            setIndicatorState(indicatorC, "C", false, Color.parseColor("#00B0FF"))
+            if (lastFrameUpdateMs != -1L) {
+                lastFrameUpdateMs = -1L
+                fullDebugImage.setImageBitmap(null)
+                glyphDebugImage.setImageBitmap(null)
+            }
+            refreshSaveAndCommandInfo()
+            debugText.text = "debug telemetry disabled (enable the switch above to capture live input/frame diagnostics)"
+            return
+        }
+
         val snap = InputDebugState.read(this)
         val frameSnap = FrameDebugState.snapshot()
         val ageMs = System.currentTimeMillis() - snap.timestampMs
@@ -226,6 +355,8 @@ class RomLoaderActivity : AppCompatActivity() {
             fullDebugImage.setImageBitmap(frameSnap.fullFrame)
             glyphDebugImage.setImageBitmap(frameSnap.glyphFrame)
         }
+
+        refreshSaveAndCommandInfo()
 
         debugText.text = buildString {
             appendLine("mode=${snap.mode}  stream=$streamState  age=${ageMs}ms")
@@ -265,6 +396,103 @@ class RomLoaderActivity : AppCompatActivity() {
         view.setTextColor(if (active) Color.BLACK else Color.WHITE)
     }
 
+    private fun addSlotRow(parent: LinearLayout, slot: Int): TextView {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 6)
+        }
+        val info = TextView(this).apply {
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            text = "Slot $slot: empty"
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            layoutParams = lp
+            setPadding(0, 8, 8, 8)
+        }
+        val saveBtn = Button(this).apply {
+            text = "Save"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_SAVE_SLOT, slot, "Save slot $slot")
+            }
+        }
+        val loadBtn = Button(this).apply {
+            text = "Load"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_LOAD_SLOT, slot, "Load slot $slot")
+            }
+        }
+        row.addView(info)
+        row.addView(saveBtn)
+        row.addView(loadBtn)
+        parent.addView(row)
+        return info
+    }
+
+    private fun sendCommand(type: String, arg: Int, label: String) {
+        EmulatorCommandBus.post(this, type, arg)
+        Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun refreshSaveAndCommandInfo() {
+        val (currentRomName, currentRomHash) = readCurrentRomIdentity()
+        val auto = stateManager.getAutosaveInfo()
+        autosaveText.text = buildSaveLine("Autosave", auto, currentRomName, currentRomHash)
+        slot1Text.text = buildSaveLine("Slot 1", stateManager.getSlotInfo(1), currentRomName, currentRomHash)
+        slot2Text.text = buildSaveLine("Slot 2", stateManager.getSlotInfo(2), currentRomName, currentRomHash)
+        slot3Text.text = buildSaveLine("Slot 3", stateManager.getSlotInfo(3), currentRomName, currentRomHash)
+
+        val ack = EmulatorCommandBus.readAck(this)
+        if (ack != null && ack.id > lastAckId) {
+            lastAckId = ack.id
+            lastAckText = "${formatTime(ack.timestampMs)} - ${ack.status}"
+        }
+        commandStatusText.text = "Last command: $lastAckText"
+    }
+
+    private fun buildSaveLine(
+        label: String,
+        info: StateManager.SaveInfo,
+        currentRomName: String?,
+        currentRomHash: String?
+    ): String {
+        if (!info.exists) return "$label: empty"
+        val ts = formatTime(info.timestampMs)
+        val saveRom = info.romName ?: "unknown"
+        val match = when {
+            currentRomHash != null && info.romHash != null -> currentRomHash == info.romHash
+            currentRomName != null && info.romName != null -> currentRomName == info.romName
+            else -> true
+        }
+        val tag = if (match) "match" else "other rom"
+        return "$label: $ts  [$tag]  ($saveRom)"
+    }
+
+    private fun readCurrentRomIdentity(): Pair<String?, String?> {
+        val romNameFile = File(filesDir, "current_rom_name")
+        val romFile = File(filesDir, "current_rom.bin")
+        val name = if (romNameFile.exists()) romNameFile.readText().trim() else null
+        if (!romFile.exists()) return Pair(name, null)
+        val hash = try {
+            sha256(romFile.readBytes())
+        } catch (_: Exception) {
+            null
+        }
+        return Pair(name, hash)
+    }
+
+    private fun formatTime(ts: Long): String {
+        if (ts <= 0L) return "-"
+        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        return fmt.format(Date(ts))
+    }
+
+    private fun sha256(bytes: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(bytes)
+        val sb = StringBuilder(digest.size * 2)
+        for (b in digest) sb.append("%02x".format(b))
+        return sb.toString()
+    }
+
     private fun loadRomFromUri(uri: Uri) {
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return
@@ -300,6 +528,7 @@ class RomLoaderActivity : AppCompatActivity() {
 
             Toast.makeText(this, "${getString(R.string.rom_loaded)}: $romName", Toast.LENGTH_SHORT).show()
             updateStatus()
+            refreshSaveAndCommandInfo()
         } catch (e: Exception) {
             Toast.makeText(this, "Error loading ROM: ${e.message}", Toast.LENGTH_LONG).show()
         }
