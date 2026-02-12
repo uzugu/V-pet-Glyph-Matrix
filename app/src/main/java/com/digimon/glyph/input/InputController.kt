@@ -26,14 +26,19 @@ import kotlin.math.abs
 class InputController(context: Context) : SensorEventListener {
 
     private enum class FlickAxis { NONE, X, Z }
+    private enum class InputRateMode { IDLE, ACTIVE }
 
     companion object {
         private const val TAG = "DigimonInput"
 
-        private const val FLICK_START_THRESHOLD = 4.2f
-        private const val FLICK_REBOUND_THRESHOLD = 2.2f
-        private const val FLICK_WINDOW_MS = 260L
-        private const val FLICK_COOLDOWN_MS = 180L
+        private const val FLICK_START_THRESHOLD = 4.6f
+        private const val FLICK_REBOUND_THRESHOLD = 2.5f
+        private const val FLICK_WINDOW_MS = 230L
+        private const val FLICK_COOLDOWN_MS = 260L
+        private const val FLICK_MIN_REBOUND_DELAY_MS = 26L
+        private const val FLICK_AXIS_DOMINANCE_RATIO = 1.2f
+        private const val FLICK_MAX_Y_ABS_AT_START = 3.4f
+        private const val FLICK_REBOUND_RATIO_OF_START = 0.5f
         private const val FLICK_PRESS_MS = 85L
         private const val B_FLICK_PRESS_MS = 75L
         private const val COMBO_PRESS_MS = 95L
@@ -46,6 +51,8 @@ class InputController(context: Context) : SensorEventListener {
         private const val DEBUG_PUSH_INTERVAL_MS = 80L
         private const val FLICK_VIBRATE_MS = 160L
         private const val FLICK_VIBRATE_AMPLITUDE = 255
+
+        private const val INPUT_IDLE_AFTER_MS = 60_000L
 
         // K0 port pins for Digimon buttons (active-low: 0=pressed)
         private const val BUTTON_A_PIN = 2
@@ -91,13 +98,22 @@ class InputController(context: Context) : SensorEventListener {
     // Flick state
     private var pendingAxis = FlickAxis.NONE
     private var pendingDirection = 0
+    private var pendingStartAbs = 0f
     private var pendingSinceMs = 0L
     private var lastFlickMs = 0L
     private var lastTriggerButton = "NONE"
     private var lastTriggerAtMs = 0L
 
+    private var started = false
+    private var sensorsRegistered = false
+    private var inputRateMode = InputRateMode.IDLE
+    private var lastInteractionMs = 0L
+
     private var lastDebugPushMs = 0L
     private var debugEnabled = EmulatorDebugSettings.isDebugEnabled()
+    var onUserInteraction: (() -> Unit)? = null
+    var onPinSet: ((port: String, pin: Int, level: Int) -> Unit)? = null
+    var onPinRelease: ((port: String, pin: Int) -> Unit)? = null
 
     private val releaseATap = Runnable {
         if (buttonAActive) {
@@ -114,12 +130,20 @@ class InputController(context: Context) : SensorEventListener {
     private val releaseBTap = Runnable {
         if (buttonBActive && !glyphPhysicalDown) {
             buttonBActive = false
-            emulator?.pinRelease("K0", BUTTON_B_PIN)
+            pinRelease("K0", BUTTON_B_PIN)
         }
     }
 
     fun attach(emu: E0C6200) {
         emulator = emu
+    }
+
+    private fun pinSet(port: String, pin: Int, level: Int) {
+        onPinSet?.invoke(port, pin, level) ?: emulator?.pinSet(port, pin, level)
+    }
+
+    private fun pinRelease(port: String, pin: Int) {
+        onPinRelease?.invoke(port, pin) ?: emulator?.pinRelease(port, pin)
     }
 
     fun setDebugEnabled(enabled: Boolean) {
@@ -133,41 +157,41 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     fun start() {
-        rotationSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
-        linearAccelerationSensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
-        accelerometerFallback?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME)
-        }
+        if (started) return
+        started = true
+        lastInteractionMs = System.currentTimeMillis()
+        setInputRateMode(InputRateMode.IDLE)
     }
 
     fun stop() {
+        started = false
         sensorManager.unregisterListener(this)
+        sensorsRegistered = false
         releaseAll()
     }
 
     fun onGlyphButtonDown() {
+        noteInteraction()
         glyphPhysicalDown = true
         if (!buttonBActive) {
             buttonBActive = true
-            emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+            pinSet("K0", BUTTON_B_PIN, 0)
             lastTriggerButton = "B"
             lastTriggerAtMs = System.currentTimeMillis()
             if (debugEnabled) {
                 Log.d(TAG, "glyph button -> B down")
             }
         }
+        onUserInteraction?.invoke()
         publishDebugSnapshot(force = true)
     }
 
     fun onGlyphButtonUp() {
+        noteInteraction()
         glyphPhysicalDown = false
         if (buttonBActive) {
             buttonBActive = false
-            emulator?.pinRelease("K0", BUTTON_B_PIN)
+            pinRelease("K0", BUTTON_B_PIN)
             if (debugEnabled) {
                 Log.d(TAG, "glyph button -> B up")
             }
@@ -178,6 +202,7 @@ class InputController(context: Context) : SensorEventListener {
         if (buttonCLatchedByB) {
             releaseC()
         }
+        onUserInteraction?.invoke()
         publishDebugSnapshot(force = true)
     }
 
@@ -191,9 +216,9 @@ class InputController(context: Context) : SensorEventListener {
         buttonCActive = false
         buttonALatchedByB = false
         buttonCLatchedByB = false
-        emulator?.pinRelease("K0", BUTTON_A_PIN)
-        emulator?.pinRelease("K0", BUTTON_B_PIN)
-        emulator?.pinRelease("K0", BUTTON_C_PIN)
+        pinRelease("K0", BUTTON_A_PIN)
+        pinRelease("K0", BUTTON_B_PIN)
+        pinRelease("K0", BUTTON_C_PIN)
 
         pendingAxis = FlickAxis.NONE
         pendingDirection = 0
@@ -206,6 +231,8 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        val now = System.currentTimeMillis()
+        maybeEnterIdleMode(now)
         when (event.sensor.type) {
             Sensor.TYPE_GAME_ROTATION_VECTOR -> {
                 updateOrientation(event.values)
@@ -216,7 +243,7 @@ class InputController(context: Context) : SensorEventListener {
                 linearY = event.values[1]
                 linearZ = event.values[2]
                 updateFilteredLinear()
-                processFlick()
+                processMotion(now)
                 publishDebugSnapshot()
             }
             Sensor.TYPE_ACCELEROMETER -> {
@@ -228,7 +255,7 @@ class InputController(context: Context) : SensorEventListener {
                 linearY = event.values[1] - gravityY
                 linearZ = event.values[2] - gravityZ
                 updateFilteredLinear()
-                processFlick()
+                processMotion(now)
                 publishDebugSnapshot()
             }
         }
@@ -251,16 +278,64 @@ class InputController(context: Context) : SensorEventListener {
         filteredZ += (linearZ - filteredZ) * ACCEL_SMOOTH_ALPHA
     }
 
-    private fun processFlick() {
-        val now = System.currentTimeMillis()
+    private fun processMotion(now: Long) {
+        if (inputRateMode == InputRateMode.IDLE) {
+            return
+        }
+        processFlick(now)
+    }
 
+    private fun maybeEnterIdleMode(now: Long) {
+        if (inputRateMode != InputRateMode.ACTIVE) return
+        if (glyphPhysicalDown) return
+        if (now - lastInteractionMs <= INPUT_IDLE_AFTER_MS) return
+        setInputRateMode(InputRateMode.IDLE)
+        clearPending()
+    }
+
+    private fun noteInteraction() {
+        lastInteractionMs = System.currentTimeMillis()
+        if (inputRateMode != InputRateMode.ACTIVE) {
+            setInputRateMode(InputRateMode.ACTIVE)
+        }
+    }
+
+    private fun setInputRateMode(mode: InputRateMode) {
+        if (inputRateMode == mode && started && sensorsRegistered) return
+        inputRateMode = mode
+        if (!started) return
+        if (sensorsRegistered) {
+            sensorManager.unregisterListener(this)
+            sensorsRegistered = false
+        }
+        val delay = if (mode == InputRateMode.ACTIVE) {
+            SensorManager.SENSOR_DELAY_GAME
+        } else {
+            SensorManager.SENSOR_DELAY_NORMAL
+        }
+        rotationSensor?.let { sensorManager.registerListener(this, it, delay) }
+        linearAccelerationSensor?.let { sensorManager.registerListener(this, it, delay) }
+        accelerometerFallback?.let { sensorManager.registerListener(this, it, delay) }
+        sensorsRegistered = true
+        if (debugEnabled) {
+            Log.d(TAG, "Input polling mode=$mode delay=$delay")
+        }
+    }
+
+    private fun processFlick(now: Long) {
         if (pendingAxis == FlickAxis.NONE) {
             if (now - lastFlickMs < FLICK_COOLDOWN_MS) return
 
             val (axis, value) = dominantAxisAndValue(filteredX, filteredZ)
-            if (axis != FlickAxis.NONE && abs(value) >= FLICK_START_THRESHOLD) {
+            val startAbs = abs(value)
+            if (
+                axis != FlickAxis.NONE &&
+                startAbs >= FLICK_START_THRESHOLD &&
+                abs(filteredY) <= FLICK_MAX_Y_ABS_AT_START
+            ) {
                 pendingAxis = axis
                 pendingDirection = if (value >= 0f) 1 else -1
+                pendingStartAbs = startAbs
                 pendingSinceMs = now
             }
             return
@@ -277,17 +352,28 @@ class InputController(context: Context) : SensorEventListener {
             FlickAxis.NONE -> 0f
         }
         val direction = signedDirection(value)
-        if (direction == -pendingDirection && abs(value) >= FLICK_REBOUND_THRESHOLD) {
+        val reboundAbs = abs(value)
+        val orthogonalAbs = when (pendingAxis) {
+            FlickAxis.X -> abs(filteredZ)
+            FlickAxis.Z -> abs(filteredX)
+            FlickAxis.NONE -> 0f
+        }
+        val enoughDelay = now - pendingSinceMs >= FLICK_MIN_REBOUND_DELAY_MS
+        val reboundThreshold = maxOf(FLICK_REBOUND_THRESHOLD, pendingStartAbs * FLICK_REBOUND_RATIO_OF_START)
+        val axisDominant = reboundAbs >= orthogonalAbs * FLICK_AXIS_DOMINANCE_RATIO
+        if (direction == -pendingDirection && enoughDelay && axisDominant && reboundAbs >= reboundThreshold) {
             triggerFlick(pendingAxis, pendingDirection, now)
             clearPending()
         }
     }
 
     private fun dominantAxisAndValue(x: Float, z: Float): Pair<FlickAxis, Float> {
-        return if (abs(x) >= abs(z)) {
-            Pair(FlickAxis.X, x)
+        val ax = abs(x)
+        val az = abs(z)
+        return if (ax >= az) {
+            if (ax >= az * FLICK_AXIS_DOMINANCE_RATIO) Pair(FlickAxis.X, x) else Pair(FlickAxis.NONE, 0f)
         } else {
-            Pair(FlickAxis.Z, z)
+            if (az >= ax * FLICK_AXIS_DOMINANCE_RATIO) Pair(FlickAxis.Z, z) else Pair(FlickAxis.NONE, 0f)
         }
     }
 
@@ -300,6 +386,7 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     private fun triggerFlick(axis: FlickAxis, direction: Int, now: Long) {
+        noteInteraction()
         when (axis) {
             FlickAxis.Z -> {
                 pressBTap()
@@ -322,6 +409,7 @@ class InputController(context: Context) : SensorEventListener {
         if (debugEnabled) {
             Log.d(TAG, "flick axis=$axis direction=$direction -> $lastTriggerButton")
         }
+        onUserInteraction?.invoke()
         vibrateFlickConfirm()
         publishDebugSnapshot(force = true)
     }
@@ -330,7 +418,7 @@ class InputController(context: Context) : SensorEventListener {
         if (buttonCActive) releaseC()
         if (!buttonAActive) {
             buttonAActive = true
-            emulator?.pinSet("K0", BUTTON_A_PIN, 0)
+            pinSet("K0", BUTTON_A_PIN, 0)
         }
         mainHandler.removeCallbacks(releaseATap)
         buttonALatchedByB = glyphPhysicalDown
@@ -343,7 +431,7 @@ class InputController(context: Context) : SensorEventListener {
         if (buttonAActive) releaseA()
         if (!buttonCActive) {
             buttonCActive = true
-            emulator?.pinSet("K0", BUTTON_C_PIN, 0)
+            pinSet("K0", BUTTON_C_PIN, 0)
         }
         mainHandler.removeCallbacks(releaseCTap)
         buttonCLatchedByB = glyphPhysicalDown
@@ -355,7 +443,7 @@ class InputController(context: Context) : SensorEventListener {
     private fun pressBTap() {
         if (glyphPhysicalDown || buttonBActive) return
         buttonBActive = true
-        emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+        pinSet("K0", BUTTON_B_PIN, 0)
         mainHandler.removeCallbacks(releaseBTap)
         mainHandler.postDelayed(releaseBTap, B_FLICK_PRESS_MS)
     }
@@ -393,17 +481,17 @@ class InputController(context: Context) : SensorEventListener {
 
         if (pressA) {
             buttonAActive = true
-            emulator?.pinSet("K0", BUTTON_A_PIN, 0)
+            pinSet("K0", BUTTON_A_PIN, 0)
             mainHandler.removeCallbacks(releaseATap)
         }
         if (pressB) {
             buttonBActive = true
-            emulator?.pinSet("K0", BUTTON_B_PIN, 0)
+            pinSet("K0", BUTTON_B_PIN, 0)
             mainHandler.removeCallbacks(releaseBTap)
         }
         if (pressC) {
             buttonCActive = true
-            emulator?.pinSet("K0", BUTTON_C_PIN, 0)
+            pinSet("K0", BUTTON_C_PIN, 0)
             mainHandler.removeCallbacks(releaseCTap)
         }
 
@@ -414,7 +502,7 @@ class InputController(context: Context) : SensorEventListener {
                 }
                 if (pressB && !glyphPhysicalDown) {
                     buttonBActive = false
-                    emulator?.pinRelease("K0", BUTTON_B_PIN)
+                    pinRelease("K0", BUTTON_B_PIN)
                 }
                 if (pressC && !buttonCLatchedByB) {
                     releaseC()
@@ -425,6 +513,8 @@ class InputController(context: Context) : SensorEventListener {
 
         lastTriggerButton = triggerName
         lastTriggerAtMs = System.currentTimeMillis()
+        noteInteraction()
+        onUserInteraction?.invoke()
         publishDebugSnapshot(force = true)
         return true
     }
@@ -432,6 +522,7 @@ class InputController(context: Context) : SensorEventListener {
     private fun clearPending() {
         pendingAxis = FlickAxis.NONE
         pendingDirection = 0
+        pendingStartAbs = 0f
         pendingSinceMs = 0L
     }
 
@@ -440,7 +531,7 @@ class InputController(context: Context) : SensorEventListener {
         mainHandler.removeCallbacks(releaseATap)
         buttonAActive = false
         buttonALatchedByB = false
-        emulator?.pinRelease("K0", BUTTON_A_PIN)
+        pinRelease("K0", BUTTON_A_PIN)
     }
 
     private fun releaseC() {
@@ -448,7 +539,7 @@ class InputController(context: Context) : SensorEventListener {
         mainHandler.removeCallbacks(releaseCTap)
         buttonCActive = false
         buttonCLatchedByB = false
-        emulator?.pinRelease("K0", BUTTON_C_PIN)
+        pinRelease("K0", BUTTON_C_PIN)
     }
 
     private fun vibrateFlickConfirm() {
@@ -467,7 +558,7 @@ class InputController(context: Context) : SensorEventListener {
             appContext,
             InputDebugState.Snapshot(
                 timestampMs = now,
-                mode = "flick",
+                mode = if (inputRateMode == InputRateMode.ACTIVE) "flick-active" else "flick-idle",
                 pitchDeg = latestPitchDeg,
                 rollDeg = latestRollDeg,
                 linearX = linearX,

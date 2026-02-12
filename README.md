@@ -36,16 +36,19 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
   - Flick toward/away from user -> quick **B** tap
   - Haptic feedback on successful flick trigger
   - Combined holds supported (for example A+B and B+C)
+  - Input polling stays active for 60 seconds after interaction, then returns to idle polling
 - Debug and diagnostics:
   - Launcher reorganized with main gameplay controls + live screen previews first
   - Debug tools moved to collapsible **Show Debug / Hide Debug** section
   - Live input/frame debug panel inside collapsible section
   - Optional debug telemetry toggle (off by default)
+  - Live screen previews remain available while launcher observes them, even with debug telemetry off
   - On-device command bus for runtime setting refresh and save/load commands
 - Timing and power modes:
   - `Exact timing (higher battery)` toggle in launcher settings
   - `ON`: accuracy-first pacing, wake lock kept for stable timing
-  - `OFF` (Power Save): intentionally reduced emulation speed and lower wake/scheduling pressure for reduced battery/heat
+  - `OFF` (Power Save): reduced baseline speed and lower wake/scheduling pressure for reduced battery/heat
+  - In `OFF`, user interaction temporarily boosts timing to exact mode for 60 seconds, then returns to power-save
 
 ## Requirements
 
@@ -110,6 +113,7 @@ Notes:
   - Lower render/clock pacing
   - Lower CPU and heat
   - Speed is intentionally not exact
+  - Interaction with Glyph/flick/combo input boosts to exact timing for 60 seconds
 
 ## ROM Notes
 

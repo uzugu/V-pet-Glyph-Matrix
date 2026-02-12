@@ -44,6 +44,8 @@ class DigimonGlyphToyService : Service() {
         private const val TAG = "DigimonGlyphToy"
         private const val AUTOSAVE_INTERVAL_MS = 60_000L
         private const val DEBUG_FRAME_INTERVAL_MS = 120L
+        private const val FRAME_PREVIEW_OBSERVER_WINDOW_MS = 2_500L
+        private const val INTERACTION_TIMING_BOOST_MS = 60_000L
         private const val UNBIND_STOP_GRACE_MS = 15000L
     }
 
@@ -63,6 +65,8 @@ class DigimonGlyphToyService : Service() {
     private var lastAudioEnabled = false
     private var lastHapticEnabled = false
     private var lastExactTimingEnabled = true
+    private var lastAppliedTimingMode: EmulatorLoop.TimingMode? = null
+    private var interactionBoostUntilMs: Long = 0L
     private var debugTelemetryEnabled = false
     private var glyphManagerInited = false
     private var frameHeartbeatCount: Long = 0L
@@ -317,7 +321,9 @@ class DigimonGlyphToyService : Service() {
             onFrame = { bitmap, vram ->
                 renderer.pushFrame(bitmap)
                 val now = SystemClock.uptimeMillis()
-                if (debugTelemetryEnabled && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
+                val shouldPublishFramePreview =
+                    debugTelemetryEnabled || FrameDebugState.isObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now)
+                if (shouldPublishFramePreview && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
                     val fullDebug = bridge.renderFullDebugFrame(vram)
                     FrameDebugState.update(bitmap, fullDebug, now)
                     lastDebugFramePublishMs = now
@@ -336,16 +342,20 @@ class DigimonGlyphToyService : Service() {
             },
         )
         lastExactTimingEnabled = EmulatorTimingSettings.isExactTimingEnabled()
-        loop.setTimingMode(
+        val initialMode =
             if (lastExactTimingEnabled) EmulatorLoop.TimingMode.EXACT
             else EmulatorLoop.TimingMode.POWER_SAVE
-        )
+        loop.setTimingMode(initialMode)
+        lastAppliedTimingMode = initialMode
         emulatorLoop = loop
         loop.start()
         applyTimingSettingIfChanged(force = true)
 
         val input = InputController(this)
         input.attach(emu)
+        input.onUserInteraction = {
+            handleUserInteractionForTimingBoost()
+        }
         input.onPinSet = { port, pin, level ->
             runOnEmulatorAsync { core -> core.pinSet(port, pin, level) }
         }
@@ -382,6 +392,8 @@ class DigimonGlyphToyService : Service() {
         frameHeartbeatCount = 0L
         lastFrameHeartbeatLogMs = 0L
         FrameDebugState.clear()
+        interactionBoostUntilMs = 0L
+        lastAppliedTimingMode = null
         releaseCpuWakeLock()
     }
 
@@ -563,16 +575,31 @@ class DigimonGlyphToyService : Service() {
 
     private fun applyTimingSettingIfChanged(force: Boolean = false) {
         val exactEnabled = EmulatorTimingSettings.isExactTimingEnabled()
-        if (!force && exactEnabled == lastExactTimingEnabled) return
+        val now = SystemClock.uptimeMillis()
+        val boostActive = !exactEnabled && now < interactionBoostUntilMs
+        val desiredMode =
+            if (exactEnabled || boostActive) EmulatorLoop.TimingMode.EXACT
+            else EmulatorLoop.TimingMode.POWER_SAVE
+        if (!force && exactEnabled == lastExactTimingEnabled && desiredMode == lastAppliedTimingMode) return
         lastExactTimingEnabled = exactEnabled
-        val mode = if (exactEnabled) EmulatorLoop.TimingMode.EXACT else EmulatorLoop.TimingMode.POWER_SAVE
-        emulatorLoop?.setTimingMode(mode)
-        if (exactEnabled) {
+        if (force || desiredMode != lastAppliedTimingMode) {
+            emulatorLoop?.setTimingMode(desiredMode)
+        }
+        if (desiredMode == EmulatorLoop.TimingMode.EXACT) {
             acquireCpuWakeLock()
         } else {
             releaseCpuWakeLock()
         }
-        Log.d(TAG, "Timing mode set to $mode")
+        lastAppliedTimingMode = desiredMode
+        Log.d(TAG, "Timing mode set to $desiredMode (userExact=$exactEnabled boostActive=$boostActive)")
+    }
+
+    private fun handleUserInteractionForTimingBoost() {
+        if (EmulatorTimingSettings.isExactTimingEnabled()) return
+        interactionBoostUntilMs = SystemClock.uptimeMillis() + INTERACTION_TIMING_BOOST_MS
+        if (lastAppliedTimingMode != EmulatorLoop.TimingMode.EXACT) {
+            applyTimingSettingIfChanged(force = true)
+        }
     }
 
     private fun <T> runOnEmulatorSync(

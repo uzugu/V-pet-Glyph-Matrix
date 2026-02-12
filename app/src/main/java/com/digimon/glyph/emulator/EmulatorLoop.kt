@@ -29,6 +29,7 @@ class EmulatorLoop(
         val cycleTimeNs: Double,
         val maxBacklogNs: Double,
         val maxSleepMs: Long,
+        val maxBatchNs: Double,
         val maxClockCallsPerLoop: Int,
         val fallbackSleepMs: Long
     )
@@ -46,8 +47,10 @@ class EmulatorLoop(
         private const val POWER_SAVE_MAX_BACKLOG_NS = 40_000_000.0
         private const val EXACT_MAX_SLEEP_MS = 1L
         private const val POWER_SAVE_MAX_SLEEP_MS = 40L
+        private const val EXACT_MAX_BATCH_NS = 2_000_000.0
+        private const val POWER_SAVE_MAX_BATCH_NS = 10_000_000.0
         private const val EXACT_MAX_CLOCK_CALLS_PER_LOOP = Int.MAX_VALUE
-        private const val POWER_SAVE_MAX_CLOCK_CALLS_PER_LOOP = 700
+        private const val POWER_SAVE_MAX_CLOCK_CALLS_PER_LOOP = 64
         private const val EXACT_FALLBACK_SLEEP_MS = 0L
         private const val POWER_SAVE_FALLBACK_SLEEP_MS = 8L
     }
@@ -128,11 +131,15 @@ class EmulatorLoop(
                 lastTickNs = nowNs - profile.maxBacklogNs
             }
 
-            // Reference scheduler parity with BrickEmuPy:
-            // advance virtual tick by CPU cycles while wall clock is ahead.
+            // Advance emulated time while wall clock is ahead.
+            // Execute in cycle batches to reduce hot-path time-query overhead.
             var clockCalls = 0
             while (running && nowNs > lastTickNs && nowNs < nextFrameNs) {
-                val executedCycles = emulator.clock()
+                val remainingNs = minOf(nowNs, nextFrameNs) - lastTickNs
+                if (remainingNs <= 0.0) break
+                val budgetNs = minOf(remainingNs, profile.maxBatchNs)
+                val targetCycles = maxOf(1.0, budgetNs / profile.cycleTimeNs)
+                val executedCycles = emulator.runForCycles(targetCycles)
                 if (executedCycles <= 0.0) break
                 lastTickNs += executedCycles * profile.cycleTimeNs
                 clockCalls++
@@ -181,6 +188,7 @@ class EmulatorLoop(
                 cycleTimeNs = EXACT_CYCLE_TIME_NS,
                 maxBacklogNs = EXACT_MAX_BACKLOG_NS,
                 maxSleepMs = EXACT_MAX_SLEEP_MS,
+                maxBatchNs = EXACT_MAX_BATCH_NS,
                 maxClockCallsPerLoop = EXACT_MAX_CLOCK_CALLS_PER_LOOP,
                 fallbackSleepMs = EXACT_FALLBACK_SLEEP_MS
             )
@@ -190,6 +198,7 @@ class EmulatorLoop(
                 cycleTimeNs = POWER_SAVE_CYCLE_TIME_NS,
                 maxBacklogNs = POWER_SAVE_MAX_BACKLOG_NS,
                 maxSleepMs = POWER_SAVE_MAX_SLEEP_MS,
+                maxBatchNs = POWER_SAVE_MAX_BATCH_NS,
                 maxClockCallsPerLoop = POWER_SAVE_MAX_CLOCK_CALLS_PER_LOOP,
                 fallbackSleepMs = POWER_SAVE_FALLBACK_SLEEP_MS
             )
