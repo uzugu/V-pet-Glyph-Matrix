@@ -23,11 +23,13 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
 - Audio:
   - Buzzer playback with envelope/one-shot behavior
   - In-app audio toggle
+  - Optional haptic-from-audio toggle
 - Display:
   - Center-priority render/crop tuning for circular Glyph area
   - Auto text zoom-out heuristic mode
   - Toggle for text zoom heuristic
   - 8-position menu ring overlay around the matrix
+  - Pixel-art preview rendering without blur in launcher debug screens
 - Input:
   - Glyph button hold -> **B** hold
   - Flick left/right -> **A/C**
@@ -40,6 +42,10 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
   - Live input/frame debug panel inside collapsible section
   - Optional debug telemetry toggle (off by default)
   - On-device command bus for runtime setting refresh and save/load commands
+- Timing and power modes:
+  - `Exact timing (higher battery)` toggle in launcher settings
+  - `ON`: accuracy-first pacing, wake lock kept for stable timing
+  - `OFF` (Power Save): intentionally reduced emulation speed and lower wake/scheduling pressure for reduced battery/heat
 
 ## Requirements
 
@@ -96,6 +102,15 @@ Notes:
 - A short vibration confirms successful flick trigger.
 - You can hold combinations by holding Glyph button with A/C actions (A+B or B+C).
 
+## Timing Modes
+
+- `Exact timing (higher battery)` switch is in the launcher app.
+- `ON` is for most accurate speed.
+- `OFF` is Power Save mode:
+  - Lower render/clock pacing
+  - Lower CPU and heat
+  - Speed is intentionally not exact
+
 ## ROM Notes
 
 - ROM files are not included in this repository.
@@ -127,6 +142,12 @@ Install debug build:
 View logs:
 ```bash
 adb logcat | grep -E "DigimonGlyphToy|DigimonInput|GlyphRenderer|AndroidRuntime"
+```
+
+Reset battery stats baseline before profiling:
+```bash
+adb shell dumpsys batterystats --reset
+adb shell dumpsys batterystats com.digimon.glyph
 ```
 
 ## Troubleshooting

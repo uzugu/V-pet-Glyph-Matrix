@@ -1,7 +1,9 @@
 package com.digimon.glyph
 
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +20,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
+import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.StateManager
@@ -73,6 +76,7 @@ class RomLoaderActivity : AppCompatActivity() {
         DisplayRenderSettings.init(this)
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
+        EmulatorTimingSettings.init(this)
 
         val scrollView = ScrollView(this).apply {
             isFillViewport = true
@@ -198,6 +202,28 @@ class RomLoaderActivity : AppCompatActivity() {
             }
         }
         layout.addView(audioSwitch)
+
+        val exactTimingSwitch = Switch(this).apply {
+            text = "Exact timing (higher battery)"
+            isChecked = EmulatorTimingSettings.isExactTimingEnabled()
+            setPadding(0, 8, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorTimingSettings.setExactTimingEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(exactTimingSwitch)
+
+        val hapticSwitch = Switch(this).apply {
+            text = "Vibrate from emulator sound"
+            isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
+            setPadding(0, 8, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorAudioSettings.setHapticAudioEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(hapticSwitch)
 
         autosaveText = TextView(this).apply {
             textSize = 14f
@@ -376,8 +402,8 @@ class RomLoaderActivity : AppCompatActivity() {
         val frameSnap = FrameDebugState.snapshot()
         if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
             lastFrameUpdateMs = frameSnap.updatedAtMs
-            fullDebugImage.setImageBitmap(frameSnap.fullFrame)
-            glyphDebugImage.setImageBitmap(frameSnap.glyphFrame)
+            setPixelPreview(fullDebugImage, frameSnap.fullFrame)
+            setPixelPreview(glyphDebugImage, frameSnap.glyphFrame)
         }
 
         refreshSaveAndCommandInfo()
@@ -440,6 +466,17 @@ class RomLoaderActivity : AppCompatActivity() {
         view.text = if (active) "$label: ON" else "$label: OFF"
         view.setBackgroundColor(if (active) activeColor else Color.parseColor("#424242"))
         view.setTextColor(if (active) Color.BLACK else Color.WHITE)
+    }
+
+    private fun setPixelPreview(imageView: ImageView, bitmap: Bitmap?) {
+        if (bitmap == null) {
+            imageView.setImageDrawable(null)
+            return
+        }
+        val drawable = BitmapDrawable(resources, bitmap)
+        drawable.setFilterBitmap(false)
+        drawable.setDither(false)
+        imageView.setImageDrawable(drawable)
     }
 
     private fun addSlotRow(parent: LinearLayout, slot: Int): TextView {

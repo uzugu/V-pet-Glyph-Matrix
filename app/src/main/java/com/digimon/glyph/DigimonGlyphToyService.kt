@@ -10,9 +10,11 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.Message
 import android.os.Messenger
+import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import com.digimon.glyph.audio.BuzzerAudioEngine
+import com.digimon.glyph.audio.BuzzerHapticEngine
 import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.E0C6200
@@ -20,6 +22,7 @@ import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.EmulatorLoop
+import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.StateManager
 import com.digimon.glyph.input.InputController
@@ -41,7 +44,7 @@ class DigimonGlyphToyService : Service() {
         private const val TAG = "DigimonGlyphToy"
         private const val AUTOSAVE_INTERVAL_MS = 60_000L
         private const val DEBUG_FRAME_INTERVAL_MS = 120L
-        private const val UNBIND_STOP_GRACE_MS = 3500L
+        private const val UNBIND_STOP_GRACE_MS = 15000L
     }
 
     private lateinit var glyphManager: GlyphMatrixManager
@@ -56,11 +59,15 @@ class DigimonGlyphToyService : Service() {
     private var lastDebugFramePublishMs: Long = 0L
     private var lastHandledCommandId: Long = 0L
     private var audioEngine: BuzzerAudioEngine? = null
+    private var hapticEngine: BuzzerHapticEngine? = null
     private var lastAudioEnabled = false
+    private var lastHapticEnabled = false
+    private var lastExactTimingEnabled = true
     private var debugTelemetryEnabled = false
     private var glyphManagerInited = false
     private var frameHeartbeatCount: Long = 0L
     private var lastFrameHeartbeatLogMs: Long = 0L
+    private var cpuWakeLock: PowerManager.WakeLock? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private val autosaveRunnable = object : Runnable {
@@ -72,7 +79,8 @@ class DigimonGlyphToyService : Service() {
     private val commandPollRunnable = object : Runnable {
         override fun run() {
             processPendingCommands()
-            applyAudioSettingIfChanged()
+            applyAudioHapticSettingsIfChanged()
+            applyTimingSettingIfChanged()
             mainHandler.postDelayed(this, 150L)
         }
     }
@@ -82,6 +90,7 @@ class DigimonGlyphToyService : Service() {
         stopEmulator()
         releaseGlyphManager()
         mainHandler.removeCallbacks(commandPollRunnable)
+        stopSelf()
     }
 
     // Messenger handler for Glyph Toy messages from the system
@@ -97,13 +106,16 @@ class DigimonGlyphToyService : Service() {
 
     override fun onBind(intent: Intent?): IBinder {
         Log.d(TAG, "onBind")
+        ensureServiceStarted()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
         stateManager = StateManager(this)
         DisplayRenderSettings.init(this)
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
+        EmulatorTimingSettings.init(this)
         applyDebugSettingIfChanged(force = true)
+        applyTimingSettingIfChanged(force = true)
         mainHandler.post(commandPollRunnable)
         initGlyphManager()
         return messenger.binder
@@ -111,16 +123,29 @@ class DigimonGlyphToyService : Service() {
 
     override fun onUnbind(intent: Intent?): Boolean {
         Log.d(TAG, "onUnbind")
-        saveState(sync = true, reason = "on_unbind_immediate")
         // Nothing OS may transiently unbind/rebind toy services.
         // Delay shutdown so brief binder churn does not freeze gameplay.
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.postDelayed(delayedShutdownRunnable, UNBIND_STOP_GRACE_MS)
-        return false
+        return true
+    }
+
+    override fun onRebind(intent: Intent?) {
+        Log.d(TAG, "onRebind")
+        mainHandler.removeCallbacks(delayedShutdownRunnable)
+        mainHandler.removeCallbacks(commandPollRunnable)
+        mainHandler.post(commandPollRunnable)
+        initGlyphManager()
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Keep service process alive across transient toy unbind/rebind churn.
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.d(TAG, "onDestroy")
         mainHandler.removeCallbacksAndMessages(null)
         saveState(sync = true, reason = "on_destroy")
         stopEmulator()
@@ -145,6 +170,7 @@ class DigimonGlyphToyService : Service() {
                 saveState(sync = true, reason = "status_end")
                 stopEmulator()
                 releaseGlyphManager()
+                stopSelf()
             }
             event == GlyphToy.EVENT_ACTION_DOWN -> {
                 inputController?.onGlyphButtonDown()
@@ -162,6 +188,9 @@ class DigimonGlyphToyService : Service() {
     private fun initGlyphManager() {
         if (glyphManagerInited) return
         glyphManager = GlyphMatrixManager.getInstance(this)
+        // Defensive cleanup: Nothing firmware can leave a stale remote connection
+        // across rapid toy service restarts; clear it before init().
+        safeGlyphManagerUninit("pre_init_cleanup")
         glyphManager.init(object : GlyphMatrixManager.Callback {
             override fun onServiceConnected(name: ComponentName?) {
                 Log.d(TAG, "Glyph service connected")
@@ -182,8 +211,57 @@ class DigimonGlyphToyService : Service() {
     private fun releaseGlyphManager() {
         if (!glyphManagerInited) return
         glyphRenderer?.release()
-        glyphManager.unInit()
+        safeGlyphManagerUninit("release")
         glyphManagerInited = false
+    }
+
+    private fun safeGlyphManagerUninit(stage: String) {
+        try {
+            glyphManager.unInit()
+        } catch (e: IllegalArgumentException) {
+            // Nothing OS may already have torn down this binder connection.
+            // Treat unInit as best-effort to avoid service crash on duplicate unbind.
+            Log.w(TAG, "Glyph manager already unbound during $stage")
+        } catch (e: IllegalStateException) {
+            // Defensive: some firmware paths can report bad manager state at teardown.
+            Log.w(TAG, "Glyph manager release in invalid state during $stage")
+        }
+    }
+
+    private fun ensureServiceStarted() {
+        try {
+            startService(Intent(this, DigimonGlyphToyService::class.java))
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to keep service started; falling back to bound-only mode", e)
+        }
+    }
+
+    private fun acquireCpuWakeLock() {
+        if (cpuWakeLock?.isHeld == true) return
+        try {
+            val pm = getSystemService(POWER_SERVICE) as? PowerManager ?: return
+            val lock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$packageName:DigimonGlyphEmu")
+            lock.setReferenceCounted(false)
+            lock.acquire()
+            cpuWakeLock = lock
+            Log.d(TAG, "CPU wakelock acquired")
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to acquire CPU wakelock", e)
+        }
+    }
+
+    private fun releaseCpuWakeLock() {
+        val lock = cpuWakeLock ?: return
+        try {
+            if (lock.isHeld) {
+                lock.release()
+                Log.d(TAG, "CPU wakelock released")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release CPU wakelock", e)
+        } finally {
+            cpuWakeLock = null
+        }
     }
 
     private fun startEmulator() {
@@ -219,41 +297,64 @@ class DigimonGlyphToyService : Service() {
         renderer.init(glyphManager)
         glyphRenderer = renderer
 
-        val input = InputController(this)
-        input.attach(emu)
-        input.setDebugEnabled(debugTelemetryEnabled)
-        input.start()
-        inputController = input
-
         val audio = BuzzerAudioEngine()
         audio.start()
         lastAudioEnabled = EmulatorAudioSettings.isAudioEnabled()
         audio.setEnabled(lastAudioEnabled)
-        emu.onBuzzerChange = { on, freqHz, gain -> audio.onBuzzerChange(on, freqHz, gain) }
-        audioEngine = audio
-
-        val loop = EmulatorLoop(emu, bridge) { bitmap, vram ->
-            renderer.pushFrame(bitmap)
-            val now = SystemClock.uptimeMillis()
-            if (now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
-                val fullDebug = bridge.renderFullDebugFrame(vram)
-                FrameDebugState.update(bitmap, fullDebug, now)
-                lastDebugFramePublishMs = now
-            }
-            if (debugTelemetryEnabled) {
-                frameHeartbeatCount++
-                if (now - lastFrameHeartbeatLogMs >= 1000L) {
-                    Log.d(
-                        TAG,
-                        "Frame heartbeat count=$frameHeartbeatCount vramSize=${vram.size} " +
-                            formatCoreStateForLog(emu)
-                    )
-                    lastFrameHeartbeatLogMs = now
-                }
-            }
+        val haptic = BuzzerHapticEngine(this)
+        lastHapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
+        haptic.setEnabled(lastHapticEnabled)
+        emu.onBuzzerChange = { on, freqHz, gain ->
+            audio.onBuzzerChange(on, freqHz, gain)
+            haptic.onBuzzerChange(on, freqHz, gain)
         }
+        audioEngine = audio
+        hapticEngine = haptic
+
+        val loop = EmulatorLoop(
+            emulator = emu,
+            displayBridge = bridge,
+            onFrame = { bitmap, vram ->
+                renderer.pushFrame(bitmap)
+                val now = SystemClock.uptimeMillis()
+                if (debugTelemetryEnabled && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
+                    val fullDebug = bridge.renderFullDebugFrame(vram)
+                    FrameDebugState.update(bitmap, fullDebug, now)
+                    lastDebugFramePublishMs = now
+                }
+                if (debugTelemetryEnabled) {
+                    frameHeartbeatCount++
+                    if (now - lastFrameHeartbeatLogMs >= 1000L) {
+                        Log.d(
+                            TAG,
+                            "Frame heartbeat count=$frameHeartbeatCount vramSize=${vram.size} " +
+                                formatCoreStateForLog(emu)
+                        )
+                        lastFrameHeartbeatLogMs = now
+                    }
+                }
+            },
+        )
+        lastExactTimingEnabled = EmulatorTimingSettings.isExactTimingEnabled()
+        loop.setTimingMode(
+            if (lastExactTimingEnabled) EmulatorLoop.TimingMode.EXACT
+            else EmulatorLoop.TimingMode.POWER_SAVE
+        )
         emulatorLoop = loop
         loop.start()
+        applyTimingSettingIfChanged(force = true)
+
+        val input = InputController(this)
+        input.attach(emu)
+        input.onPinSet = { port, pin, level ->
+            runOnEmulatorAsync { core -> core.pinSet(port, pin, level) }
+        }
+        input.onPinRelease = { port, pin ->
+            runOnEmulatorAsync { core -> core.pinRelease(port, pin) }
+        }
+        input.setDebugEnabled(debugTelemetryEnabled)
+        input.start()
+        inputController = input
 
         // Start autosave
         mainHandler.postDelayed(autosaveRunnable, AUTOSAVE_INTERVAL_MS)
@@ -268,6 +369,8 @@ class DigimonGlyphToyService : Service() {
         emulator?.onBuzzerChange = null
         audioEngine?.stop()
         audioEngine = null
+        hapticEngine?.stop()
+        hapticEngine = null
         inputController?.stop()
         inputController = null
         glyphRenderer?.turnOff()
@@ -279,24 +382,28 @@ class DigimonGlyphToyService : Service() {
         frameHeartbeatCount = 0L
         lastFrameHeartbeatLogMs = 0L
         FrameDebugState.clear()
+        releaseCpuWakeLock()
     }
 
     private fun pushStaticFrame() {
         // For AOD, render one frame from current VRAM state
-        val emu = emulator ?: return
         val bridge = displayBridge ?: return
         val renderer = glyphRenderer ?: return
-        val vram = emu.getVRAM()
+        val vram = runOnEmulatorSync { core -> core.getVRAM() } ?: return
         val bitmap = bridge.renderFrame(vram)
         renderer.pushFrame(bitmap)
     }
 
     private fun saveState(sync: Boolean = false, reason: String = "unspecified") {
-        val emu = emulator ?: return
         val name = romName ?: return
-        val pc = emu.getState()["PC"] as? Int
-        val seq = stateManager.saveAutosave(emu, name, romHash, sync = sync)
+        val result = runOnEmulatorSync { core ->
+            val pc = core.getState()["PC"] as? Int
+            val seq = stateManager.saveAutosave(core, name, romHash, sync = sync)
+            Pair(seq, pc)
+        } ?: return
         val ts = stateManager.getAutosaveInfo().timestampMs
+        val seq = result.first
+        val pc = result.second
         Log.d(TAG, "State saved reason=$reason sync=$sync seq=$seq pc=$pc ts=$ts")
     }
 
@@ -338,8 +445,10 @@ class DigimonGlyphToyService : Service() {
                 DisplayRenderSettings.init(this)
                 EmulatorAudioSettings.init(this)
                 EmulatorDebugSettings.init(this)
-                applyAudioSettingIfChanged(force = true)
+                EmulatorTimingSettings.init(this)
+                applyAudioHapticSettingsIfChanged(force = true)
                 applyDebugSettingIfChanged(force = true)
+                applyTimingSettingIfChanged(force = true)
                 "settings refreshed"
             }
             else -> "unknown command: ${cmd.type}"
@@ -349,32 +458,42 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun saveAutosaveNow(): String {
-        val emu = emulator ?: return "save failed: emulator not running"
         val name = romName ?: return "save failed: rom missing"
-        val pc = emu.getState()["PC"] as? Int
-        val seq = stateManager.saveAutosave(emu, name, romHash, sync = true)
+        val result = runOnEmulatorSync { core ->
+            val pc = core.getState()["PC"] as? Int
+            val seq = stateManager.saveAutosave(core, name, romHash, sync = true)
+            Pair(seq, pc)
+        } ?: return "save failed: emulator not running"
+        val seq = result.first
+        val pc = result.second
         Log.d(TAG, "Manual autosave seq=$seq pc=$pc")
         return "autosave saved"
     }
 
     private fun loadAutosaveNow(): String {
-        val emu = emulator ?: return "load failed: emulator not running"
-        val ok = stateManager.restoreAutosave(emu, romName, romHash)
+        val ok = runOnEmulatorSync { core ->
+            stateManager.restoreAutosave(core, romName, romHash)
+        } ?: return "load failed: emulator not running"
         return if (ok) "autosave loaded" else "load failed: no compatible autosave"
     }
 
     private fun saveSlot(slot: Int): String {
-        val emu = emulator ?: return "slot $slot save failed: emulator not running"
         val name = romName ?: return "slot $slot save failed: rom missing"
-        val pc = emu.getState()["PC"] as? Int
-        val seq = stateManager.saveSlot(slot, emu, name, romHash, sync = true)
+        val result = runOnEmulatorSync { core ->
+            val pc = core.getState()["PC"] as? Int
+            val seq = stateManager.saveSlot(slot, core, name, romHash, sync = true)
+            Pair(seq, pc)
+        } ?: return "slot $slot save failed: emulator not running"
+        val seq = result.first
+        val pc = result.second
         Log.d(TAG, "Manual slot save slot=$slot seq=$seq pc=$pc")
         return "slot $slot saved"
     }
 
     private fun loadSlot(slot: Int): String {
-        val emu = emulator ?: return "slot $slot load failed: emulator not running"
-        val ok = stateManager.restoreSlot(slot, emu, romName, romHash)
+        val ok = runOnEmulatorSync { core ->
+            stateManager.restoreSlot(slot, core, romName, romHash)
+        } ?: return "slot $slot load failed: emulator not running"
         return if (ok) "slot $slot loaded" else "slot $slot load failed: no compatible save"
     }
 
@@ -387,13 +506,19 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun fullResetEmulator(): String {
-        val emu = emulator ?: return "reset failed: emulator not running"
-        emu.resetCpu()
         val name = romName
         if (name != null) {
-            val seq = stateManager.saveAutosave(emu, name, romHash, sync = true)
+            val seq = runOnEmulatorSync { core ->
+                core.resetCpu()
+                stateManager.saveAutosave(core, name, romHash, sync = true)
+            } ?: return "reset failed: emulator not running"
             Log.d(TAG, "Full reset autosave seq=$seq")
         } else {
+            val ok = runOnEmulatorSync { core ->
+                core.resetCpu()
+                true
+            } ?: return "reset failed: emulator not running"
+            if (!ok) return "reset failed: emulator not running"
             stateManager.clearAutosave()
         }
         return "full reset complete"
@@ -411,11 +536,18 @@ class DigimonGlyphToyService : Service() {
         return if (ok) "combo $name triggered" else "combo $name failed"
     }
 
-    private fun applyAudioSettingIfChanged(force: Boolean = false) {
-        val enabled = EmulatorAudioSettings.isAudioEnabled()
-        if (!force && enabled == lastAudioEnabled) return
-        lastAudioEnabled = enabled
-        audioEngine?.setEnabled(enabled)
+    private fun applyAudioHapticSettingsIfChanged(force: Boolean = false) {
+        val hapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
+        val audioEnabled = EmulatorAudioSettings.isAudioEnabled()
+        if (!force && audioEnabled == lastAudioEnabled && hapticEnabled == lastHapticEnabled) return
+        if (force || audioEnabled != lastAudioEnabled) {
+            lastAudioEnabled = audioEnabled
+            audioEngine?.setEnabled(audioEnabled)
+        }
+        if (force || hapticEnabled != lastHapticEnabled) {
+            lastHapticEnabled = hapticEnabled
+            hapticEngine?.setEnabled(hapticEnabled)
+        }
     }
 
     private fun applyDebugSettingIfChanged(force: Boolean = false) {
@@ -426,6 +558,44 @@ class DigimonGlyphToyService : Service() {
         if (!enabled) {
             frameHeartbeatCount = 0L
             lastFrameHeartbeatLogMs = 0L
+        }
+    }
+
+    private fun applyTimingSettingIfChanged(force: Boolean = false) {
+        val exactEnabled = EmulatorTimingSettings.isExactTimingEnabled()
+        if (!force && exactEnabled == lastExactTimingEnabled) return
+        lastExactTimingEnabled = exactEnabled
+        val mode = if (exactEnabled) EmulatorLoop.TimingMode.EXACT else EmulatorLoop.TimingMode.POWER_SAVE
+        emulatorLoop?.setTimingMode(mode)
+        if (exactEnabled) {
+            acquireCpuWakeLock()
+        } else {
+            releaseCpuWakeLock()
+        }
+        Log.d(TAG, "Timing mode set to $mode")
+    }
+
+    private fun <T> runOnEmulatorSync(
+        timeoutMs: Long = 1500L,
+        block: (E0C6200) -> T
+    ): T? {
+        val emu = emulator ?: return null
+        val loop = emulatorLoop
+        return if (loop == null) {
+            block(emu)
+        } else {
+            loop.executeSync(timeoutMs, block)
+        }
+    }
+
+    private fun runOnEmulatorAsync(block: (E0C6200) -> Unit): Boolean {
+        val emu = emulator ?: return false
+        val loop = emulatorLoop
+        return if (loop == null) {
+            block(emu)
+            true
+        } else {
+            loop.enqueue(block)
         }
     }
 
