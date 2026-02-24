@@ -90,6 +90,12 @@ class DisplayBridge {
 
     // Game area pixel extraction: returns 16x32 boolean grid
     private val lcdPixels = Array(LCD_HEIGHT) { BooleanArray(LCD_WIDTH) }
+    private val glyphPixels = IntArray(GLYPH_SIZE * GLYPH_SIZE)
+    private val fullDebugPixels = IntArray(FULL_DEBUG_WIDTH * FULL_DEBUG_HEIGHT)
+    private val glyphBitmaps = arrayOfNulls<Bitmap>(2)
+    private val fullDebugBitmaps = arrayOfNulls<Bitmap>(2)
+    private var glyphBitmapIndex = 0
+    private var fullDebugBitmapIndex = 0
     private var zoomOutActive = false
     private var zoomOutHoldFrames = 0
 
@@ -97,12 +103,13 @@ class DisplayBridge {
      * Render VRAM data to a 25x25 Bitmap.
      * @param vramData Array from E0C6200.getVRAM() — 160 VRAM nibbles + 8 port values
      */
+    @Synchronized
     fun renderFrame(vramData: IntArray): Bitmap {
         // Extract LCD pixels from VRAM using the segment mapping
         extractPixels(vramData)
 
-        val bitmap = Bitmap.createBitmap(GLYPH_SIZE, GLYPH_SIZE, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(GLYPH_SIZE * GLYPH_SIZE)
+        val bitmap = acquireGlyphBitmap()
+        val pixels = glyphPixels
 
         // Fill background
         pixels.fill(PIXEL_OFF)
@@ -205,11 +212,12 @@ class DisplayBridge {
      * Render an uncropped digivice-style debug frame:
      * 32x16 LCD plus 8 menu icons in a 32x24 canvas.
      */
+    @Synchronized
     fun renderFullDebugFrame(vramData: IntArray): Bitmap {
         extractPixels(vramData)
 
-        val bitmap = Bitmap.createBitmap(FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(FULL_DEBUG_WIDTH * FULL_DEBUG_HEIGHT)
+        val bitmap = acquireFullDebugBitmap()
+        val pixels = fullDebugPixels
         pixels.fill(PIXEL_OFF)
 
         for (row in 0 until LCD_HEIGHT) {
@@ -225,6 +233,28 @@ class DisplayBridge {
         renderFullDebugIcons(pixels, readMenuDotStates(vramData))
 
         bitmap.setPixels(pixels, 0, FULL_DEBUG_WIDTH, 0, 0, FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT)
+        return bitmap
+    }
+
+    private fun acquireGlyphBitmap(): Bitmap {
+        val idx = glyphBitmapIndex
+        var bitmap = glyphBitmaps[idx]
+        if (bitmap == null || bitmap.isRecycled) {
+            bitmap = Bitmap.createBitmap(GLYPH_SIZE, GLYPH_SIZE, Bitmap.Config.ARGB_8888)
+            glyphBitmaps[idx] = bitmap
+        }
+        glyphBitmapIndex = (idx + 1) % glyphBitmaps.size
+        return bitmap
+    }
+
+    private fun acquireFullDebugBitmap(): Bitmap {
+        val idx = fullDebugBitmapIndex
+        var bitmap = fullDebugBitmaps[idx]
+        if (bitmap == null || bitmap.isRecycled) {
+            bitmap = Bitmap.createBitmap(FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT, Bitmap.Config.ARGB_8888)
+            fullDebugBitmaps[idx] = bitmap
+        }
+        fullDebugBitmapIndex = (idx + 1) % fullDebugBitmaps.size
         return bitmap
     }
 

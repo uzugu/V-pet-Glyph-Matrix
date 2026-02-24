@@ -1,14 +1,20 @@
 package com.digimon.glyph
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -17,6 +23,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import com.digimon.glyph.battle.BattleStateStore
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
@@ -51,9 +59,11 @@ class RomLoaderActivity : AppCompatActivity() {
     private lateinit var slot1Text: TextView
     private lateinit var slot2Text: TextView
     private lateinit var slot3Text: TextView
+    private lateinit var battleStatusText: TextView
     private var lastFrameUpdateMs: Long = -1L
     private var lastAckId: Long = 0L
     private var lastAckText: String = "-"
+    private var pendingNearbyAction: (() -> Unit)? = null
     private val stateManager by lazy { StateManager(this) }
     private val mainHandler = Handler(Looper.getMainLooper())
     private val debugRefresh = object : Runnable {
@@ -71,12 +81,25 @@ class RomLoaderActivity : AppCompatActivity() {
         }
     }
 
+    private val requestNearbyPermissions = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) {
+        val action = pendingNearbyAction
+        pendingNearbyAction = null
+        if (hasNearbyPermissions()) {
+            action?.invoke()
+        } else {
+            Toast.makeText(this, "Nearby permissions are required for battle mode", Toast.LENGTH_LONG).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DisplayRenderSettings.init(this)
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
         EmulatorTimingSettings.init(this)
+        BattleStateStore.init(this)
 
         val scrollView = ScrollView(this).apply {
             isFillViewport = true
@@ -214,6 +237,47 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         layout.addView(exactTimingSwitch)
 
+        // Clock correction: toggle + editable speed factor
+        val clockCorrectionSwitch = Switch(this).apply {
+            text = "Clock speed correction"
+            isChecked = EmulatorTimingSettings.isClockCorrectionEnabled()
+            setPadding(0, 8, 0, 0)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorTimingSettings.setClockCorrectionEnabled(this@RomLoaderActivity, isChecked)
+            }
+        }
+        layout.addView(clockCorrectionSwitch)
+
+        val clockFactorLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 4, 0, 0)
+        }
+        val clockFactorLabel = TextView(this).apply {
+            text = "Speed factor: "
+            textSize = 14f
+        }
+        val clockFactorInput = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
+            textSize = 14f
+            setEms(5)
+            setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) {
+                    val value = text.toString().toFloatOrNull()
+                    if (value != null && value in 0.5f..3.0f) {
+                        EmulatorTimingSettings.setClockCorrectionFactor(this@RomLoaderActivity, value)
+                        Toast.makeText(this@RomLoaderActivity, "Clock factor set to %.2f".format(value), Toast.LENGTH_SHORT).show()
+                    } else {
+                        setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
+                        Toast.makeText(this@RomLoaderActivity, "Value must be 0.50-3.00", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+        clockFactorLayout.addView(clockFactorLabel)
+        clockFactorLayout.addView(clockFactorInput)
+        layout.addView(clockFactorLayout)
+
         val hapticSwitch = Switch(this).apply {
             text = "Vibrate from emulator sound"
             isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
@@ -308,6 +372,132 @@ class RomLoaderActivity : AppCompatActivity() {
             }
         })
         layout.addView(comboRow)
+
+        val battleTitle = TextView(this).apply {
+            text = "Battle Mode (Beta)"
+            textSize = 15f
+            setPadding(0, 8, 0, 8)
+        }
+        layout.addView(battleTitle)
+
+        val battleInfo = TextView(this).apply {
+            text = "Connect two phones directly using Nearby (Bluetooth/Wi-Fi)."
+            textSize = 13f
+            setPadding(0, 0, 0, 8)
+        }
+        layout.addView(battleInfo)
+
+        val battleStepSwitch = Switch(this).apply {
+            text = "Battle step mode (freeze + pulse)"
+            isChecked = EmulatorTimingSettings.isBattleStepModeEnabled()
+            setPadding(0, 0, 0, 6)
+            setOnCheckedChangeListener { _, isChecked ->
+                EmulatorTimingSettings.setBattleStepModeEnabled(this@RomLoaderActivity, isChecked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        layout.addView(battleStepSwitch)
+
+        val battleStepConfigRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 10)
+        }
+        val battleStepLabel = TextView(this).apply {
+            text = "Step slice ms:"
+            textSize = 13f
+        }
+        val battleStepInput = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER
+            setText(EmulatorTimingSettings.getBattleStepSliceMs().toString())
+            textSize = 13f
+            setEms(4)
+            setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) {
+                    val value = text.toString().toIntOrNull()
+                    if (value != null && value in 4..250) {
+                        EmulatorTimingSettings.setBattleStepSliceMs(this@RomLoaderActivity, value)
+                        EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+                    } else {
+                        setText(EmulatorTimingSettings.getBattleStepSliceMs().toString())
+                        Toast.makeText(this@RomLoaderActivity, "Step slice must be 4-250ms", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+        battleStepConfigRow.addView(battleStepLabel)
+        battleStepConfigRow.addView(battleStepInput)
+        layout.addView(battleStepConfigRow)
+
+        val battleRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 8)
+        }
+        battleRow.addView(Button(this).apply {
+            text = "Host"
+            setOnClickListener {
+                runWithNearbyPermissions {
+                    sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, "Battle host")
+                }
+            }
+        })
+        battleRow.addView(Button(this).apply {
+            text = "Join"
+            setOnClickListener {
+                runWithNearbyPermissions {
+                    sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, "Battle join")
+                }
+            }
+        })
+        battleRow.addView(Button(this).apply {
+            text = "Stop"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
+            }
+        })
+        layout.addView(battleRow)
+
+        val battlePingRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 8)
+        }
+        battlePingRow.addView(Button(this).apply {
+            text = "Ping Link"
+            setOnClickListener {
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_PING, 0, "Battle ping")
+            }
+        })
+        layout.addView(battlePingRow)
+
+        val battleStepRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 0, 0, 8)
+        }
+        battleStepRow.addView(Button(this).apply {
+            text = "Step +1"
+            setOnClickListener {
+                val slice = EmulatorTimingSettings.getBattleStepSliceMs()
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_STEP_PULSE, slice, "Battle step +${slice}ms")
+            }
+        })
+        battleStepRow.addView(Button(this).apply {
+            text = "Step +10"
+            setOnClickListener {
+                val slice = EmulatorTimingSettings.getBattleStepSliceMs()
+                sendCommand(
+                    EmulatorCommandBus.CMD_BATTLE_STEP_PULSE,
+                    (slice * 10).coerceAtMost(1_000),
+                    "Battle step +${(slice * 10).coerceAtMost(1_000)}ms"
+                )
+            }
+        })
+        layout.addView(battleStepRow)
+
+        battleStatusText = TextView(this).apply {
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setPadding(0, 0, 0, 12)
+        }
+        layout.addView(battleStatusText)
 
         commandStatusText = TextView(this).apply {
             textSize = 13f
@@ -512,8 +702,75 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun sendCommand(type: String, arg: Int, label: String) {
+        ensureBackendServiceRunning()
         EmulatorCommandBus.post(this, type, arg)
         Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun ensureBackendServiceRunning() {
+        try {
+            // Ensure command poll loop is alive even when toy/widget binding is not active.
+            val intent = Intent(this, DigimonGlyphToyService::class.java)
+                .setAction(DigimonGlyphToyService.ACTION_START_WIDGET)
+            startService(intent)
+        } catch (_: Exception) {
+            // Best-effort bootstrap; command may still work if service is already active.
+        }
+    }
+
+    private fun runWithNearbyPermissions(action: () -> Unit) {
+        if (hasNearbyPermissions()) {
+            action()
+            return
+        }
+        pendingNearbyAction = action
+        requestNearbyPermissions.launch(requiredNearbyPermissions())
+    }
+
+    private fun hasNearbyPermissions(): Boolean {
+        val coarseGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val fineGranted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!(coarseGranted || fineGranted)) return false
+        return requiredNearbyCorePermissions().all {
+            ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requiredNearbyPermissions(): Array<String> {
+        val core = requiredNearbyCorePermissions()
+        val all = ArrayList<String>(core.size + 2)
+        all.addAll(core)
+        all.add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        all.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        return all.toTypedArray()
+    }
+
+    private fun requiredNearbyCorePermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_ADVERTISE,
+                Manifest.permission.NEARBY_WIFI_DEVICES
+            )
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(
+                Manifest.permission.BLUETOOTH_SCAN,
+                Manifest.permission.BLUETOOTH_CONNECT,
+                Manifest.permission.BLUETOOTH_ADVERTISE
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.BLUETOOTH,
+                Manifest.permission.BLUETOOTH_ADMIN
+            )
+        }
     }
 
     private fun refreshSaveAndCommandInfo() {
@@ -529,6 +786,10 @@ class RomLoaderActivity : AppCompatActivity() {
             lastAckId = ack.id
             lastAckText = "${formatTime(ack.timestampMs)} - ${ack.status}"
         }
+        val battle = BattleStateStore.read(this)
+        val battleAgeMs = if (battle.updatedAtMs == 0L) "-" else "${System.currentTimeMillis() - battle.updatedAtMs}ms"
+        val peer = battle.peerName ?: "-"
+        battleStatusText.text = "Battle: ${battle.status} (${battle.role})  peer=$peer  age=$battleAgeMs\n${battle.message}"
         commandStatusText.text = "Last command: $lastAckText"
     }
 

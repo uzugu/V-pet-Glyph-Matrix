@@ -28,10 +28,20 @@ object EmulatorCommandBus {
     const val CMD_FULL_RESET = "full_reset"
     const val CMD_PRESS_COMBO = "press_combo"
     const val CMD_REFRESH_SETTINGS = "refresh_settings"
+    const val CMD_BUTTON_PRESS = "button_press"
+    const val CMD_BATTLE_START_HOST = "battle_start_host"
+    const val CMD_BATTLE_START_JOIN = "battle_start_join"
+    const val CMD_BATTLE_STOP = "battle_stop"
+    const val CMD_BATTLE_PING = "battle_ping"
+    const val CMD_BATTLE_STEP_PULSE = "battle_step_pulse"
 
     const val COMBO_AB = 1
     const val COMBO_AC = 2
     const val COMBO_BC = 3
+
+    const val BUTTON_A = 10
+    const val BUTTON_B = 11
+    const val BUTTON_C = 12
 
     private const val PREFS_NAME = "emulator_command_bus"
     private const val KEY_CMD_ID = "cmd_id"

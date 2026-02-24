@@ -24,6 +24,11 @@ class E0C6200(
     private val portPullupK1: Int = 15,
     private val p3Dedicated: Boolean = false
 ) {
+    data class DisplaySnapshot(
+        val generation: Long,
+        val vramData: IntArray
+    )
+
     companion object {
         const val OSC1_CLOCK = 32768
         val TIMER_CLOCK_DIV = OSC1_CLOCK.toDouble() / 256
@@ -124,8 +129,27 @@ class E0C6200(
     private var dbgIt2SetCount = 0
     private var dbgIt1SetCount = 0
 
+    // Timing chain diagnostic counters (read by EmulatorLoop for rate analysis)
+    private var diagOsc1Ticks = 0L
+    private var diagTimerTicks = 0L
+    private var diagStopwatchTicks = 0L
+    private var diagClockCalls = 0L
+    private var diagHaltCycles = 0L
+    private var diagTotalExecCycles = 0L
+    private var diagTotalElapsedCycles = 0.0
+
     // Buzzer callback (optional): on/off, frequency in Hz, gain [0..1]
     var onBuzzerChange: ((on: Boolean, freqHz: Int, gain: Float) -> Unit)? = null
+    // Serial callback (optional): emitted when firmware writes a TX byte via SD registers.
+    var onSerialTx: ((value: Int) -> Unit)? = null
+    // Linked-port callback (optional): value=null means released (not actively driven).
+    var onPortDriveChange: ((port: String, value: Int?) -> Unit)? = null
+    // Optional I/O trace callback for emulator integration diagnostics.
+    var onIoAccess: ((isWrite: Boolean, addr: Int, value: Int) -> Unit)? = null
+    private var displayGeneration: Long = 1L
+    private var sdWriteMask = 0
+    private val lastDrivenPortValues = intArrayOf(-2, -2, -2, -2)
+    private val linkedDrivenPortValues = intArrayOf(-1, -1, -1, -1)
 
     // 4096-entry dispatch table
     private val execute: Array<(Int) -> Int>
@@ -156,6 +180,10 @@ class E0C6200(
         lastBuzzerEmitFreq = buzzerFreqHz
         lastBuzzerEmitGain = buzzerOutputGain
         onBuzzerChange?.invoke(on, buzzerFreqHz, buzzerOutputGain)
+    }
+
+    private fun markDisplayDirty() {
+        displayGeneration++
     }
 
     private fun setBuzzerOutput(on: Boolean, gain: Float = buzzerOutputGain) {
@@ -252,12 +280,23 @@ class E0C6200(
     }
 
     fun setMem(addr: Int, value: Int) {
+        val nibble = value and 0xF
         when {
-            addr < RAM_SIZE -> RAM[addr] = value and 0xF
-            addr >= VRAM_PART1_OFFSET && addr < VRAM_PART1_OFFSET + VRAM_PART_SIZE ->
-                VRAM[addr - VRAM_PART1_OFFSET] = value and 0xF
-            addr >= VRAM_PART2_OFFSET && addr < VRAM_PART2_OFFSET + VRAM_PART_SIZE ->
-                VRAM[addr - VRAM_PART2_OFFSET + VRAM_PART_SIZE] = value and 0xF
+            addr < RAM_SIZE -> RAM[addr] = nibble
+            addr >= VRAM_PART1_OFFSET && addr < VRAM_PART1_OFFSET + VRAM_PART_SIZE -> {
+                val index = addr - VRAM_PART1_OFFSET
+                if (VRAM[index] != nibble) {
+                    VRAM[index] = nibble
+                    markDisplayDirty()
+                }
+            }
+            addr >= VRAM_PART2_OFFSET && addr < VRAM_PART2_OFFSET + VRAM_PART_SIZE -> {
+                val index = addr - VRAM_PART2_OFFSET + VRAM_PART_SIZE
+                if (VRAM[index] != nibble) {
+                    VRAM[index] = nibble
+                    markDisplayDirty()
+                }
+            }
             addr >= IORAM_OFFSET && addr < IORAM_OFFSET + 0x7F ->
                 writeIoReg(addr, value)
         }
@@ -272,31 +311,39 @@ class E0C6200(
 
     // ========== I/O register read/write ==========
 
-    private fun readIoReg(addr: Int): Int = when (addr) {
-        0xF00 -> { val r = IT; IT = 0; r }
-        0xF01 -> { val r = ISW; ISW = 0; r }
-        0xF02 -> { val r = IPT; IPT = 0; r }
-        0xF03 -> { val r = ISIO; ISIO = 0; r }
-        0xF04 -> { val r = IK0; IK0 = 0; r }
-        0xF05 -> { val r = IK1; IK1 = 0; r }
-        0xF10 -> EIT; 0xF11 -> EISW; 0xF12 -> EIPT; 0xF13 -> EISIO; 0xF14 -> EIK0; 0xF15 -> EIK1
-        0xF20 -> TM and 0xF; 0xF21 -> (TM shr 4) and 0xF
-        0xF22 -> SWL and 0xF; 0xF23 -> SWH and 0xF
-        0xF24 -> PT and 0xF; 0xF25 -> (PT shr 4) and 0xF
-        0xF26 -> RD and 0xF; 0xF27 -> (RD shr 4) and 0xF
-        0xF30 -> SD and 0xF; 0xF31 -> (SD shr 4) and 0xF
-        0xF40 -> K0; 0xF41 -> DFK0; 0xF42 -> K1
-        0xF50 -> R0; 0xF51 -> R1; 0xF52 -> R2; 0xF53 -> R3; 0xF54 -> R4
-        0xF60 -> P0; 0xF61 -> P1; 0xF62 -> P2; 0xF63 -> P3
-        0xF70 -> CTRL_OSC; 0xF71 -> CTRL_LCD; 0xF72 -> LC; 0xF73 -> 0
-        0xF74 -> CTRL_BZ1
-        0xF75 -> (CTRL_BZ2 and (IO_ENVRT or IO_ENVON)) or (if (isOneShotRinging()) IO_BZSHOT else 0)
-        0xF77 -> CTRL_SW and IO_SWRUN; 0xF78 -> CTRL_PT and IO_PTRUN
-        0xF79 -> PTC; 0xF7D -> IOC; 0xF7E -> PUP
-        else -> 0
+    private fun readIoReg(addr: Int): Int {
+        val result = when (addr) {
+            0xF00 -> { val r = IT; IT = 0; r }
+            0xF01 -> { val r = ISW; ISW = 0; r }
+            0xF02 -> { val r = IPT; IPT = 0; r }
+            0xF03 -> { val r = ISIO; ISIO = 0; r }
+            0xF04 -> { val r = IK0; IK0 = 0; r }
+            0xF05 -> { val r = IK1; IK1 = 0; r }
+            0xF10 -> EIT; 0xF11 -> EISW; 0xF12 -> EIPT; 0xF13 -> EISIO; 0xF14 -> EIK0; 0xF15 -> EIK1
+            0xF20 -> TM and 0xF; 0xF21 -> (TM shr 4) and 0xF
+            0xF22 -> SWL and 0xF; 0xF23 -> SWH and 0xF
+            0xF24 -> PT and 0xF; 0xF25 -> (PT shr 4) and 0xF
+            0xF26 -> RD and 0xF; 0xF27 -> (RD shr 4) and 0xF
+            0xF30 -> SD and 0xF; 0xF31 -> (SD shr 4) and 0xF
+            0xF40 -> K0; 0xF41 -> DFK0; 0xF42 -> K1
+            0xF50 -> R0; 0xF51 -> R1; 0xF52 -> R2; 0xF53 -> R3; 0xF54 -> R4
+            0xF60 -> readLinkedEffectivePort(P0, 0)
+            0xF61 -> readLinkedEffectivePort(P1, 1)
+            0xF62 -> readLinkedEffectivePort(P2, 2)
+            0xF63 -> readLinkedEffectivePort(P3, 3)
+            0xF70 -> CTRL_OSC; 0xF71 -> CTRL_LCD; 0xF72 -> LC; 0xF73 -> 0
+            0xF74 -> CTRL_BZ1
+            0xF75 -> (CTRL_BZ2 and (IO_ENVRT or IO_ENVON)) or (if (isOneShotRinging()) IO_BZSHOT else 0)
+            0xF77 -> CTRL_SW and IO_SWRUN; 0xF78 -> CTRL_PT and IO_PTRUN
+            0xF79 -> PTC; 0xF7D -> IOC; 0xF7E -> PUP
+            else -> 0
+        }
+        onIoAccess?.invoke(false, addr, result and 0xF)
+        return result
     }
 
     private fun writeIoReg(addr: Int, value: Int) {
+        onIoAccess?.invoke(true, addr, value and 0xF)
         when (addr) {
             0xF10 -> EIT = value
             0xF11 -> EISW = value and 0x3
@@ -306,8 +353,22 @@ class E0C6200(
             0xF15 -> EIK1 = value
             0xF26 -> RD = (RD and 0xF0) or (value and 0x0F)
             0xF27 -> RD = (RD and 0x0F) or ((value shl 4) and 0xF0)
-            0xF30 -> SD = (SD and 0xF0) or (value and 0x0F)
-            0xF31 -> SD = (SD and 0x0F) or ((value shl 4) and 0xF0)
+            0xF30 -> {
+                SD = (SD and 0xF0) or (value and 0x0F)
+                sdWriteMask = sdWriteMask or 0x1
+                if (sdWriteMask == 0x3) {
+                    emitSerialTxByte(SD)
+                    sdWriteMask = 0
+                }
+            }
+            0xF31 -> {
+                SD = (SD and 0x0F) or ((value shl 4) and 0xF0)
+                sdWriteMask = sdWriteMask or 0x2
+                if (sdWriteMask == 0x3) {
+                    emitSerialTxByte(SD)
+                    sdWriteMask = 0
+                }
+            }
             0xF41 -> DFK0 = value
             0xF50 -> R0 = value; 0xF51 -> R1 = value; 0xF52 -> R2 = value; 0xF53 -> R3 = value
             0xF54 -> {
@@ -322,7 +383,12 @@ class E0C6200(
                 if (IOC and IO_IOC3 != 0 || p3Dedicated) P3 = value
             }
             0xF70 -> CTRL_OSC = value
-            0xF71 -> CTRL_LCD = value
+            0xF71 -> {
+                if (CTRL_LCD != value) {
+                    CTRL_LCD = value
+                    markDisplayDirty()
+                }
+            }
             0xF72 -> LC = value
             0xF74 -> {
                 CTRL_BZ1 = value
@@ -355,13 +421,117 @@ class E0C6200(
             0xF79 -> PTC = value
             0xF7D -> {
                 IOC = value
-                if (IOC and IO_IOC0 != 0) P0 = P0_OUT
-                if (IOC and IO_IOC1 != 0) P1 = P1_OUT
-                if (IOC and IO_IOC2 != 0) P2 = P2_OUT
-                if (IOC and IO_IOC3 != 0) P3 = P3_OUT
+                if (IOC and IO_IOC0 != 0) P0 = P0_OUT else applyLinkedInputPort(0)
+                if (IOC and IO_IOC1 != 0) P1 = P1_OUT else applyLinkedInputPort(1)
+                if (IOC and IO_IOC2 != 0) P2 = P2_OUT else applyLinkedInputPort(2)
+                if (IOC and IO_IOC3 != 0) P3 = P3_OUT else applyLinkedInputPort(3)
+                emitAllDrivenPortsIfChanged()
             }
             0xF7E -> PUP = value
         }
+        when (addr) {
+            0xF60 -> emitDrivenPortIfChanged(0)
+            0xF61 -> emitDrivenPortIfChanged(1)
+            0xF62 -> emitDrivenPortIfChanged(2)
+            0xF63 -> emitDrivenPortIfChanged(3)
+        }
+    }
+
+    private fun emitSerialTxByte(value: Int) {
+        onSerialTx?.invoke(value and 0xFF)
+    }
+
+    private fun computeDrivenPortValue(portIndex: Int): Int {
+        return when (portIndex) {
+            0 -> if ((IOC and IO_IOC0) != 0) (P0_OUT and 0xF) else -1
+            1 -> if ((IOC and IO_IOC1) != 0) (P1_OUT and 0xF) else -1
+            2 -> if ((IOC and IO_IOC2) != 0) (P2_OUT and 0xF) else -1
+            3 -> if ((IOC and IO_IOC3) != 0 || p3Dedicated) (P3_OUT and 0xF) else -1
+            else -> -1
+        }
+    }
+
+    private fun emitDrivenPortIfChanged(portIndex: Int) {
+        if (portIndex !in 0..3) return
+        val driven = computeDrivenPortValue(portIndex)
+        if (lastDrivenPortValues[portIndex] == driven) return
+        lastDrivenPortValues[portIndex] = driven
+        val portName = when (portIndex) {
+            0 -> "P0"
+            1 -> "P1"
+            2 -> "P2"
+            else -> "P3"
+        }
+        onPortDriveChange?.invoke(portName, if (driven >= 0) driven else null)
+    }
+
+    private fun emitAllDrivenPortsIfChanged() {
+        emitDrivenPortIfChanged(0)
+        emitDrivenPortIfChanged(1)
+        emitDrivenPortIfChanged(2)
+        emitDrivenPortIfChanged(3)
+    }
+
+    private fun isPortInput(portIndex: Int): Boolean {
+        return when (portIndex) {
+            0 -> (IOC and IO_IOC0) == 0
+            1 -> (IOC and IO_IOC1) == 0
+            2 -> (IOC and IO_IOC2) == 0
+            3 -> (IOC and IO_IOC3) == 0 && !p3Dedicated
+            else -> false
+        }
+    }
+
+    private fun getLinkedPortInputValue(portIndex: Int): Int {
+        val linked = if (portIndex in 0..3) linkedDrivenPortValues[portIndex] else -1
+        return if (linked >= 0) linked and 0xF else 0xF
+    }
+
+    private fun applyLinkedInputPort(portIndex: Int) {
+        if (!isPortInput(portIndex)) return
+        val value = getLinkedPortInputValue(portIndex)
+        when (portIndex) {
+            0 -> P0 = value
+            1 -> P1 = value
+            2 -> P2 = value
+            3 -> P3 = value
+        }
+    }
+
+    private fun readLinkedEffectivePort(localValue: Int, portIndex: Int): Int {
+        val linked = getLinkedPortInputValue(portIndex)
+        return (localValue and linked) and 0xF
+    }
+
+    /**
+     * Inject a serial RX byte from an external link peer.
+     * This latches into RD and raises ISIO so firmware can handle it via interrupt vector 0xA.
+     */
+    @Synchronized
+    fun receiveSerialByte(value: Int) {
+        RD = value and 0xFF
+        ISIO = ISIO or 0x1
+    }
+
+    /**
+     * Apply remote linked-port drive. null means released/high.
+     */
+    @Synchronized
+    fun applyLinkedPortDrive(port: String, value: Int?) {
+        val portIndex = when (port) {
+            "P0" -> 0
+            "P1" -> 1
+            "P2" -> 2
+            "P3" -> 3
+            else -> return
+        }
+        linkedDrivenPortValues[portIndex] = if (value == null) -1 else value and 0xF
+        applyLinkedInputPort(portIndex)
+    }
+
+    @Synchronized
+    fun syncLinkedPortDriveState() {
+        emitAllDrivenPortsIfChanged()
     }
 
     // ========== Button input ==========
@@ -428,6 +598,16 @@ class E0C6200(
 
     @Synchronized
     fun getVRAM(): IntArray {
+        return buildDisplayVram()
+    }
+
+    @Synchronized
+    fun getDisplaySnapshot(lastGeneration: Long): DisplaySnapshot? {
+        if (displayGeneration == lastGeneration) return null
+        return DisplaySnapshot(displayGeneration, buildDisplayVram())
+    }
+
+    private fun buildDisplayVram(): IntArray {
         if ((CTRL_LCD and IO_ALOFF) != 0 || RESET != 0) return IntArray(VRAM_SIZE)
         if ((CTRL_LCD and IO_ALON) != 0) return IntArray(VRAM_SIZE) { 0xF }
         // Return VRAM + port values appended (P0,P1,P2,P3,R0,R1,R2,R4)
@@ -449,6 +629,7 @@ class E0C6200(
     }
 
     private fun processStopwatch() {
+        diagStopwatchTicks++
         if (CTRL_SW and IO_SWRUN != 0) {
             SWL = (SWL + 1) % 10
             if (SWL == 0) {
@@ -460,6 +641,7 @@ class E0C6200(
     }
 
     private fun processTimer() {
+        diagTimerTicks++
         val newTM = (TM + 1) and 0xFF
         if ((newTM and IO_TM2) < (TM and IO_TM2)) {
             IT = IT or IO_IT32
@@ -481,6 +663,7 @@ class E0C6200(
     }
 
     private fun clockOSC1() {
+        diagOsc1Ticks++
         clockBuzzer()
         if ((PTC and IO_PTC) > 1) {
             ptimerCounter -= 1
@@ -518,16 +701,18 @@ class E0C6200(
 
     // ========== Main clock ==========
 
-    @Synchronized
-    fun clock(): Double {
+    private fun clockInternal(): Double {
         var execCycles = 7
         var elapsedCycles = execCycles.toDouble()
+        diagClockCalls++
         if (RESET == 0) {
             if (HALT == 0) {
                 ifDelay = false
                 val opcode = romWord(PC * 2)
                 execCycles = execute[opcode](opcode)
                 instrCounter++
+            } else {
+                diagHaltCycles++
             }
             if (IF != 0 && !ifDelay) {
                 if (IPT and EIPT != 0) execCycles += interrupt(0xC)
@@ -538,7 +723,9 @@ class E0C6200(
                 else if (IT and EIT != 0) execCycles += interrupt(0x2)
             }
             elapsedCycles = execCycles.toDouble()
+            diagTotalExecCycles += execCycles
             if (CTRL_OSC and IO_CLKCHG == 0) elapsedCycles *= osc1ClockDiv
+            diagTotalElapsedCycles += elapsedCycles
             osc1Counter -= elapsedCycles
             while (osc1Counter <= 0) {
                 osc1Counter += osc1ClockDiv
@@ -546,6 +733,44 @@ class E0C6200(
             }
         }
         return elapsedCycles
+    }
+
+    fun clock(): Double = clockInternal()
+
+    /**
+     * Execute until at least [targetCycles] have elapsed and return actual executed cycles.
+     * This batches monitor acquisition and lowers hot-path overhead versus repeated clock() calls.
+     */
+    fun runForCycles(targetCycles: Double): Double {
+        if (targetCycles <= 0.0) return 0.0
+        var elapsed = 0.0
+        while (elapsed < targetCycles) {
+            elapsed += clockInternal()
+        }
+        return elapsed
+    }
+
+    /**
+     * Fast-forward the OSC1 oscillator by [ticks] ticks WITHOUT executing
+     * CPU instructions. Advances all timer/stopwatch/buzzer subsystems
+     * correctly, as if the CPU had been HALTed for the equivalent time.
+     *
+     * Used by EmulatorLoop to keep internal clocks in sync when wall-clock
+     * resync drops CPU execution time (e.g., Android throttling during idle).
+     *
+     * @param ticks Number of OSC1 ticks (32768 Hz) to advance
+     * @return The number of OSC1 ticks actually processed
+     */
+    fun fastForwardOsc1(ticks: Long): Long {
+        if (ticks <= 0) return 0
+        // Safety cap: 10 minutes at 32768 Hz = 19,660,800 ticks
+        val cappedTicks = ticks.coerceAtMost(32768L * 600)
+        for (i in 0 until cappedTicks) {
+            clockOSC1()
+        }
+        // Update elapsed-cycle diagnostics for drift tracking accuracy
+        diagTotalElapsedCycles += cappedTicks.toDouble() * osc1ClockDiv
+        return cappedTicks
     }
 
     @Synchronized
@@ -559,6 +784,9 @@ class E0C6200(
         IT = 0; ISW = 0; IPT = 0; ISIO = 0; IK0 = 0; IK1 = 0
         EIT = 0; EISW = 0; EIPT = 0; EISIO = 0; EIK0 = 0; EIK1 = 0
         TM = 0; SWL = 0; SWH = 0; PT = 0; RD = 0; SD = 0
+        sdWriteMask = 0
+        lastDrivenPortValues.fill(-2)
+        linkedDrivenPortValues.fill(-1)
         K0 = portPullupK0; DFK0 = 0xF; K1 = portPullupK1
         R0 = 0; R1 = 0; R2 = 0; R3 = 0; R4 = 0xF
         P0 = 0; P1 = 0; P2 = 0; P3 = 0
@@ -586,7 +814,9 @@ class E0C6200(
         dbgIt2SetCount = 0
         dbgIt1SetCount = 0
         emitBuzzerStateIfChanged(force = true)
+        emitAllDrivenPortsIfChanged()
         instrCounter = 0
+        markDisplayDirty()
     }
 
     // ========== State serialization ==========
@@ -605,6 +835,7 @@ class E0C6200(
         "K0" to K0, "DFK0" to DFK0, "K1" to K1,
         "R0" to R0, "R1" to R1, "R2" to R2, "R3" to R3, "R4" to R4,
         "P0" to P0, "P1" to P1, "P2" to P2, "P3" to P3,
+        "P0_OUT" to P0_OUT, "P1_OUT" to P1_OUT, "P2_OUT" to P2_OUT, "P3_OUT" to P3_OUT,
         "CTRL_OSC" to CTRL_OSC, "CTRL_LCD" to CTRL_LCD, "LC" to LC,
         "CTRL_BZ1" to CTRL_BZ1, "CTRL_BZ2" to CTRL_BZ2,
         "CTRL_SW" to CTRL_SW, "CTRL_PT" to CTRL_PT, "PTC" to PTC,
@@ -615,6 +846,15 @@ class E0C6200(
         "DBG_IT8_SET" to dbgIt8SetCount,
         "DBG_IT2_SET" to dbgIt2SetCount,
         "DBG_IT1_SET" to dbgIt1SetCount
+    )
+
+    /** Timing chain diagnostics for EmulatorLoop rate analysis. */
+    fun getDiagnostics(): Map<String, Any> = mapOf(
+        "osc1" to diagOsc1Ticks, "timer" to diagTimerTicks, "sw" to diagStopwatchTicks,
+        "calls" to diagClockCalls, "halt" to diagHaltCycles,
+        "execCyc" to diagTotalExecCycles, "elapsedCyc" to diagTotalElapsedCycles,
+        "TM" to TM, "CTRL_OSC" to CTRL_OSC, "CTRL_SW" to CTRL_SW,
+        "EIT" to EIT, "HALT" to HALT, "SWL" to SWL, "SWH" to SWH
     )
 
     @Suppress("UNCHECKED_CAST")
@@ -642,11 +882,18 @@ class E0C6200(
         R3 = state["R3"] as? Int ?: 0; R4 = state["R4"] as? Int ?: 0xF
         P0 = state["P0"] as? Int ?: 0; P1 = state["P1"] as? Int ?: 0
         P2 = state["P2"] as? Int ?: 0; P3 = state["P3"] as? Int ?: 0
+        P0_OUT = state["P0_OUT"] as? Int ?: P0
+        P1_OUT = state["P1_OUT"] as? Int ?: P1
+        P2_OUT = state["P2_OUT"] as? Int ?: P2
+        P3_OUT = state["P3_OUT"] as? Int ?: P3
         CTRL_OSC = state["CTRL_OSC"] as? Int ?: 0; CTRL_LCD = state["CTRL_LCD"] as? Int ?: IO_ALOFF
         LC = state["LC"] as? Int ?: 0; CTRL_BZ1 = state["CTRL_BZ1"] as? Int ?: 0
         CTRL_BZ2 = state["CTRL_BZ2"] as? Int ?: 0; CTRL_SW = state["CTRL_SW"] as? Int ?: 0
         CTRL_PT = state["CTRL_PT"] as? Int ?: 0; PTC = state["PTC"] as? Int ?: 0
         IOC = state["IOC"] as? Int ?: 0; PUP = state["PUP"] as? Int ?: 0
+        sdWriteMask = 0
+        lastDrivenPortValues.fill(-2)
+        linkedDrivenPortValues.fill(-1)
         updateBuzzerFreqFromCtrl()
         setBuzzerEnvelopeCycle(if ((CTRL_BZ2 and IO_ENVRT) != 0) 1 else 0)
         if ((CTRL_BZ2 and IO_ENVON) != 0) {
@@ -659,6 +906,8 @@ class E0C6200(
         } else {
             setBuzzerOff()
         }
+        emitAllDrivenPortsIfChanged()
+        markDisplayDirty()
     }
 
     // ========== PC advance helper ==========

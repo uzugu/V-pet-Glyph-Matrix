@@ -8,6 +8,7 @@ import android.hardware.SensorManager
 import android.os.Handler
 import android.os.Looper
 import android.os.VibrationEffect
+import android.os.Build
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
@@ -35,6 +36,7 @@ class InputController(context: Context) : SensorEventListener {
         private const val FLICK_REBOUND_THRESHOLD = 2.5f
         private const val FLICK_WINDOW_MS = 230L
         private const val FLICK_COOLDOWN_MS = 260L
+        private const val FLICK_B_COOLDOWN_MS = 150L
         private const val FLICK_MIN_REBOUND_DELAY_MS = 26L
         private const val FLICK_AXIS_DOMINANCE_RATIO = 1.2f
         private const val FLICK_MAX_Y_ABS_AT_START = 3.4f
@@ -67,8 +69,12 @@ class InputController(context: Context) : SensorEventListener {
     private val accelerometerFallback =
         if (linearAccelerationSensor == null) sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) else null
     private val mainHandler = Handler(Looper.getMainLooper())
-    private val vibrator: Vibrator? =
+    private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    }
 
     private var emulator: E0C6200? = null
 
@@ -100,7 +106,8 @@ class InputController(context: Context) : SensorEventListener {
     private var pendingDirection = 0
     private var pendingStartAbs = 0f
     private var pendingSinceMs = 0L
-    private var lastFlickMs = 0L
+    private var lastFlickXMs = 0L
+    private var lastFlickZMs = 0L
     private var lastTriggerButton = "NONE"
     private var lastTriggerAtMs = 0L
 
@@ -114,6 +121,7 @@ class InputController(context: Context) : SensorEventListener {
     var onUserInteraction: (() -> Unit)? = null
     var onPinSet: ((port: String, pin: Int, level: Int) -> Unit)? = null
     var onPinRelease: ((port: String, pin: Int) -> Unit)? = null
+    var onInputRateModeChanged: ((isActive: Boolean) -> Unit)? = null
 
     private val releaseATap = Runnable {
         if (buttonAActive) {
@@ -223,7 +231,8 @@ class InputController(context: Context) : SensorEventListener {
         pendingAxis = FlickAxis.NONE
         pendingDirection = 0
         pendingSinceMs = 0L
-        lastFlickMs = 0L
+        lastFlickXMs = 0L
+        lastFlickZMs = 0L
         lastTriggerButton = "NONE"
         lastTriggerAtMs = 0L
         lastDebugPushMs = 0L
@@ -317,6 +326,7 @@ class InputController(context: Context) : SensorEventListener {
         linearAccelerationSensor?.let { sensorManager.registerListener(this, it, delay) }
         accelerometerFallback?.let { sensorManager.registerListener(this, it, delay) }
         sensorsRegistered = true
+        onInputRateModeChanged?.invoke(mode == InputRateMode.ACTIVE)
         if (debugEnabled) {
             Log.d(TAG, "Input polling mode=$mode delay=$delay")
         }
@@ -324,12 +334,16 @@ class InputController(context: Context) : SensorEventListener {
 
     private fun processFlick(now: Long) {
         if (pendingAxis == FlickAxis.NONE) {
-            if (now - lastFlickMs < FLICK_COOLDOWN_MS) return
-
             val (axis, value) = dominantAxisAndValue(filteredX, filteredZ)
+            if (axis == FlickAxis.NONE) return
+
+            // Per-axis cooldown: B (Z-axis) uses shorter cooldown for fast gameplay
+            val cooldown = if (axis == FlickAxis.Z) FLICK_B_COOLDOWN_MS else FLICK_COOLDOWN_MS
+            val lastFlick = if (axis == FlickAxis.Z) lastFlickZMs else lastFlickXMs
+            if (now - lastFlick < cooldown) return
+
             val startAbs = abs(value)
             if (
-                axis != FlickAxis.NONE &&
                 startAbs >= FLICK_START_THRESHOLD &&
                 abs(filteredY) <= FLICK_MAX_Y_ABS_AT_START
             ) {
@@ -405,7 +419,11 @@ class InputController(context: Context) : SensorEventListener {
             FlickAxis.NONE -> return
         }
         lastTriggerAtMs = now
-        lastFlickMs = now
+        when (axis) {
+            FlickAxis.X -> lastFlickXMs = now
+            FlickAxis.Z -> lastFlickZMs = now
+            FlickAxis.NONE -> {}
+        }
         if (debugEnabled) {
             Log.d(TAG, "flick axis=$axis direction=$direction -> $lastTriggerButton")
         }
