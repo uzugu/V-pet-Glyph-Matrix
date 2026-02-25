@@ -138,16 +138,14 @@ class RomLoaderActivity : AppCompatActivity() {
 
         val infoText = TextView(this).apply {
             text = buildString {
-                appendLine("How to use:")
-                appendLine("1. Select a Digimon ROM (.bin or .zip)")
-                appendLine("2. Enable Digimon V3 in Glyph Toys")
-                appendLine("3. Start the toy from Glyph settings")
+                appendLine("Quick start:")
+                appendLine("1. Load a Digimon ROM (.bin or .zip)")
+                appendLine("2. Start Digimon V3 from Glyph Toys (Nothing) or use widget mode")
                 appendLine()
                 appendLine("Controls:")
                 appendLine("  Flick left/right = A/C")
                 appendLine("  Flick toward/away = quick B")
-                appendLine("  Glyph button hold = B hold")
-                appendLine("  Combo Buttons = explicit A+B / A+C / B+C")
+                appendLine("  Hold Glyph button = B hold")
             }
             textSize = 14f
             setPadding(0, 18, 0, 18)
@@ -237,6 +235,42 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         layout.addView(exactTimingSwitch)
 
+        val saveToolsToggle = Button(this).apply {
+            text = "Show Save and Controls"
+            setPadding(0, 10, 0, 8)
+        }
+        layout.addView(saveToolsToggle)
+
+        val saveToolsContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = LinearLayout.GONE
+        }
+        layout.addView(saveToolsContainer)
+
+        val battleToggle = Button(this).apply {
+            text = "Show Battle (Beta)"
+            setPadding(0, 8, 0, 8)
+        }
+        layout.addView(battleToggle)
+
+        val battleContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = LinearLayout.GONE
+        }
+        layout.addView(battleContainer)
+
+        val advancedToggle = Button(this).apply {
+            text = "Show Advanced and Debug"
+            setPadding(0, 8, 0, 8)
+        }
+        layout.addView(advancedToggle)
+
+        val advancedContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            visibility = LinearLayout.GONE
+        }
+        layout.addView(advancedContainer)
+
         // Clock correction: toggle + editable speed factor
         val clockCorrectionSwitch = Switch(this).apply {
             text = "Clock speed correction"
@@ -246,7 +280,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 EmulatorTimingSettings.setClockCorrectionEnabled(this@RomLoaderActivity, isChecked)
             }
         }
-        layout.addView(clockCorrectionSwitch)
+        advancedContainer.addView(clockCorrectionSwitch)
 
         val clockFactorLayout = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -276,7 +310,7 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         clockFactorLayout.addView(clockFactorLabel)
         clockFactorLayout.addView(clockFactorInput)
-        layout.addView(clockFactorLayout)
+        advancedContainer.addView(clockFactorLayout)
 
         val hapticSwitch = Switch(this).apply {
             text = "Vibrate from emulator sound"
@@ -293,7 +327,7 @@ class RomLoaderActivity : AppCompatActivity() {
             textSize = 14f
             setPadding(0, 20, 0, 4)
         }
-        layout.addView(autosaveText)
+        saveToolsContainer.addView(autosaveText)
 
         val autosaveButtons = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -311,18 +345,18 @@ class RomLoaderActivity : AppCompatActivity() {
                 sendCommand(EmulatorCommandBus.CMD_LOAD_AUTOSAVE, 0, "Load autosave")
             }
         })
-        layout.addView(autosaveButtons)
+        saveToolsContainer.addView(autosaveButtons)
 
         val slotTitle = TextView(this).apply {
             text = "Manual Save Slots"
             textSize = 15f
             setPadding(0, 4, 0, 8)
         }
-        layout.addView(slotTitle)
+        saveToolsContainer.addView(slotTitle)
 
-        slot1Text = addSlotRow(layout, 1)
-        slot2Text = addSlotRow(layout, 2)
-        slot3Text = addSlotRow(layout, 3)
+        slot1Text = addSlotRow(saveToolsContainer, 1)
+        slot2Text = addSlotRow(saveToolsContainer, 2)
+        slot3Text = addSlotRow(saveToolsContainer, 3)
 
         val controlRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -340,14 +374,14 @@ class RomLoaderActivity : AppCompatActivity() {
                 sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Full reset")
             }
         })
-        layout.addView(controlRow)
+        saveToolsContainer.addView(controlRow)
 
         val comboTitle = TextView(this).apply {
             text = "Combo Buttons"
             textSize = 15f
             setPadding(0, 8, 0, 8)
         }
-        layout.addView(comboTitle)
+        saveToolsContainer.addView(comboTitle)
 
         val comboRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -371,62 +405,14 @@ class RomLoaderActivity : AppCompatActivity() {
                 sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
             }
         })
-        layout.addView(comboRow)
+        saveToolsContainer.addView(comboRow)
 
         val battleTitle = TextView(this).apply {
             text = "Battle Mode (Beta)"
             textSize = 15f
             setPadding(0, 8, 0, 8)
         }
-        layout.addView(battleTitle)
-
-        val battleInfo = TextView(this).apply {
-            text = "Connect two phones directly using Nearby (Bluetooth/Wi-Fi)."
-            textSize = 13f
-            setPadding(0, 0, 0, 8)
-        }
-        layout.addView(battleInfo)
-
-        val battleStepSwitch = Switch(this).apply {
-            text = "Battle step mode (freeze + pulse)"
-            isChecked = EmulatorTimingSettings.isBattleStepModeEnabled()
-            setPadding(0, 0, 0, 6)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorTimingSettings.setBattleStepModeEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
-        }
-        layout.addView(battleStepSwitch)
-
-        val battleStepConfigRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 10)
-        }
-        val battleStepLabel = TextView(this).apply {
-            text = "Step slice ms:"
-            textSize = 13f
-        }
-        val battleStepInput = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER
-            setText(EmulatorTimingSettings.getBattleStepSliceMs().toString())
-            textSize = 13f
-            setEms(4)
-            setOnFocusChangeListener { _, hasFocus ->
-                if (!hasFocus) {
-                    val value = text.toString().toIntOrNull()
-                    if (value != null && value in 4..250) {
-                        EmulatorTimingSettings.setBattleStepSliceMs(this@RomLoaderActivity, value)
-                        EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-                    } else {
-                        setText(EmulatorTimingSettings.getBattleStepSliceMs().toString())
-                        Toast.makeText(this@RomLoaderActivity, "Step slice must be 4-250ms", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-        battleStepConfigRow.addView(battleStepLabel)
-        battleStepConfigRow.addView(battleStepInput)
-        layout.addView(battleStepConfigRow)
+        battleContainer.addView(battleTitle)
 
         val battleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -454,69 +440,33 @@ class RomLoaderActivity : AppCompatActivity() {
                 sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
             }
         })
-        layout.addView(battleRow)
-
-        val battlePingRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 8)
-        }
-        battlePingRow.addView(Button(this).apply {
-            text = "Ping Link"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_BATTLE_PING, 0, "Battle ping")
-            }
-        })
-        layout.addView(battlePingRow)
-
-        val battleStepRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 8)
-        }
-        battleStepRow.addView(Button(this).apply {
-            text = "Step +1"
-            setOnClickListener {
-                val slice = EmulatorTimingSettings.getBattleStepSliceMs()
-                sendCommand(EmulatorCommandBus.CMD_BATTLE_STEP_PULSE, slice, "Battle step +${slice}ms")
-            }
-        })
-        battleStepRow.addView(Button(this).apply {
-            text = "Step +10"
-            setOnClickListener {
-                val slice = EmulatorTimingSettings.getBattleStepSliceMs()
-                sendCommand(
-                    EmulatorCommandBus.CMD_BATTLE_STEP_PULSE,
-                    (slice * 10).coerceAtMost(1_000),
-                    "Battle step +${(slice * 10).coerceAtMost(1_000)}ms"
-                )
-            }
-        })
-        layout.addView(battleStepRow)
+        battleContainer.addView(battleRow)
 
         battleStatusText = TextView(this).apply {
             textSize = 13f
             typeface = Typeface.MONOSPACE
             setPadding(0, 0, 0, 12)
         }
-        layout.addView(battleStatusText)
+        battleContainer.addView(battleStatusText)
 
         commandStatusText = TextView(this).apply {
             textSize = 13f
             typeface = Typeface.MONOSPACE
             setPadding(0, 0, 0, 14)
         }
-        layout.addView(commandStatusText)
+        advancedContainer.addView(commandStatusText)
 
         val debugToggle = Button(this).apply {
-            text = "Show Debug"
+            text = "Show Debug Telemetry"
             setPadding(0, 8, 0, 8)
         }
-        layout.addView(debugToggle)
+        advancedContainer.addView(debugToggle)
 
         val debugContainer = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             visibility = LinearLayout.GONE
         }
-        layout.addView(debugContainer)
+        advancedContainer.addView(debugContainer)
 
         val debugSwitch = Switch(this).apply {
             text = "Emulator debug telemetry"
@@ -558,7 +508,25 @@ class RomLoaderActivity : AppCompatActivity() {
         debugToggle.setOnClickListener {
             val showing = debugContainer.visibility == LinearLayout.VISIBLE
             debugContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
-            debugToggle.text = if (showing) "Show Debug" else "Hide Debug"
+            debugToggle.text = if (showing) "Show Debug Telemetry" else "Hide Debug Telemetry"
+        }
+
+        saveToolsToggle.setOnClickListener {
+            val showing = saveToolsContainer.visibility == LinearLayout.VISIBLE
+            saveToolsContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
+            saveToolsToggle.text = if (showing) "Show Save and Controls" else "Hide Save and Controls"
+        }
+
+        battleToggle.setOnClickListener {
+            val showing = battleContainer.visibility == LinearLayout.VISIBLE
+            battleContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
+            battleToggle.text = if (showing) "Show Battle (Beta)" else "Hide Battle (Beta)"
+        }
+
+        advancedToggle.setOnClickListener {
+            val showing = advancedContainer.visibility == LinearLayout.VISIBLE
+            advancedContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
+            advancedToggle.text = if (showing) "Show Advanced and Debug" else "Hide Advanced and Debug"
         }
 
         setContentView(scrollView)
