@@ -1,0 +1,11 @@
+services:
+  relay:
+    image: python:3.12-slim
+    container_name: digimon-battle-relay
+    working_dir: /app
+    command: ["python", "tools/battle_relay_server.py", "--host", "0.0.0.0", "--port", "19792"]
+    volumes:
+      - ./:/app:ro
+    ports:
+      - "19792:19792"
+    restart: unless-stopped

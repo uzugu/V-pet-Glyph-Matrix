@@ -13,3 +13,6 @@ reference/
 *.zip
 *.bin
 sdk_extracted/
+__pycache__/
+*.pyc
+relay*.log

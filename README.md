@@ -124,6 +124,20 @@ Notes:
 
 This mode allows battle linking over internet/LAN through a simple relay.
 
+### Option A: Docker (recommended for quick local tests)
+
+```bash
+docker compose -f docker-compose.relay.yml up -d
+```
+
+Stop:
+
+```bash
+docker compose -f docker-compose.relay.yml down
+```
+
+### Option B: Python directly
+
 1. Run relay server (for example on Raspberry Pi):
 ```bash
 python3 tools/battle_relay_server.py --host 0.0.0.0 --port 19792
