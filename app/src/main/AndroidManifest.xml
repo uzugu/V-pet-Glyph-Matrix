@@ -5,6 +5,13 @@
     <!-- Override Nothing SDK minSdk=34 so we can run on older devices too -->
     <uses-sdk tools:overrideLibrary="com.nothing.ketchum" />
 
+    <queries>
+        <package android:name="com.nothing.thirdparty" />
+        <intent>
+            <action android:name="com.nothing.thirdparty.bind_glyphservice" />
+        </intent>
+    </queries>
+
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />

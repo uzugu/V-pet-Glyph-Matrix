@@ -701,7 +701,7 @@ class DigimonGlyphToyService : Service() {
             displayBridge = bridge,
             onFrame = { bitmap, vram ->
                 inputOverlayAnimator?.applyOverlay(bitmap)
-                renderer?.pushFrame(bitmap)
+                this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
                 val now = SystemClock.uptimeMillis()
                 val shouldPublishFramePreview =
                     debugTelemetryEnabled || standaloneMode ||
