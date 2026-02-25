@@ -35,26 +35,13 @@ import com.digimon.glyph.battle.BattleStateStore.Status
  */
 class BattleLinkManager(
     context: Context,
-    private val listener: Listener? = null
-) {
-
-    interface Listener {
-        fun onConnected(peerName: String)
-        fun onDisconnected(reason: String)
-        fun onMessage(type: String, body: String?)
-    }
+    private val listener: BattleTransport.Listener? = null
+) : BattleTransport {
 
     private data class WireMessage(
         val type: String,
         val body: String?,
         val timestampMs: Long
-    )
-
-    data class PinEdge(
-        val port: String,
-        val value: Int?,
-        val seq: Long,
-        val sourceUptimeMs: Long
     )
 
     companion object {
@@ -215,7 +202,7 @@ class BattleLinkManager(
         }
     }
 
-    fun startHost(): String {
+    override fun startHost(): String {
         if (!canUseNearby()) return "battle failed: Nearby unavailable"
         if (!hasRuntimePermissions()) return "battle failed: missing nearby permissions"
         Log.i(TAG, "startHost endpointName=$endpointName")
@@ -247,7 +234,7 @@ class BattleLinkManager(
         }
     }
 
-    fun startJoin(): String {
+    override fun startJoin(): String {
         if (!canUseNearby()) return "battle failed: Nearby unavailable"
         if (!hasRuntimePermissions()) return "battle failed: missing nearby permissions"
         Log.i(TAG, "startJoin endpointName=$endpointName")
@@ -279,7 +266,7 @@ class BattleLinkManager(
         }
     }
 
-    fun stop(): String {
+    override fun stop(): String {
         role = Role.NONE
         cancelKeepalive()
         clearPeer()
@@ -290,7 +277,7 @@ class BattleLinkManager(
         return "battle link stopped"
     }
 
-    fun sendPing(): String {
+    override fun sendPing(): String {
         return if (sendMessage("ping", null)) {
             "battle ping sent"
         } else {
@@ -298,13 +285,13 @@ class BattleLinkManager(
         }
     }
 
-    fun sendWaveStart(stepMs: Int, totalMs: Int): Boolean {
+    override fun sendWaveStart(stepMs: Int, totalMs: Int): Boolean {
         val safeStep = stepMs.coerceIn(4, 1000)
         val safeTotal = totalMs.coerceIn(500, 20_000)
         return sendMessage("wave_start", "$safeStep:$safeTotal")
     }
 
-    fun sendSerialByte(value: Int): Boolean {
+    override fun sendSerialByte(value: Int): Boolean {
         serialTxCount++
         if (serialTxCount % 8L == 1L) {
             Log.d(TAG, "serial tx count=$serialTxCount last=${value and 0xFF}")
@@ -312,11 +299,11 @@ class BattleLinkManager(
         return sendMessage("serial_tx", (value and 0xFF).toString())
     }
 
-    fun sendVpetPacket(packet: Int): Boolean {
+    override fun sendVpetPacket(packet: Int): Boolean {
         return sendMessage("vpet_packet", packet.toString())
     }
 
-    fun sendPinDrive(port: String, value: Int?): Boolean {
+    override fun sendPinDrive(port: String, value: Int?): Boolean {
         pinTxCount++
         val body = if (value == null) "$port:-" else "$port:${value and 0xF}"
         if (pinTxCount % 16L == 1L) {
@@ -325,7 +312,7 @@ class BattleLinkManager(
         return sendMessage("pin_tx", body)
     }
 
-    fun sendPinEdge(port: String, value: Int?, seq: Long, sourceUptimeMs: Long): Boolean {
+    override fun sendPinEdge(port: String, value: Int?, seq: Long, sourceUptimeMs: Long): Boolean {
         pinTxCount++
         val normalized = if (value == null) -1 else (value and 0xF)
         val body = "$port,$normalized,$seq,$sourceUptimeMs"
@@ -335,7 +322,7 @@ class BattleLinkManager(
         return sendMessage("pin_edge", body)
     }
 
-    fun parsePinEdge(body: String?): PinEdge? {
+    override fun parsePinEdge(body: String?): BattleTransport.PinEdge? {
         if (body.isNullOrBlank()) return null
         val parts = body.split(',')
         if (parts.size != 4) return null
@@ -345,7 +332,7 @@ class BattleLinkManager(
         val seq = parts[2].toLongOrNull() ?: return null
         val sourceUptimeMs = parts[3].toLongOrNull() ?: return null
         val normalizedValue = if (valueToken < 0) null else (valueToken and 0xF)
-        return PinEdge(
+        return BattleTransport.PinEdge(
             port = port,
             value = normalizedValue,
             seq = seq,

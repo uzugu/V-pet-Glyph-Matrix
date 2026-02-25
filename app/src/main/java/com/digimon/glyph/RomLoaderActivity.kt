@@ -25,6 +25,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.digimon.glyph.battle.BattleStateStore
+import com.digimon.glyph.battle.BattleTransportSettings
+import com.digimon.glyph.battle.BattleTransportType
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
@@ -100,6 +102,7 @@ class RomLoaderActivity : AppCompatActivity() {
         EmulatorDebugSettings.init(this)
         EmulatorTimingSettings.init(this)
         BattleStateStore.init(this)
+        BattleTransportSettings.init(this)
 
         val scrollView = ScrollView(this).apply {
             isFillViewport = true
@@ -414,6 +417,46 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         battleContainer.addView(battleTitle)
 
+        val relayUrlInput = EditText(this).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+            hint = "Relay URL (wss://...)"
+            setText(BattleTransportSettings.getRelayUrl())
+            setPadding(0, 0, 0, 8)
+            visibility = if (
+                BattleTransportSettings.getTransportType() == BattleTransportType.INTERNET_RELAY
+            ) {
+                LinearLayout.VISIBLE
+            } else {
+                LinearLayout.GONE
+            }
+            setOnFocusChangeListener { _, hasFocus ->
+                if (hasFocus) return@setOnFocusChangeListener
+                val previous = BattleTransportSettings.getRelayUrl()
+                val current = text?.toString()?.trim().orEmpty()
+                if (current == previous) return@setOnFocusChangeListener
+                BattleTransportSettings.setRelayUrl(this@RomLoaderActivity, current)
+                sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle relay URL")
+            }
+        }
+
+        val transportSwitch = Switch(this).apply {
+            text = "Use Internet relay (experimental)"
+            isChecked = BattleTransportSettings.getTransportType() == BattleTransportType.INTERNET_RELAY
+            setPadding(0, 0, 0, 8)
+            setOnCheckedChangeListener { _, isChecked ->
+                val type = if (isChecked) {
+                    BattleTransportType.INTERNET_RELAY
+                } else {
+                    BattleTransportType.NEARBY
+                }
+                BattleTransportSettings.setTransportType(this@RomLoaderActivity, type)
+                relayUrlInput.visibility = if (isChecked) LinearLayout.VISIBLE else LinearLayout.GONE
+                sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle transport")
+            }
+        }
+        battleContainer.addView(transportSwitch)
+        battleContainer.addView(relayUrlInput)
+
         val battleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, 0, 0, 8)
@@ -421,7 +464,7 @@ class RomLoaderActivity : AppCompatActivity() {
         battleRow.addView(Button(this).apply {
             text = "Host"
             setOnClickListener {
-                runWithNearbyPermissions {
+                runWithBattlePermissions {
                     sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, "Battle host")
                 }
             }
@@ -429,7 +472,7 @@ class RomLoaderActivity : AppCompatActivity() {
         battleRow.addView(Button(this).apply {
             text = "Join"
             setOnClickListener {
-                runWithNearbyPermissions {
+                runWithBattlePermissions {
                     sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, "Battle join")
                 }
             }
@@ -695,6 +738,14 @@ class RomLoaderActivity : AppCompatActivity() {
         requestNearbyPermissions.launch(requiredNearbyPermissions())
     }
 
+    private fun runWithBattlePermissions(action: () -> Unit) {
+        if (BattleTransportSettings.getTransportType() == BattleTransportType.NEARBY) {
+            runWithNearbyPermissions(action)
+            return
+        }
+        action()
+    }
+
     private fun hasNearbyPermissions(): Boolean {
         val coarseGranted = ContextCompat.checkSelfPermission(
             this,
@@ -757,7 +808,9 @@ class RomLoaderActivity : AppCompatActivity() {
         val battle = BattleStateStore.read(this)
         val battleAgeMs = if (battle.updatedAtMs == 0L) "-" else "${System.currentTimeMillis() - battle.updatedAtMs}ms"
         val peer = battle.peerName ?: "-"
-        battleStatusText.text = "Battle: ${battle.status} (${battle.role})  peer=$peer  age=$battleAgeMs\n${battle.message}"
+        val transport = BattleTransportSettings.getTransportType()
+        battleStatusText.text =
+            "Battle[$transport]: ${battle.status} (${battle.role})  peer=$peer  age=$battleAgeMs\n${battle.message}"
         commandStatusText.text = "Last command: $lastAckText"
     }
 

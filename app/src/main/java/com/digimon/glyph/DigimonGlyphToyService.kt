@@ -20,6 +20,10 @@ import com.digimon.glyph.audio.BuzzerAudioEngine
 import com.digimon.glyph.audio.BuzzerHapticEngine
 import com.digimon.glyph.battle.BattleLinkManager
 import com.digimon.glyph.battle.BattleStateStore
+import com.digimon.glyph.battle.BattleTransport
+import com.digimon.glyph.battle.BattleTransportSettings
+import com.digimon.glyph.battle.BattleTransportType
+import com.digimon.glyph.battle.InternetBattleTransport
 import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.E0C6200
@@ -121,7 +125,8 @@ class DigimonGlyphToyService : Service() {
     private var frameHeartbeatCount: Long = 0L
     private var lastFrameHeartbeatLogMs: Long = 0L
     private var cpuWakeLock: PowerManager.WakeLock? = null
-    private var battleLinkManager: BattleLinkManager? = null
+    private var battleTransport: BattleTransport? = null
+    private var battleTransportType: BattleTransportType = BattleTransportType.NEARBY
     private var battleAssistActiveButtons = 0
     private var battleAssistLowUntilMs: Long = 0L
     private var battleAssistLowApplied = false
@@ -192,130 +197,8 @@ class DigimonGlyphToyService : Service() {
     override fun onCreate() {
         super.onCreate()
         BattleStateStore.init(this)
-        battleLinkManager = BattleLinkManager(
-            this,
-            object : BattleLinkManager.Listener {
-                override fun onConnected(peerName: String) {
-                    mainHandler.post {
-                        battleConnected = true
-                        battleConnectedAtMs = SystemClock.uptimeMillis()
-                        battleAssistActiveButtons = 0
-                        battleAssistLowUntilMs = 0L
-                        battleAssistLowApplied = false
-                        battleAssistBurstToken++
-                        battleAssistWaveUntilMs = 0L
-                    remoteP2LowSinceMs = 0L
-                    remoteP2ReleaseToken++
-                    remoteLinkK0Pin3Low = false
-                    resetBattleEdgeState()
-                    battleRdWriteMask = 0
-                    battleRdWriteValue = 0
-                    battleRdBridgeLastTxByte = -1
-                    battleRdBridgeLastTxAtMs = 0L
-                    mainHandler.removeCallbacks(battleAssistReleaseRunnable)
-                        Log.d(TAG, "Battle connected peer=$peerName")
-                        runOnEmulatorAsync { core ->
-                            core.syncLinkedPortDriveState()
-                            virtualDCom?.reset()
-                        }
-                        sendBattleP2Edge(BATTLE_LINK_HIGH_MASK, force = true, reason = "connect_sync")
-                        applyTimingSettingIfChanged(force = true)
-                        pulseBattleStepBudget("battle_connect_prime", BATTLE_STEP_CONNECT_PRIME_MS)
-                    }
-                }
-
-                override fun onDisconnected(reason: String) {
-                    mainHandler.post {
-                        battleConnected = false
-                        battleConnectedAtMs = 0L
-                        battleAssistActiveButtons = 0
-                        battleAssistLowUntilMs = 0L
-                        battleAssistLowApplied = false
-                        battleAssistBurstToken++
-                        battleAssistWaveUntilMs = 0L
-                        remoteP2LowSinceMs = 0L
-                        remoteP2ReleaseToken++
-                        remoteLinkK0Pin3Low = false
-                        clearRemoteP2EdgeQueue()
-                        battleRdWriteMask = 0
-                        battleRdWriteValue = 0
-                        battleRdBridgeLastTxByte = -1
-                        battleRdBridgeLastTxAtMs = 0L
-                        mainHandler.removeCallbacks(battleAssistReleaseRunnable)
-                        Log.d(TAG, "Battle disconnected reason=$reason")
-                        runOnEmulatorAsync { core ->
-                            core.applyLinkedPortDrive("P2", null)
-                            if (BATTLE_MIRROR_P2_TO_K0_PIN3) {
-                                core.pinRelease("K0", 3)
-                            }
-                            virtualDCom?.reset()
-                        }
-                        applyTimingSettingIfChanged(force = true)
-                    }
-                }
-
-                override fun onMessage(type: String, body: String?) {
-                    when (type) {
-                        "vpet_packet" -> {
-                            val packet = body?.toIntOrNull() ?: return
-                            Log.d(TAG, "Battle vpet packet rx: 0x${packet.toString(16)}")
-                            mainHandler.post {
-                                pulseBattleStepBudget("vpet_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
-                                virtualDCom?.enqueuePacket(packet)
-                            }
-                        }
-                        "serial_tx" -> {
-                            val value = body?.toIntOrNull() ?: return
-                            Log.d(TAG, "Battle serial rx byte=$value")
-                            mainHandler.post {
-                                pulseBattleStepBudget("serial_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
-                                runOnEmulatorAsync { core ->
-                                    core.receiveSerialByte(value)
-                                }
-                            }
-                        }
-                        "pin_edge" -> {
-                            val edge = battleLinkManager?.parsePinEdge(body) ?: return
-                            if (edge.port != "P2") return
-                            Log.d(
-                                TAG,
-                                "Battle pin edge rx P2=${edge.value ?: -1} seq=${edge.seq} src=${edge.sourceUptimeMs}"
-                            )
-                            mainHandler.post {
-                                pulseBattleStepBudget("pin_edge_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
-                                applyRemoteP2Edge(
-                                    seq = edge.seq,
-                                    value = edge.value
-                                )
-                            }
-                        }
-                        "pin_tx" -> {
-                            val payload = body ?: return
-                            val idx = payload.indexOf(':')
-                            if (idx <= 0 || idx >= payload.lastIndex) return
-                            val port = payload.substring(0, idx)
-                            val valueToken = payload.substring(idx + 1)
-                            val value = if (valueToken == "-") null else valueToken.toIntOrNull()
-                            if (port != "P2") return
-                            Log.d(TAG, "Battle pin rx P2=${value ?: -1}")
-                            mainHandler.post {
-                                pulseBattleStepBudget("pin_tx_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
-                                remoteP2LegacySeq += 1L
-                                applyRemoteP2Edge(
-                                    seq = remoteP2LegacySeq,
-                                    value = value
-                                )
-                            }
-                        }
-                        "wave_start" -> {
-                            mainHandler.post {
-                                onRemoteBattleWaveStart(body)
-                            }
-                        }
-                    }
-                }
-            }
-        )
+        BattleTransportSettings.init(this)
+        battleTransport = createBattleTransport()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -394,10 +277,157 @@ class DigimonGlyphToyService : Service() {
         Log.d(TAG, "onDestroy")
         mainHandler.removeCallbacksAndMessages(null)
         saveState(sync = true, reason = "on_destroy")
-        battleLinkManager?.stop()
-        battleLinkManager = null
+        battleTransport?.stop()
+        battleTransport = null
         stopEmulator()
         releaseGlyphManager()
+    }
+
+    private fun createBattleTransport(): BattleTransport {
+        battleTransportType = BattleTransportSettings.getTransportType()
+        Log.i(TAG, "Battle transport selected: $battleTransportType")
+        return when (battleTransportType) {
+            BattleTransportType.NEARBY -> BattleLinkManager(this, createBattleTransportListener())
+            BattleTransportType.INTERNET_RELAY -> InternetBattleTransport(this, createBattleTransportListener())
+        }
+    }
+
+    private fun refreshBattleTransportIfNeeded() {
+        val requestedType = BattleTransportSettings.getTransportType()
+        if (requestedType == battleTransportType && battleTransport != null) return
+        if (battleConnected) {
+            Log.w(
+                TAG,
+                "Battle transport change requested while connected; keeping current transport=$battleTransportType"
+            )
+            return
+        }
+        battleTransport?.stop()
+        battleTransport = createBattleTransport()
+    }
+
+    private fun createBattleTransportListener(): BattleTransport.Listener {
+        return object : BattleTransport.Listener {
+            override fun onConnected(peerName: String) {
+                mainHandler.post {
+                    battleConnected = true
+                    battleConnectedAtMs = SystemClock.uptimeMillis()
+                    battleAssistActiveButtons = 0
+                    battleAssistLowUntilMs = 0L
+                    battleAssistLowApplied = false
+                    battleAssistBurstToken++
+                    battleAssistWaveUntilMs = 0L
+                    remoteP2LowSinceMs = 0L
+                    remoteP2ReleaseToken++
+                    remoteLinkK0Pin3Low = false
+                    resetBattleEdgeState()
+                    battleRdWriteMask = 0
+                    battleRdWriteValue = 0
+                    battleRdBridgeLastTxByte = -1
+                    battleRdBridgeLastTxAtMs = 0L
+                    mainHandler.removeCallbacks(battleAssistReleaseRunnable)
+                    Log.d(TAG, "Battle connected peer=$peerName")
+                    runOnEmulatorAsync { core ->
+                        core.syncLinkedPortDriveState()
+                        virtualDCom?.reset()
+                    }
+                    sendBattleP2Edge(BATTLE_LINK_HIGH_MASK, force = true, reason = "connect_sync")
+                    applyTimingSettingIfChanged(force = true)
+                    pulseBattleStepBudget("battle_connect_prime", BATTLE_STEP_CONNECT_PRIME_MS)
+                }
+            }
+
+            override fun onDisconnected(reason: String) {
+                mainHandler.post {
+                    battleConnected = false
+                    battleConnectedAtMs = 0L
+                    battleAssistActiveButtons = 0
+                    battleAssistLowUntilMs = 0L
+                    battleAssistLowApplied = false
+                    battleAssistBurstToken++
+                    battleAssistWaveUntilMs = 0L
+                    remoteP2LowSinceMs = 0L
+                    remoteP2ReleaseToken++
+                    remoteLinkK0Pin3Low = false
+                    clearRemoteP2EdgeQueue()
+                    battleRdWriteMask = 0
+                    battleRdWriteValue = 0
+                    battleRdBridgeLastTxByte = -1
+                    battleRdBridgeLastTxAtMs = 0L
+                    mainHandler.removeCallbacks(battleAssistReleaseRunnable)
+                    Log.d(TAG, "Battle disconnected reason=$reason")
+                    runOnEmulatorAsync { core ->
+                        core.applyLinkedPortDrive("P2", null)
+                        if (BATTLE_MIRROR_P2_TO_K0_PIN3) {
+                            core.pinRelease("K0", 3)
+                        }
+                        virtualDCom?.reset()
+                    }
+                    applyTimingSettingIfChanged(force = true)
+                }
+            }
+
+            override fun onMessage(type: String, body: String?) {
+                when (type) {
+                    "vpet_packet" -> {
+                        val packet = body?.toIntOrNull() ?: return
+                        Log.d(TAG, "Battle vpet packet rx: 0x${packet.toString(16)}")
+                        mainHandler.post {
+                            pulseBattleStepBudget("vpet_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
+                            virtualDCom?.enqueuePacket(packet)
+                        }
+                    }
+                    "serial_tx" -> {
+                        val value = body?.toIntOrNull() ?: return
+                        Log.d(TAG, "Battle serial rx byte=$value")
+                        mainHandler.post {
+                            pulseBattleStepBudget("serial_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
+                            runOnEmulatorAsync { core ->
+                                core.receiveSerialByte(value)
+                            }
+                        }
+                    }
+                    "pin_edge" -> {
+                        val edge = battleTransport?.parsePinEdge(body) ?: return
+                        if (edge.port != "P2") return
+                        Log.d(
+                            TAG,
+                            "Battle pin edge rx P2=${edge.value ?: -1} seq=${edge.seq} src=${edge.sourceUptimeMs}"
+                        )
+                        mainHandler.post {
+                            pulseBattleStepBudget("pin_edge_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
+                            applyRemoteP2Edge(
+                                seq = edge.seq,
+                                value = edge.value
+                            )
+                        }
+                    }
+                    "pin_tx" -> {
+                        val payload = body ?: return
+                        val idx = payload.indexOf(':')
+                        if (idx <= 0 || idx >= payload.lastIndex) return
+                        val port = payload.substring(0, idx)
+                        val valueToken = payload.substring(idx + 1)
+                        val value = if (valueToken == "-") null else valueToken.toIntOrNull()
+                        if (port != "P2") return
+                        Log.d(TAG, "Battle pin rx P2=${value ?: -1}")
+                        mainHandler.post {
+                            pulseBattleStepBudget("pin_tx_rx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
+                            remoteP2LegacySeq += 1L
+                            applyRemoteP2Edge(
+                                seq = remoteP2LegacySeq,
+                                value = value
+                            )
+                        }
+                    }
+                    "wave_start" -> {
+                        mainHandler.post {
+                            onRemoteBattleWaveStart(body)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun handleToyMessage(msg: Message) {
@@ -534,7 +564,7 @@ class DigimonGlyphToyService : Service() {
         val dcom = com.digimon.glyph.battle.VirtualDCom(
             onPacketDecoded = { packet ->
                 mainHandler.post {
-                    val sent = battleLinkManager?.sendVpetPacket(packet) == true
+                    val sent = battleTransport?.sendVpetPacket(packet) == true
                     if (sent) {
                         pulseBattleStepBudget("vpet_tx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
                     }
@@ -590,7 +620,7 @@ class DigimonGlyphToyService : Service() {
         emu.onSerialTx = { value ->
             Log.d(TAG, "Battle serial tx byte=$value")
             mainHandler.post {
-                val sent = battleLinkManager?.sendSerialByte(value) == true
+                val sent = battleTransport?.sendSerialByte(value) == true
                 if (sent) {
                     pulseBattleStepBudget("serial_tx", BATTLE_STEP_LINK_EVENT_BONUS_MS)
                 }
@@ -636,7 +666,7 @@ class DigimonGlyphToyService : Service() {
                             battleRdBridgeLastTxByte != tx ||
                                 now - battleRdBridgeLastTxAtMs >= BATTLE_RD_BRIDGE_MIN_REPEAT_MS
                         if (allowRepeat) {
-                            val sent = battleLinkManager?.sendSerialByte(tx) == true
+                            val sent = battleTransport?.sendSerialByte(tx) == true
                             if (sent) {
                                 battleRdBridgeLastTxByte = tx
                                 battleRdBridgeLastTxAtMs = now
@@ -914,6 +944,8 @@ class DigimonGlyphToyService : Service() {
                 EmulatorAudioSettings.init(this)
                 EmulatorDebugSettings.init(this)
                 EmulatorTimingSettings.init(this)
+                BattleTransportSettings.init(this)
+                refreshBattleTransportIfNeeded()
                 applyAudioHapticSettingsIfChanged(force = true)
                 applyDebugSettingIfChanged(force = true)
                 applyTimingSettingIfChanged(force = true)
@@ -1013,20 +1045,33 @@ class DigimonGlyphToyService : Service() {
         return if (ok) "combo $name triggered" else "combo $name failed"
     }
 
+    private fun ensureBattleTransport(): BattleTransport {
+        val existing = battleTransport
+        if (existing != null) return existing
+        BattleTransportSettings.init(this)
+        val created = createBattleTransport()
+        battleTransport = created
+        return created
+    }
+
     private fun startBattleHost(): String {
-        val manager = battleLinkManager ?: return "battle failed: manager unavailable"
+        BattleTransportSettings.init(this)
+        refreshBattleTransportIfNeeded()
+        val manager = ensureBattleTransport()
         Log.i(TAG, "Battle start requested: host")
         return manager.startHost()
     }
 
     private fun startBattleJoin(): String {
-        val manager = battleLinkManager ?: return "battle failed: manager unavailable"
+        BattleTransportSettings.init(this)
+        refreshBattleTransportIfNeeded()
+        val manager = ensureBattleTransport()
         Log.i(TAG, "Battle start requested: join")
         return manager.startJoin()
     }
 
     private fun stopBattleLink(): String {
-        val manager = battleLinkManager ?: return "battle failed: manager unavailable"
+        val manager = battleTransport ?: return "battle link stopped"
         battleConnected = false
         battleConnectedAtMs = 0L
         battleAssistActiveButtons = 0
@@ -1056,7 +1101,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun sendBattlePing(): String {
-        val manager = battleLinkManager ?: return "battle failed: manager unavailable"
+        val manager = battleTransport ?: return "battle ping failed: not connected"
         return manager.sendPing()
     }
 
@@ -1278,7 +1323,7 @@ class DigimonGlyphToyService : Service() {
         }
         val seq = ++localP2EdgeSeq
         val sourceUptimeMs = SystemClock.uptimeMillis()
-        val sent = battleLinkManager?.sendPinEdge(
+        val sent = battleTransport?.sendPinEdge(
             port = "P2",
             value = normalized,
             seq = seq,
@@ -1313,7 +1358,7 @@ class DigimonGlyphToyService : Service() {
         if (now < battleAssistWaveUntilMs - BATTLE_WAVE_SETTLE_MS) return
         val stepMs = BATTLE_WAVE_STEP_MS
         val totalMs = BATTLE_WAVE_TOTAL_MS
-        val announced = battleLinkManager?.sendWaveStart(stepMs, totalMs) == true
+        val announced = battleTransport?.sendWaveStart(stepMs, totalMs) == true
         Log.d(TAG, "Battle assist tx wave_start step=$stepMs total=$totalMs sent=$announced")
         startBattleAssistWave(stepMs, totalMs, source = "local")
     }
