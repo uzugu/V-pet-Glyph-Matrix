@@ -419,7 +419,7 @@ class RomLoaderActivity : AppCompatActivity() {
 
         val relayUrlInput = EditText(this).apply {
             inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-            hint = "Relay URL (wss://...)"
+            hint = "Relay URL (tcp://host:port/room)"
             setText(BattleTransportSettings.getRelayUrl())
             setPadding(0, 0, 0, 8)
             visibility = if (

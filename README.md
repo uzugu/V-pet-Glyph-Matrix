@@ -37,6 +37,10 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
   - Haptic feedback on successful flick trigger
   - Combined holds supported (for example A+B and B+C)
   - Input polling stays active for 60 seconds after interaction, then returns to idle polling
+- Battle link:
+  - Nearby host/join (local phone-to-phone)
+  - Experimental internet relay mode (`tcp://host:port/room`)
+  - In-app transport selector + relay URL field in Battle section
 - Debug and diagnostics:
   - Launcher reorganized with main gameplay controls + live screen previews first
   - Debug tools moved to collapsible **Show Debug / Hide Debug** section
@@ -57,6 +61,7 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
 - JDK 17
 - A Nothing phone with Glyph Toys support
 - Digimon ROM file (`8192` or `16384` bytes)
+- Optional for internet relay mode: Python 3 (to run `tools/battle_relay_server.py`)
 
 ## Project Setup
 
@@ -114,6 +119,26 @@ Notes:
   - Lower CPU and heat
   - Speed is intentionally not exact
   - Interaction with Glyph/flick/combo input boosts to exact timing for 60 seconds
+
+## Internet Relay Battle (Experimental)
+
+This mode allows battle linking over internet/LAN through a simple relay.
+
+1. Run relay server (for example on Raspberry Pi):
+```bash
+python3 tools/battle_relay_server.py --host 0.0.0.0 --port 19792
+```
+2. On both phones open **Battle Mode (Beta)**.
+3. Enable **Use Internet relay (experimental)**.
+4. Set the same relay URL on both phones, for example:
+   - `tcp://192.168.0.50:19792/room1`
+   - `tcp://your-public-ip:19792/room1`
+5. Press **Host** on one phone and **Join** on the other.
+
+Notes:
+- Both devices must use the exact same room string.
+- `Host` and `Join` are single-slot roles per room.
+- Internet mode is currently relay-based only (no direct NAT punch-through yet).
 
 ## ROM Notes
 
