@@ -333,19 +333,27 @@ class InternetBattleTransport(
 
     private fun sendEnvelope(envelope: RelayEnvelope, requirePeer: Boolean): Boolean {
         if (requirePeer && connectedPeerName == null) return false
-        val payload = gson.toJson(envelope)
-        synchronized(this) {
-            val currentWriter = writer ?: return false
-            return try {
-                currentWriter.write(payload)
-                currentWriter.newLine()
-                currentWriter.flush()
-                true
-            } catch (e: Exception) {
-                onTransportDisconnected(generation.get(), "Relay send failed: ${e.message ?: "unknown"}")
-                false
+        
+        ioExecutor.execute {
+            val payload = runCatching { gson.toJson(envelope) }.getOrNull()
+            if (payload == null) {
+                Log.e(TAG, "Failed encoding payload: $envelope")
+                return@execute
+            }
+            synchronized(this@InternetBattleTransport) {
+                val currentWriter = writer ?: return@execute
+                try {
+                    Log.i(TAG, "TX -> $payload")
+                    currentWriter.write(payload)
+                    currentWriter.write("\n")
+                    currentWriter.flush()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Socket write failed", e)
+                    onTransportDisconnected(generation.get(), "Relay send failed: ${e.message ?: "unknown"}")
+                }
             }
         }
+        return true
     }
 
     private fun onTransportDisconnected(gen: Long, reason: String) {

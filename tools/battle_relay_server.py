@@ -176,6 +176,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     try:
         while True:
             raw = await reader.readline()
+            print(f"[debug {addr}] raw line: {raw!r}")
             if not raw:
                 break
             if len(raw) > MAX_LINE_BYTES:
@@ -183,7 +184,8 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 break
             try:
                 msg = json.loads(raw.decode("utf-8", errors="ignore"))
-            except json.JSONDecodeError:
+            except json.JSONDecodeError as e:
+                print(f"[error {addr}] json parse fail: {e!r} on {raw!r}")
                 await send_json(client, {"op": "error", "message": "invalid json"})
                 continue
             if not isinstance(msg, dict):

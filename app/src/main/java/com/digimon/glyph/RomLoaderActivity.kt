@@ -22,6 +22,8 @@ import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import android.widget.RadioGroup
+import android.widget.RadioButton
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -29,6 +31,7 @@ import androidx.core.content.FileProvider
 import com.digimon.glyph.battle.BattleStateStore
 import com.digimon.glyph.battle.BattleTransportSettings
 import com.digimon.glyph.battle.BattleTransportType
+import com.digimon.glyph.battle.SimulationPreset
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
@@ -439,45 +442,71 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         battleContainer.addView(battleTitle)
 
-        val relayUrlInput = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
-            hint = "Relay URL (tcp://host:port/room)"
-            setText(BattleTransportSettings.getRelayUrl())
+        // relayUrlInput removed to enforce hardcoded Internet Relay URL
+        val transportGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
             setPadding(0, 0, 0, 8)
-            visibility = if (
-                BattleTransportSettings.getTransportType() == BattleTransportType.INTERNET_RELAY
-            ) {
-                LinearLayout.VISIBLE
-            } else {
-                LinearLayout.GONE
-            }
-            setOnFocusChangeListener { _, hasFocus ->
-                if (hasFocus) return@setOnFocusChangeListener
-                val previous = BattleTransportSettings.getRelayUrl()
-                val current = text?.toString()?.trim().orEmpty()
-                if (current == previous) return@setOnFocusChangeListener
-                BattleTransportSettings.setRelayUrl(this@RomLoaderActivity, current)
-                sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle relay URL")
-            }
+        }
+        val rbNearby = RadioButton(this).apply { text = "Nearby (Local)" }
+        val rbInternet = RadioButton(this).apply { text = "Internet Relay (Experimental)" }
+        val rbSim = RadioButton(this).apply { text = "Single Player Battle (Simulated/Echo)" }
+
+        transportGroup.addView(rbNearby)
+        transportGroup.addView(rbInternet)
+        transportGroup.addView(rbSim)
+
+        val presetGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            setPadding(32, 0, 0, 16)
+        }
+        val rbPureEcho = RadioButton(this).apply { text = "Preset: Pure Echo (Guaranteed Tie)" }
+        val rbXor = RadioButton(this).apply { text = "Preset: XOR Checksum (Randomized)" }
+        val rbGlobal = RadioButton(this).apply { text = "Preset: Global Checksum (Randomized)" }
+
+        presetGroup.addView(rbPureEcho)
+        presetGroup.addView(rbXor)
+        presetGroup.addView(rbGlobal)
+
+        when (BattleTransportSettings.getTransportType()) {
+            BattleTransportType.NEARBY -> rbNearby.isChecked = true
+            BattleTransportType.INTERNET_RELAY -> rbInternet.isChecked = true
+            BattleTransportType.SIMULATION -> rbSim.isChecked = true
         }
 
-        val transportSwitch = Switch(this).apply {
-            text = "Use Internet relay (experimental)"
-            isChecked = BattleTransportSettings.getTransportType() == BattleTransportType.INTERNET_RELAY
-            setPadding(0, 0, 0, 8)
-            setOnCheckedChangeListener { _, isChecked ->
-                val type = if (isChecked) {
-                    BattleTransportType.INTERNET_RELAY
-                } else {
-                    BattleTransportType.NEARBY
-                }
-                BattleTransportSettings.setTransportType(this@RomLoaderActivity, type)
-                relayUrlInput.visibility = if (isChecked) LinearLayout.VISIBLE else LinearLayout.GONE
-                sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle transport")
-            }
+        when (BattleTransportSettings.getSimulationPreset()) {
+            SimulationPreset.PURE_ECHO -> rbPureEcho.isChecked = true
+            SimulationPreset.XOR_CHECKSUM -> rbXor.isChecked = true
+            SimulationPreset.GLOBAL_CHECKSUM -> rbGlobal.isChecked = true
         }
-        battleContainer.addView(transportSwitch)
-        battleContainer.addView(relayUrlInput)
+        
+        presetGroup.visibility = if (rbSim.isChecked) LinearLayout.VISIBLE else LinearLayout.GONE
+
+        presetGroup.setOnCheckedChangeListener { _, checkedId ->
+            val preset = when (checkedId) {
+                rbXor.id -> SimulationPreset.XOR_CHECKSUM
+                rbGlobal.id -> SimulationPreset.GLOBAL_CHECKSUM
+                else -> SimulationPreset.PURE_ECHO
+            }
+            BattleTransportSettings.setSimulationPreset(this@RomLoaderActivity, preset)
+            // Re-creating the transport with the new preset settings
+            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Simulation preset")
+        }
+
+        transportGroup.setOnCheckedChangeListener { _, checkedId ->
+            val type = when (checkedId) {
+                rbInternet.id -> BattleTransportType.INTERNET_RELAY
+                rbSim.id -> BattleTransportType.SIMULATION
+                else -> BattleTransportType.NEARBY
+            }
+            BattleTransportSettings.setTransportType(this@RomLoaderActivity, type)
+            // relayUrlInput visibility toggle removed
+            presetGroup.visibility = if (type == BattleTransportType.SIMULATION) LinearLayout.VISIBLE else LinearLayout.GONE
+            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle transport")
+        }
+        
+        battleContainer.addView(transportGroup)
+        battleContainer.addView(presetGroup)
+        // battleContainer.addView(relayUrlInput) removed
 
         val battleRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
