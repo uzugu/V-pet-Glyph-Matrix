@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digimon Glyph - Active Relays</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Teko:wght@400;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #0a0e17;
+            --cyber-blue: #00e5ff;
+            --cyber-blue-glow: rgba(0, 229, 255, 0.4);
+            --cyber-yellow: #f2ff00;
+            --dark-panel: rgba(10, 25, 47, 0.7);
+            --border-tech: rgba(0, 229, 255, 0.3);
+            --text-main: #e6f1ff;
+            --text-muted: #8892b0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Share Tech Mono', monospace;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-image:
+                linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            overflow-x: hidden;
+            padding: 40px 20px;
+        }
+
+        /* Scanline effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 2;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-family: 'Teko', sans-serif;
+            font-size: 4rem;
+            font-weight: 600;
+            line-height: 1;
+            margin-bottom: 5px;
+            color: var(--text-main);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 2px 2px 0 var(--cyber-blue), -2px -2px 0 #ff0055;
+            position: relative;
+            z-index: 3;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: var(--cyber-yellow);
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(242, 255, 0, 0.5);
+            position: relative;
+            z-index: 3;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--dark-panel);
+            border: 2px solid var(--border-tech);
+            box-shadow: 0 0 20px rgba(0, 229, 255, 0.1), inset 0 0 20px rgba(0, 229, 255, 0.05);
+            padding: 30px;
+            position: relative;
+            z-index: 3;
+            /* Tech corners */
+            clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 20px 100%, 0 calc(100% - 20px));
+        }
+
+        /* Decorative bracket elements for the container */
+        .container::before,
+        .container::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--cyber-yellow);
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .container::before {
+            top: 10px;
+            left: 10px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .container::after {
+            bottom: 10px;
+            right: 10px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(0, 229, 255, 0.05);
+            border-left: 4px solid var(--cyber-blue);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-value {
+            font-family: 'Teko', sans-serif;
+            font-size: 3.5rem;
+            color: var(--text-main);
+            line-height: 1;
+            text-shadow: 0 0 10px var(--cyber-blue-glow);
+        }
+
+        .stat-title {
+            color: var(--cyber-yellow);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stat-title::before {
+            content: "►";
+            font-size: 0.7rem;
+        }
+
+        .section-header {
+            font-family: 'Teko', sans-serif;
+            font-size: 2rem;
+            color: var(--text-main);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px dashed var(--border-tech);
+            padding-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 14px;
+            height: 14px;
+            background-color: var(--cyber-yellow);
+            box-shadow: 0 0 10px var(--cyber-yellow);
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            animation: pulse 1.5s infinite alternate;
+        }
+
+        .status-dot.active {
+            background-color: var(--cyber-blue);
+            box-shadow: 0 0 10px var(--cyber-blue);
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 0.4;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .lobby-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .lobby-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-tech);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .lobby-item:hover {
+            background: rgba(0, 229, 255, 0.1);
+            border-color: var(--cyber-blue);
+            transform: translateX(5px);
+        }
+
+        .lobby-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: var(--cyber-blue);
+        }
+
+        .lobby-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .lobby-name {
+            font-size: 1.1rem;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+
+        .lobby-badge {
+            font-size: 0.7rem;
+            padding: 3px 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: bold;
+        }
+
+        .badge-battling {
+            background: rgba(0, 229, 255, 0.1);
+            color: var(--cyber-blue);
+            border: 1px solid var(--cyber-blue);
+        }
+
+        .badge-waiting {
+            background: rgba(242, 255, 0, 0.1);
+            color: var(--cyber-yellow);
+            border: 1px solid var(--cyber-yellow);
+        }
+
+        .tamers {
+            display: flex;
+            gap: 20px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            align-items: center;
+        }
+
+        .tamer {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tamer.host {
+            color: var(--cyber-blue);
+        }
+
+        .tamer.waiting {
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px dashed var(--border-tech);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            z-index: 3;
+            position: relative;
+        }
+
+        .github-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 229, 255, 0.1);
+            color: var(--cyber-blue);
+            text-decoration: none;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border: 1px solid var(--cyber-blue);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .github-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 229, 255, 0.4), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .github-btn:hover {
+            background: var(--cyber-blue);
+            color: #000;
+            box-shadow: 0 0 15px var(--cyber-blue-glow);
+        }
+
+        .github-btn:hover::before {
+            left: 100%;
+        }
+
+        .github-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>NETWORK LINK</h1>
+    <div class="subtitle">Digimon Glyph Battle System .::. V1.0</div>
+
+    <div class="container">
+
+        <div class="stat-grid">
+            <div class="stat-card">
+                <div class="stat-value">{TOTAL_LOBBIES}</div>
+                <div class="stat-title">SECURE LOBBIES</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{TOTAL_PLAYERS}</div>
+                <div class="stat-title">TAMERS CONNECTED</div>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <div class="status-dot"></div>
+            ACTIVE CONNECTIONS
+        </div>
+
+        <div class="lobby-list">
+            {LOBBIES_HTML}
+        </div>
+
+    </div>
+
+    <div class="footer">
+        <a href="https://github.com/uzugu/V-pet-Glyph-Matrix" target="_blank" class="github-btn">
+            [ / / ROOT DIRECTORY ]
+        </a>
+    </div>
+
+</body>
+
+</html>

@@ -23,6 +23,7 @@ import asyncio
 import json
 import signal
 import time
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -192,16 +193,76 @@ async def forward_to_peer(client: Client, obj: dict) -> None:
         await send_json(peer, out)
 
 
+async def serve_http(writer: asyncio.StreamWriter) -> None:
+    try:
+        html_path = os.path.join(os.path.dirname(__file__), "frontend.html")
+        with open(html_path, "r", encoding="utf-8") as f:
+            template = f.read()
+
+        lobbies_html = ""
+        total_players = 0
+        async with rooms_lock:
+            total_lobbies = len(rooms)
+            for name, room in rooms.items():
+                host_name = room.host.name if room.host else "..."
+                join_name = room.join.name if room.join else "..."
+                if room.host: total_players += 1
+                if room.join: total_players += 1
+                
+                status_class = "badge-battling" if (room.host and room.join) else "badge-waiting"
+                status_text = "Battling" if (room.host and room.join) else "Waiting"
+                
+                lobbies_html += f'''
+                <div class="lobby-item">
+                    <div class="lobby-info">
+                        <div class="lobby-name">{name}</div>
+                        <div class="lobby-badge {status_class}">{status_text}</div>
+                    </div>
+                    <div class="tamers">
+                        <div class="tamer host">{host_name}</div>
+                        <div class="tamer">{join_name}</div>
+                    </div>
+                </div>
+                '''
+        if not lobbies_html:
+            lobbies_html = '<div class="empty-state">No fighting right now. Start a lobby inside the App!</div>'
+
+        html = template.replace("{TOTAL_LOBBIES}", str(total_lobbies))
+        html = html.replace("{TOTAL_PLAYERS}", str(total_players))
+        html = html.replace("{LOBBIES_HTML}", lobbies_html)
+
+        encoded = html.encode("utf-8")
+        response = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/html; charset=utf-8\r\n"
+            b"Connection: close\r\n"
+            f"Content-Length: {len(encoded)}\r\n\r\n".encode("utf-8") + encoded
+        )
+        writer.write(response)
+        await writer.drain()
+    except Exception as e:
+        print(f"[http error] {e}")
+    finally:
+        pass
+
+
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     peer_info = writer.get_extra_info("peername")
     addr = str(peer_info) if peer_info is not None else "unknown"
     client = Client(reader=reader, writer=writer, addr=addr, name=f"peer-{addr}")
-    print(f"[connect] {addr}")
     try:
+        is_first_line = True
         while True:
             raw = await reader.readline()
             if not raw:
                 break
+                
+            if is_first_line and (raw.startswith(b"GET ") or raw.startswith(b"HTTP/")):
+                await serve_http(writer)
+                # HTTP serves completely without the loop
+                return
+            is_first_line = False
+            
             if len(raw) > MAX_LINE_BYTES:
                 await send_json(client, {"op": "error", "message": "line too large"})
                 break
@@ -237,13 +298,15 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     except Exception as exc:
         print(f"[error] {addr}: {exc}")
     finally:
-        await remove_client(client, reason="peer disconnected")
+        # Avoid closing writer immediately if this was a quick HTTP hit where client was never formally added to a room.
+        if client.room is not None:
+            await remove_client(client, reason="peer disconnected")
+        
         try:
             writer.close()
             await writer.wait_closed()
         except Exception:
             pass
-        print(f"[disconnect] {addr}")
 
 
 async def run_server(host: str, port: int) -> None:

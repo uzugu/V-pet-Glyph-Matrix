@@ -8,8 +8,8 @@ ENV PYTHONUNBUFFERED=1
 # Create an app directory
 WORKDIR /app
 
-# Copy the relay server script into the container
-COPY battle_relay_server.py /app/
+# Copy the relay server script and HTML frontend into the container
+COPY battle_relay_server.py frontend.html /app/
 
 # Expose the raw TCP port used by the relay server
 EXPOSE 19792
