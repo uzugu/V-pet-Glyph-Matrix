@@ -39,6 +39,7 @@ class Client:
     room: Optional[str] = None
     role: Optional[str] = None
     name: str = "peer"
+    last_seen_ms: int = 0
 
 
 @dataclass
@@ -169,6 +170,23 @@ async def remove_client(client: Client, reason: str) -> None:
         await remove_client_locked(client, reason)
 
 
+async def purge_inactive() -> None:
+    while True:
+        await asyncio.sleep(5)
+        now = now_ms()
+        to_remove = []
+        async with rooms_lock:
+            for room_name, room in list(rooms.items()):
+                if room.host is not None and (now - room.host.last_seen_ms > 15000):
+                    to_remove.append((room.host, "host timed out"))
+                if room.join is not None and (now - room.join.last_seen_ms > 15000):
+                    to_remove.append((room.join, "join timed out"))
+                    
+        for client, reason in to_remove:
+            print(f"[lobby] Purging inactive client {client.name} in {client.room}")
+            await remove_client(client, reason)
+
+
 async def forward_to_peer(client: Client, obj: dict) -> None:
     async with rooms_lock:
         room_name = client.room
@@ -236,7 +254,8 @@ async def serve_http(writer: asyncio.StreamWriter) -> None:
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: text/html; charset=utf-8\r\n"
             b"Connection: close\r\n"
-            f"Content-Length: {len(encoded)}\r\n\r\n".encode("utf-8") + encoded
+            + f"Content-Length: {len(encoded)}\r\n\r\n".encode("utf-8")
+            + encoded
         )
         writer.write(response)
         await writer.drain()
@@ -249,7 +268,7 @@ async def serve_http(writer: asyncio.StreamWriter) -> None:
 async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
     peer_info = writer.get_extra_info("peername")
     addr = str(peer_info) if peer_info is not None else "unknown"
-    client = Client(reader=reader, writer=writer, addr=addr, name=f"peer-{addr}")
+    client = Client(reader=reader, writer=writer, addr=addr, name=f"peer-{addr}", last_seen_ms=now_ms())
     try:
         is_first_line = True
         while True:
@@ -287,6 +306,7 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
                 await send_json(client, {"op": "error", "message": "invalid payload"})
                 continue
 
+            client.last_seen_ms = now_ms()
             op = msg.get("op")
             if op == "join":
                 room = str(msg.get("room") or "default").strip() or "default"
@@ -324,6 +344,8 @@ async def run_server(host: str, port: int) -> None:
     server = await asyncio.start_server(handle_client, host=host, port=port)
     addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
     print(f"[start] battle relay listening on {addrs}")
+    
+    purge_task = asyncio.create_task(purge_inactive())
     stop_event = asyncio.Event()
 
     def _stop() -> None:
@@ -338,6 +360,8 @@ async def run_server(host: str, port: int) -> None:
 
     async with server:
         await stop_event.wait()
+    
+    purge_task.cancel()
     print("[stop] relay shutting down")
 
 
