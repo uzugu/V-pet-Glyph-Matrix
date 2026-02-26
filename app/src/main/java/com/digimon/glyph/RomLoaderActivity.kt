@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.text.InputType
 import android.widget.Button
 import android.widget.EditText
@@ -24,6 +25,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import com.digimon.glyph.battle.BattleStateStore
 import com.digimon.glyph.battle.BattleTransportSettings
 import com.digimon.glyph.battle.BattleTransportType
@@ -138,6 +140,26 @@ class RomLoaderActivity : AppCompatActivity() {
             }
         }
         layout.addView(loadButton)
+
+        val serviceRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 8, 0, 12)
+        }
+        serviceRow.addView(Button(this).apply {
+            text = "Start Emulator"
+            setOnClickListener {
+                startBackendService()
+                Toast.makeText(this@RomLoaderActivity, "Start requested", Toast.LENGTH_SHORT).show()
+            }
+        })
+        serviceRow.addView(Button(this).apply {
+            text = "Stop Emulator"
+            setOnClickListener {
+                stopBackendService()
+                Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
+            }
+        })
+        layout.addView(serviceRow)
 
         val infoText = TextView(this).apply {
             text = buildString {
@@ -499,6 +521,15 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         advancedContainer.addView(commandStatusText)
 
+        val shareDebugButton = Button(this).apply {
+            text = "Share Debug Report"
+            setPadding(0, 0, 0, 8)
+            setOnClickListener {
+                shareDebugReport()
+            }
+        }
+        advancedContainer.addView(shareDebugButton)
+
         val debugToggle = Button(this).apply {
             text = "Show Debug Telemetry"
             setPadding(0, 8, 0, 8)
@@ -713,19 +744,32 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun sendCommand(type: String, arg: Int, label: String) {
-        ensureBackendServiceRunning()
+        startBackendService()
         EmulatorCommandBus.post(this, type, arg)
         Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
     }
 
-    private fun ensureBackendServiceRunning() {
+    private fun startBackendService() {
         try {
             // Ensure command poll loop is alive even when toy/widget binding is not active.
             val intent = Intent(this, DigimonGlyphToyService::class.java)
                 .setAction(DigimonGlyphToyService.ACTION_START_WIDGET)
-            startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent)
+            } else {
+                startService(intent)
+            }
         } catch (_: Exception) {
             // Best-effort bootstrap; command may still work if service is already active.
+        }
+    }
+
+    private fun stopBackendService() {
+        try {
+            val intent = Intent(this, DigimonGlyphToyService::class.java)
+                .setAction(DigimonGlyphToyService.ACTION_STOP)
+            startService(intent)
+        } catch (_: Exception) {
         }
     }
 
@@ -858,6 +902,137 @@ class RomLoaderActivity : AppCompatActivity() {
         return sb.toString()
     }
 
+    private fun shareDebugReport() {
+        try {
+            val report = buildDebugReport()
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val outDir = File(cacheDir, "reports")
+            if (!outDir.exists()) outDir.mkdirs()
+            val outFile = File(outDir, "digimon_debug_report_$stamp.txt")
+            outFile.writeText(report)
+
+            val uri = FileProvider.getUriForFile(
+                this,
+                "$packageName.fileprovider",
+                outFile
+            )
+            val intent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, "Digimon Glyph Debug Report $stamp")
+                putExtra(Intent.EXTRA_STREAM, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(Intent.createChooser(intent, "Share debug report"))
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to share report: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun buildDebugReport(): String {
+        val now = System.currentTimeMillis()
+        val (romName, romHash) = readCurrentRomIdentity()
+        val battle = BattleStateStore.read(this)
+        val battleAgeMs = if (battle.updatedAtMs == 0L) -1L else (now - battle.updatedAtMs)
+        val ack = EmulatorCommandBus.readAck(this)
+        val input = InputDebugState.read(this)
+        val inputAgeMs = if (input.timestampMs == 0L) -1L else (now - input.timestampMs)
+        val frame = FrameDebugState.snapshot()
+        val frameAgeMs = if (frame.updatedAtMs == 0L) -1L else (now - frame.updatedAtMs)
+        val autosave = stateManager.getAutosaveInfo()
+        val slot1 = stateManager.getSlotInfo(1)
+        val slot2 = stateManager.getSlotInfo(2)
+        val slot3 = stateManager.getSlotInfo(3)
+        val transportType = BattleTransportSettings.getTransportType()
+        val relayUrl = BattleTransportSettings.getRelayUrl()
+        val pkgInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            packageManager.getPackageInfo(packageName, 0)
+        }
+        val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            pkgInfo.longVersionCode
+        } else {
+            @Suppress("DEPRECATION")
+            pkgInfo.versionCode.toLong()
+        }
+        return buildString {
+            appendLine("Digimon Glyph Debug Report")
+            appendLine("generated_at=${formatTime(now)}")
+            appendLine()
+            appendLine("[app]")
+            appendLine("package=$packageName")
+            appendLine("version_name=${pkgInfo.versionName}")
+            appendLine("version_code=$versionCode")
+            appendLine("pid=${Process.myPid()}")
+            appendLine()
+            appendLine("[device]")
+            appendLine("manufacturer=${Build.MANUFACTURER}")
+            appendLine("model=${Build.MODEL}")
+            appendLine("device=${Build.DEVICE}")
+            appendLine("product=${Build.PRODUCT}")
+            appendLine("sdk_int=${Build.VERSION.SDK_INT}")
+            appendLine("release=${Build.VERSION.RELEASE}")
+            appendLine()
+            appendLine("[rom]")
+            appendLine("name=${romName ?: "-"}")
+            appendLine("sha256=${romHash ?: "-"}")
+            appendLine()
+            appendLine("[settings]")
+            appendLine("text_zoom_out=${DisplayRenderSettings.isTextZoomOutEnabled()}")
+            appendLine("audio_enabled=${EmulatorAudioSettings.isAudioEnabled()}")
+            appendLine("haptic_audio_enabled=${EmulatorAudioSettings.isHapticAudioEnabled()}")
+            appendLine("debug_enabled=${EmulatorDebugSettings.isDebugEnabled()}")
+            appendLine("exact_timing_enabled=${EmulatorTimingSettings.isExactTimingEnabled()}")
+            appendLine("clock_correction_enabled=${EmulatorTimingSettings.isClockCorrectionEnabled()}")
+            appendLine("clock_correction_factor=${EmulatorTimingSettings.getClockCorrectionFactor()}")
+            appendLine("battle_step_mode_enabled=${EmulatorTimingSettings.isBattleStepModeEnabled()}")
+            appendLine("battle_step_slice_ms=${EmulatorTimingSettings.getBattleStepSliceMs()}")
+            appendLine("battle_transport=$transportType")
+            appendLine("battle_relay_url=${if (relayUrl.isBlank()) "-" else relayUrl}")
+            appendLine()
+            appendLine("[battle_state]")
+            appendLine("status=${battle.status}")
+            appendLine("role=${battle.role}")
+            appendLine("peer=${battle.peerName ?: "-"}")
+            appendLine("updated_at_ms=${battle.updatedAtMs}")
+            appendLine("age_ms=$battleAgeMs")
+            appendLine("message=${battle.message}")
+            appendLine()
+            appendLine("[command_ack]")
+            appendLine("id=${ack?.id ?: 0L}")
+            appendLine("timestamp_ms=${ack?.timestampMs ?: 0L}")
+            appendLine("status=${ack?.status ?: "-"}")
+            appendLine()
+            appendLine("[saves]")
+            appendLine("autosave_exists=${autosave.exists} ts=${autosave.timestampMs} rom=${autosave.romName ?: "-"} hash=${autosave.romHash ?: "-"} seq=${stateManager.getAutosaveSeq()}")
+            appendLine("slot1_exists=${slot1.exists} ts=${slot1.timestampMs} rom=${slot1.romName ?: "-"} hash=${slot1.romHash ?: "-"} seq=${stateManager.getSlotSeq(1)}")
+            appendLine("slot2_exists=${slot2.exists} ts=${slot2.timestampMs} rom=${slot2.romName ?: "-"} hash=${slot2.romHash ?: "-"} seq=${stateManager.getSlotSeq(2)}")
+            appendLine("slot3_exists=${slot3.exists} ts=${slot3.timestampMs} rom=${slot3.romName ?: "-"} hash=${slot3.romHash ?: "-"} seq=${stateManager.getSlotSeq(3)}")
+            appendLine()
+            appendLine("[input_debug]")
+            appendLine("snapshot_age_ms=$inputAgeMs")
+            appendLine("mode=${input.mode}")
+            appendLine("pitch=${input.pitchDeg} roll=${input.rollDeg}")
+            appendLine("linear=${input.linearX},${input.linearY},${input.linearZ}")
+            appendLine("filtered=${input.filteredX},${input.filteredY},${input.filteredZ}")
+            appendLine("pending_axis=${input.pendingAxis} pending_dir=${input.pendingDir} pending_age_ms=${input.pendingAgeMs}")
+            appendLine("last_trigger_button=${input.lastTriggerButton} last_trigger_age_ms=${if (input.lastTriggerAtMs == 0L) -1L else now - input.lastTriggerAtMs}")
+            appendLine("buttonA=${input.buttonAActive} latchedByB=${input.buttonALatchedByB}")
+            appendLine("buttonB=${input.buttonBActive} glyphPhysicalDown=${input.glyphPhysicalDown}")
+            appendLine("buttonC=${input.buttonCActive} latchedByB=${input.buttonCLatchedByB}")
+            appendLine()
+            appendLine("[frame_debug]")
+            appendLine("updated_at_ms=${frame.updatedAtMs}")
+            appendLine("age_ms=$frameAgeMs")
+            appendLine("has_glyph_frame=${frame.glyphFrame != null}")
+            appendLine("has_full_frame=${frame.fullFrame != null}")
+            appendLine()
+            appendLine("[adb_hint]")
+            appendLine("adb logcat -d | grep -E \"DigimonGlyphToy|BattleLinkManager|InternetBattleTransport|AndroidRuntime\"")
+        }
+    }
+
     private fun loadRomFromUri(uri: Uri) {
         try {
             val inputStream = contentResolver.openInputStream(uri) ?: return
@@ -892,6 +1067,7 @@ class RomLoaderActivity : AppCompatActivity() {
             File(filesDir, "current_rom_name").writeText(romName)
 
             Toast.makeText(this, "${getString(R.string.rom_loaded)}: $romName", Toast.LENGTH_SHORT).show()
+            startBackendService()
             updateStatus()
             refreshSaveAndCommandInfo()
         } catch (e: Exception) {

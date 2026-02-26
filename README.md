@@ -45,6 +45,7 @@ Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph 
   - Launcher reorganized with main gameplay controls + live screen previews first
   - Debug tools moved to collapsible **Show Debug / Hide Debug** section
   - Live input/frame debug panel inside collapsible section
+  - One-tap **Share Debug Report** button (exports app/device/settings/battle/input/save snapshot as text)
   - Optional debug telemetry toggle (off by default)
   - Live screen previews remain available while launcher observes them, even with debug telemetry off
   - On-device command bus for runtime setting refresh and save/load commands
