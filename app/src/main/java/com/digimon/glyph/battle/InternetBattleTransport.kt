@@ -231,12 +231,18 @@ class InternetBattleTransport(
                 ),
                 requirePeer = false
             )
-            var line: String?
-            while (true) {
-                line = localReader.readLine() ?: break
-                onRelayLine(gen, config, line)
-            }
-            onTransportDisconnected(gen, "Relay closed connection")
+            Thread {
+                try {
+                    var line: String?
+                    while (true) {
+                        line = localReader.readLine() ?: break
+                        onRelayLine(gen, config, line)
+                    }
+                    onTransportDisconnected(gen, "Relay closed connection")
+                } catch (e: Exception) {
+                    onTransportDisconnected(gen, "Relay error: ${e.message ?: "unknown"}")
+                }
+            }.start()
         } catch (e: Exception) {
             onTransportDisconnected(gen, "Relay error: ${e.message ?: "unknown"}")
         }

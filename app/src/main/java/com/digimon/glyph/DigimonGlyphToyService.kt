@@ -24,6 +24,7 @@ import com.digimon.glyph.battle.BattleTransport
 import com.digimon.glyph.battle.BattleTransportSettings
 import com.digimon.glyph.battle.BattleTransportType
 import com.digimon.glyph.battle.InternetBattleTransport
+import com.digimon.glyph.battle.SimulationBattleTransport
 import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.E0C6200
@@ -289,6 +290,12 @@ class DigimonGlyphToyService : Service() {
         return when (battleTransportType) {
             BattleTransportType.NEARBY -> BattleLinkManager(this, createBattleTransportListener())
             BattleTransportType.INTERNET_RELAY -> InternetBattleTransport(this, createBattleTransportListener())
+            BattleTransportType.SIMULATION -> {
+                val preset = BattleTransportSettings.getSimulationPreset()
+                val sim = SimulationBattleTransport(preset)
+                sim.setListener(createBattleTransportListener())
+                sim
+            }
         }
     }
 
