@@ -256,13 +256,24 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
             raw = await reader.readline()
             if not raw:
                 break
-                
-            if is_first_line and (raw.startswith(b"GET ") or raw.startswith(b"HTTP/")):
-                await serve_http(writer)
-                # HTTP serves completely without the loop
-                return
-            is_first_line = False
             
+            if is_first_line:
+                is_first_line = False
+                header_str = raw.decode("utf-8", errors="ignore").strip().upper()
+                if header_str.startswith("GET ") or header_str.startswith("HEAD ") or header_str.startswith("POST ") or header_str.startswith("HTTP/"):
+                    await serve_http(writer)
+                    return
+                # Handle possible PROXY protocol v1 header (HAProxy, BunnyCDN sometimes sends this)
+                if header_str.startswith("PROXY "):
+                    # The first line was a proxy protocol line. We must read the *next* real line for HTTP detection.
+                    raw2 = await reader.readline()
+                    header_str2 = raw2.decode("utf-8", errors="ignore").strip().upper()
+                    if header_str2.startswith("GET ") or header_str2.startswith("HEAD ") or header_str2.startswith("POST ") or header_str.startswith("HTTP/"):
+                        await serve_http(writer)
+                        return
+                    else:
+                        raw = raw2 # If it's not HTTP, pass the actual payload line down to JSON parser
+                        
             if len(raw) > MAX_LINE_BYTES:
                 await send_json(client, {"op": "error", "message": "line too large"})
                 break
