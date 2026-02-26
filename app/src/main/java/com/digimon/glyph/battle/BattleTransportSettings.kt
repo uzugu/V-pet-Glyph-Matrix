@@ -28,7 +28,7 @@ object BattleTransportSettings {
     private var transportType: BattleTransportType = BattleTransportType.NEARBY
 
     @Volatile
-    private var relayUrl: String = "tcp://109.224.229.205:19792/bunnyTest"
+    private var relayUrl: String = "tcp://109.224.229.205:19792/auto"
 
     @Volatile
     private var simulationPreset: SimulationPreset = SimulationPreset.PURE_ECHO
@@ -37,8 +37,6 @@ object BattleTransportSettings {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         transportType = parseType(prefs.getString(KEY_TRANSPORT_TYPE, null))
-        val savedUrl = prefs.getString(KEY_RELAY_URL, null)?.trim()
-        relayUrl = if (!savedUrl.isNullOrEmpty()) savedUrl else "tcp://109.224.229.205:19792/bunnyTest"
         simulationPreset = parsePreset(prefs.getString(KEY_SIMULATION_PRESET, null))
     }
 
@@ -52,7 +50,7 @@ object BattleTransportSettings {
             .apply()
     }
 
-    fun getRelayUrl(): String = relayUrl
+    fun getRelayUrl(): String = "tcp://109.224.229.205:19792/auto"
 
     fun setRelayUrl(context: Context, url: String) {
         relayUrl = url.trim()

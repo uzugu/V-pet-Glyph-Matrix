@@ -74,6 +74,7 @@ async def send_json(client: Client, obj: dict) -> bool:
 async def notify_ready(room: RoomState) -> None:
     if room.host is None or room.join is None:
         return
+    print(f"[lobby] Battle going on! {room.host.name} VS {room.join.name} in room {room.host.room}")
     await send_json(room.host, {"op": "ready", "peer": room.join.name, "timestampMs": now_ms()})
     await send_json(room.join, {"op": "ready", "peer": room.host.name, "timestampMs": now_ms()})
 
@@ -84,10 +85,30 @@ async def notify_peer_left(peer: Client, reason: str) -> None:
 
 async def join_room(client: Client, room_name: str, role: str, name: str) -> None:
     async with rooms_lock:
-        room = rooms.get(room_name)
-        if room is None:
-            room = RoomState()
-            rooms[room_name] = room
+        if room_name == "auto":
+            if role == "host":
+                room_name = f"auto-{id(client)}"
+                room = RoomState()
+                rooms[room_name] = room
+            elif role == "join":
+                available = None
+                for rn, r in rooms.items():
+                    if rn.startswith("auto-") and r.host is not None and r.join is None:
+                        available = rn
+                        break
+                if available is None:
+                    await send_json(client, {"op": "error", "message": "No hosts currently waiting for a match"})
+                    return
+                room_name = available
+                room = rooms[room_name]
+            else:
+                await send_json(client, {"op": "error", "message": "invalid role for auto matchmaking"})
+                return
+        else:
+            room = rooms.get(room_name)
+            if room is None:
+                room = RoomState()
+                rooms[room_name] = room
 
         if role == "host" and room.host is not None and room.host is not client:
             await send_json(client, {"op": "error", "message": "host slot already occupied"})
@@ -97,6 +118,7 @@ async def join_room(client: Client, room_name: str, role: str, name: str) -> Non
             return
 
         # If client was in another room, remove first.
+        # (Must not take lock again, so we assume remove_client_locked is safe)
         await remove_client_locked(client, reason="switched room")
 
         client.room = room_name
@@ -104,8 +126,10 @@ async def join_room(client: Client, room_name: str, role: str, name: str) -> Non
         client.name = name
         if role == "host":
             room.host = client
+            print(f"[lobby] Tamer {name} made a lobby: {room_name}")
         else:
             room.join = client
+            print(f"[lobby] Tamer {name} joined lobby: {room_name}")
 
         await send_json(client, {"op": "joined", "room": room_name, "role": role, "timestampMs": now_ms()})
         await notify_ready(room)
@@ -176,7 +200,6 @@ async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWrit
     try:
         while True:
             raw = await reader.readline()
-            print(f"[debug {addr}] raw line: {raw!r}")
             if not raw:
                 break
             if len(raw) > MAX_LINE_BYTES:
