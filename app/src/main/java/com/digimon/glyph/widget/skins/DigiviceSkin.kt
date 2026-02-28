@@ -9,29 +9,67 @@ import android.graphics.Rect
 import android.graphics.RectF
 
 /**
- * Renders the 32x24 full debug frame inside a simplified Digimon V3 device shell.
+ * Renders the 32x24 full debug frame inside a simplified Digimon device shell.
  *
- * Visual style (from DigimonV3.svg):
- * - Orange rounded-rect bezel (#F35C00)
- * - Dark blue display frame (#00257C)
- * - Green-on-black LCD pixels
- * - Three circular buttons on the right side
- * - Gold top contact
+ * Accepts a [ColorScheme] so multiple colorways can be created from the same rendering logic.
+ * Use the companion factory functions [v1], [v2], [v3], [white] to get pre-built variants.
  */
-class DigiviceSkin {
+class DigiviceSkin(private val colors: ColorScheme) {
+
+    data class ColorScheme(
+        val bezel: Int,
+        val bezelDark: Int,
+        val frame: Int,
+        val lcdBg: Int,
+        val buttonHole: Int,
+        val button: Int,
+        val contact: Int
+    )
 
     companion object {
-        private val COLOR_BEZEL = Color.parseColor("#F35C00")
-        private val COLOR_BEZEL_DARK = Color.parseColor("#C04900")
-        private val COLOR_FRAME = Color.parseColor("#00257C")
-        private val COLOR_LCD_BG = Color.parseColor("#0A1A0A")
-        private val COLOR_BUTTON_HOLE = Color.parseColor("#002D1D")
-        private val COLOR_BUTTON = Color.parseColor("#334433")
-        private val COLOR_CONTACT = Color.parseColor("#C8A030")
-        private val PIXEL_OFF = Color.BLACK
+        /** Gray/Blue — Digimon Digital Monster V1, 1997 original */
+        fun v1() = DigiviceSkin(ColorScheme(
+            bezel      = Color.parseColor("#5A6070"),
+            bezelDark  = Color.parseColor("#3A4050"),
+            frame      = Color.parseColor("#1A2050"),
+            lcdBg      = Color.parseColor("#0A1218"),
+            buttonHole = Color.parseColor("#001824"),
+            button     = Color.parseColor("#2A3440"),
+            contact    = Color.parseColor("#C0C8D0")
+        ))
 
-        private const val SRC_WIDTH = 32
-        private const val SRC_HEIGHT = 24
+        /** Black/Red — Digimon Digital Monster V2 colorway */
+        fun v2() = DigiviceSkin(ColorScheme(
+            bezel      = Color.parseColor("#1A1A1A"),
+            bezelDark  = Color.parseColor("#0A0A0A"),
+            frame      = Color.parseColor("#1A0000"),
+            lcdBg      = Color.parseColor("#0A0808"),
+            buttonHole = Color.parseColor("#1A0000"),
+            button     = Color.parseColor("#3A1010"),
+            contact    = Color.parseColor("#CC2200")
+        ))
+
+        /** Orange — Digimon V3 original colorway (existing default) */
+        fun v3() = DigiviceSkin(ColorScheme(
+            bezel      = Color.parseColor("#F35C00"),
+            bezelDark  = Color.parseColor("#C04900"),
+            frame      = Color.parseColor("#00257C"),
+            lcdBg      = Color.parseColor("#0A1A0A"),
+            buttonHole = Color.parseColor("#002D1D"),
+            button     = Color.parseColor("#334433"),
+            contact    = Color.parseColor("#C8A030")
+        ))
+
+        /** White/Gold — V-Tamer / Burst Mode style */
+        fun white() = DigiviceSkin(ColorScheme(
+            bezel      = Color.parseColor("#F0F0E8"),
+            bezelDark  = Color.parseColor("#C8C8C0"),
+            frame      = Color.parseColor("#001899"),
+            lcdBg      = Color.parseColor("#08100A"),
+            buttonHole = Color.parseColor("#001018"),
+            button     = Color.parseColor("#D0D8E0"),
+            contact    = Color.parseColor("#D4A800")
+        ))
     }
 
     private val paint = Paint().apply { isAntiAlias = true }
@@ -40,26 +78,18 @@ class DigiviceSkin {
         isAntiAlias = false
     }
 
-    fun render(fullFrame: Bitmap?, outputSize: Int): Bitmap? {
+    fun render(fullFrame: Bitmap?, outputWidth: Int, outputHeight: Int): Bitmap? {
         val src = fullFrame ?: return null
 
-        val output = Bitmap.createBitmap(outputSize, outputSize, Bitmap.Config.ARGB_8888)
+        val output = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
-        canvas.drawColor(Color.BLACK)
+        canvas.drawColor(Color.TRANSPARENT)
 
-        // The Digimon V3 device is landscape (~4:3 device body + button column on right).
-        // We fit the whole thing into the square canvas with equal margins top/bottom.
-        //
-        // Total layout: [body (3 units wide)] [button column (1 unit wide)] = 4 units wide
-        // We target a 4:3 total aspect (device+buttons wide, device tall).
-        // Fit inside square: totalWidth = outputSize, totalHeight = outputSize * 3/4
-        val totalW = outputSize.toFloat()
-        val totalH = outputSize * 0.72f          // 72% of square height → comfortably fits
-        val offsetY = (outputSize - totalH) / 2f  // center vertically in square
+        val totalW = outputWidth.toFloat()
+        val totalH = outputHeight.toFloat()                       // device body fills full bitmap height
+        val offsetY = 0f
 
-        // Column widths: body = 78%, buttons = 22%
         val bodyW = totalW * 0.74f
-        val buttonColW = totalW - bodyW
         val bodyH = totalH
         val bodyLeft = 0f
         val bodyTop = offsetY
@@ -67,8 +97,8 @@ class DigiviceSkin {
         val bodyBottom = bodyTop + bodyH
         val bodyCorner = bodyW * 0.07f
 
-        // Top contact (gold ellipse) — centered on body, just above it
-        paint.color = COLOR_CONTACT
+        // Top contact (gold/colored ellipse)
+        paint.color = colors.contact
         val contactCx = bodyLeft + bodyW * 0.5f
         val contactCy = bodyTop - totalH * 0.015f
         canvas.drawOval(
@@ -77,32 +107,32 @@ class DigiviceSkin {
             paint
         )
 
-        // Device body (orange bezel)
-        paint.color = COLOR_BEZEL
-        canvas.drawRoundRect(RectF(bodyLeft, bodyTop, bodyRight, bodyBottom),
+        // Device body (bezel) — spans full width so button column is inside the shell
+        paint.color = colors.bezel
+        canvas.drawRoundRect(RectF(bodyLeft, bodyTop, totalW, bodyBottom),
             bodyCorner, bodyCorner, paint)
 
-        // Inner bezel shadow (slightly darker orange inset)
-        paint.color = COLOR_BEZEL_DARK
+        // Inner bezel shadow — also full width
+        paint.color = colors.bezelDark
         val innerM = bodyW * 0.03f
         canvas.drawRoundRect(
-            RectF(bodyLeft + innerM, bodyTop + innerM, bodyRight - innerM, bodyBottom - innerM),
+            RectF(bodyLeft + innerM, bodyTop + innerM, totalW - innerM, bodyBottom - innerM),
             bodyCorner * 0.65f, bodyCorner * 0.65f, paint)
 
-        // Display frame (dark blue) — takes most of the body interior
-        val frameML = bodyW * 0.07f   // left/right margin inside body
-        val frameMV = bodyH * 0.09f   // top/bottom margin inside body
+        // Display frame
+        val frameML = bodyW * 0.07f
+        val frameMV = bodyH * 0.09f
         val frameLeft   = bodyLeft + frameML
         val frameRight  = bodyRight - frameML
         val frameTop    = bodyTop + frameMV
         val frameBottom = bodyBottom - frameMV
         val frameCorner = bodyCorner * 0.25f
 
-        paint.color = COLOR_FRAME
+        paint.color = colors.frame
         canvas.drawRoundRect(RectF(frameLeft, frameTop, frameRight, frameBottom),
             frameCorner, frameCorner, paint)
 
-        // LCD area with rounded corners matching the frame corner radius
+        // LCD area
         val lcdM = (frameRight - frameLeft) * 0.05f
         val lcdLeft   = frameLeft + lcdM
         val lcdRight  = frameRight - lcdM
@@ -111,15 +141,13 @@ class DigiviceSkin {
         val lcdCorner = frameCorner * 0.7f
         val lcdRect = RectF(lcdLeft, lcdTop, lcdRight, lcdBottom)
 
-        // Fill LCD background with rounded corners
-        paint.color = COLOR_LCD_BG
+        paint.color = colors.lcdBg
         canvas.drawRoundRect(lcdRect, lcdCorner, lcdCorner, paint)
 
-        // Draw the 32×24 frame into the LCD area, preserving 32:24 (4:3) aspect ratio,
-        // clipped to the same rounded rect so pixels don't bleed into the frame border
+        // Draw 32×24 pixels into LCD area, preserving 4:3 aspect ratio
         val lcdW = lcdRight - lcdLeft
         val lcdH = lcdBottom - lcdTop
-        val srcAspect = SRC_WIDTH.toFloat() / SRC_HEIGHT  // 4:3
+        val srcAspect = 32f / 24f
         val dstAspect = lcdW / lcdH
         val (drawW, drawH) = if (dstAspect > srcAspect) {
             val h = lcdH; Pair(h * srcAspect, h)
@@ -132,28 +160,32 @@ class DigiviceSkin {
         val dstRect = Rect(drawLeft.toInt(), drawTop.toInt(),
                            (drawLeft + drawW).toInt(), (drawTop + drawH).toInt())
 
-        // Clip to rounded LCD rect, draw pixels, restore clip
         canvas.save()
-        val lcdClipPath = Path().also { it.addRoundRect(lcdRect, lcdCorner, lcdCorner, Path.Direction.CW) }
+        val lcdClipPath = Path().also {
+            it.addRoundRect(lcdRect, lcdCorner, lcdCorner, Path.Direction.CW)
+        }
         canvas.clipPath(lcdClipPath)
         canvas.drawBitmap(src, srcRect, dstRect, pixelPaint)
         canvas.restore()
 
-        // Three buttons in the right column — fully to the right of the bezel
-        // Keep holeRadius small enough that it never crosses bodyRight
-        val btnGap = buttonColW * 0.08f           // small gap from bezel edge
+        // Three buttons in the right column
+        val buttonColW = totalW - bodyW
+        val btnGap = buttonColW * 0.08f
         val btnCx = bodyRight + btnGap + buttonColW * 0.42f
-        val maxHoleR = buttonColW * 0.40f         // can't exceed half the column
-        val btnRadius = maxHoleR * 0.70f
-        val holeRadius = maxHoleR
-        val btnSpacing = bodyH * 0.28f
-        val btnMidY = bodyTop + bodyH * 0.5f
+        val maxHoleR   = buttonColW * 0.40f
+        // Button Y: fixed % of OUTPUT height so they always match the XML click zones
+        // (19/21/21/21/18 layout → buttons at 29.5%, 50.5%, 71.5% of widget height)
+        val btnSpacing = outputHeight * 0.21f
+        val btnMidY    = outputHeight * 0.505f
+        // Clamp hole radius so adjacent buttons never overlap (45% of spacing = 10% gap)
+        val holeRadius = minOf(maxHoleR, btnSpacing * 0.45f)
+        val btnRadius  = holeRadius * 0.70f
 
         for (i in -1..1) {
             val cy = btnMidY + i * btnSpacing
-            paint.color = COLOR_BUTTON_HOLE
+            paint.color = colors.buttonHole
             canvas.drawCircle(btnCx, cy, holeRadius, paint)
-            paint.color = COLOR_BUTTON
+            paint.color = colors.button
             canvas.drawCircle(btnCx, cy, btnRadius, paint)
         }
 

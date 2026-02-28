@@ -103,7 +103,8 @@ class DigimonWidgetProvider : AppWidgetProvider() {
         views.setOnClickPendingIntent(R.id.btn_dv_b, makePendingIntent(context, ACTION_BUTTON_B, 11))
         views.setOnClickPendingIntent(R.id.btn_dv_c, makePendingIntent(context, ACTION_BUTTON_C, 12))
 
-        val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE
+        val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE_V1 || skin == WidgetPrefs.Skin.DIGIVICE_V2
+                      || skin == WidgetPrefs.Skin.DIGIVICE_V3 || skin == WidgetPrefs.Skin.DIGIVICE_WHITE
         views.setViewVisibility(R.id.zone_columns, if (isDigivice) android.view.View.GONE else android.view.View.VISIBLE)
         views.setViewVisibility(R.id.zone_digivice_buttons, if (isDigivice) android.view.View.VISIBLE else android.view.View.GONE)
 

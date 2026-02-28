@@ -59,9 +59,21 @@ object WidgetFramePusher {
         )
         if (widgetIds.isEmpty()) return
 
+        val density = ctx.resources.displayMetrics.density
+
         for (id in widgetIds) {
             val skin = WidgetPrefs.getSkin(ctx, id)
-            val outputBitmap = renderer?.render(skin, snap.glyphFrame, snap.fullFrame) ?: continue
+
+            // Render at the widget's actual pixel dimensions — no square-bitmap distortion
+            val options = manager.getAppWidgetOptions(id)
+            val maxWdp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
+            val maxHdp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
+            val outW = if (maxWdp > 0) (maxWdp * density).toInt().coerceIn(100, 1200)
+                       else WidgetSkinRenderer.OUTPUT_SIZE
+            val outH = if (maxHdp > 0) (maxHdp * density).toInt().coerceIn(100, 1200)
+                       else WidgetSkinRenderer.OUTPUT_SIZE
+
+            val outputBitmap = renderer?.render(skin, snap.glyphFrame, snap.fullFrame, outW, outH) ?: continue
             val views = RemoteViews(ctx.packageName, R.layout.widget_layout)
             views.setImageViewBitmap(R.id.widget_frame, outputBitmap)
             // Re-set click intents (they persist but safer to always set)
@@ -79,7 +91,8 @@ object WidgetFramePusher {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
         }
-        val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE
+        val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE_V1 || skin == WidgetPrefs.Skin.DIGIVICE_V2
+                      || skin == WidgetPrefs.Skin.DIGIVICE_V3 || skin == WidgetPrefs.Skin.DIGIVICE_WHITE
         views.setViewVisibility(R.id.zone_columns, if (isDigivice) android.view.View.GONE else android.view.View.VISIBLE)
         views.setViewVisibility(R.id.zone_digivice_buttons, if (isDigivice) android.view.View.VISIBLE else android.view.View.GONE)
 

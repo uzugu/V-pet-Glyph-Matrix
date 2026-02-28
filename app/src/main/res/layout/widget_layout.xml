@@ -3,18 +3,18 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
-    android:padding="4dp">
+    android:background="@android:color/transparent">
 
     <!-- Main display frame — initial src prevents "can't load" before first frame push -->
     <ImageView
         android:id="@+id/widget_frame"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="fitCenter"
+        android:scaleType="fitXY"
         android:src="@drawable/ic_digimon_preview" />
 
-    <!-- Generic click zones for A / B / C (left / center / right thirds). -->
+    <!-- Generic click zones for A / B / C (left / center / right thirds).
+         background=selector fills the full zone on press; src removed so no centered icon. -->
     <LinearLayout
         android:id="@+id/zone_columns"
         android:layout_width="match_parent"
@@ -27,7 +27,8 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
+            android:src="@drawable/widget_button_selector"
+            android:scaleType="fitCenter"
             android:contentDescription="A button" />
 
         <ImageButton
@@ -36,7 +37,8 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
+            android:src="@drawable/widget_button_selector"
+            android:scaleType="fitCenter"
             android:contentDescription="B button" />
 
         <ImageButton
@@ -45,46 +47,98 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
+            android:src="@drawable/widget_button_selector"
+            android:scaleType="fitCenter"
             android:contentDescription="C button" />
 
     </LinearLayout>
 
-    <!-- Digivice-specific button hit zones (right-side vertical stack). -->
+    <!--
+        Digivice button hit zones — proportional layout matching DigiviceSkin pixel positions.
+
+        DigiviceSkin renders on a 400×400 bitmap:
+          - Device body: left 74% of width
+          - Button column: right 26% of width
+          - Button centers (Y): 30%, 50%, 70% of height (spacing = bodyH * 0.28)
+          - Each button holeRadius = 0.104 × totalWidth  → ~21% tall per button
+          - Dead zone top/bottom: ~19% each
+
+        Outer horizontal LinearLayout splits width into 74% body spacer + 26% buttons.
+        Inner vertical LinearLayout uses weightSum=100 to place each button zone precisely.
+    -->
     <LinearLayout
         android:id="@+id/zone_digivice_buttons"
-        android:layout_width="88dp"
-        android:layout_height="220dp"
-        android:layout_gravity="end|center_vertical"
-        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
         android:visibility="gone">
 
-        <ImageButton
-            android:id="@+id/btn_dv_a"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
-            android:contentDescription="Digivice A button" />
+        <!-- Left spacer: covers body up to button holes (btnCx-holeR = 76.6% of bitmap) -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="77"
+            android:background="@android:color/transparent" />
 
-        <ImageButton
-            android:id="@+id/btn_dv_b"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
-            android:contentDescription="Digivice B button" />
+        <!-- Button column: hole diameter = 20.8% of bitmap width -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="21"
+            android:orientation="vertical">
 
-        <ImageButton
-            android:id="@+id/btn_dv_c"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@android:color/transparent"
-            android:src="@android:color/transparent"
-            android:contentDescription="Digivice C button" />
+            <!-- Top dead zone: ~19% (button A top edge ≈ 19% of total height) -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="19"
+                android:background="@android:color/transparent" />
+
+            <ImageButton
+                android:id="@+id/btn_dv_a"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="21"
+                android:background="@android:color/transparent"
+                android:src="@drawable/widget_button_selector"
+                android:scaleType="fitCenter"
+                android:contentDescription="Digivice A button" />
+
+            <ImageButton
+                android:id="@+id/btn_dv_b"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="21"
+                android:background="@android:color/transparent"
+                android:src="@drawable/widget_button_selector"
+                android:scaleType="fitCenter"
+                android:contentDescription="Digivice B button" />
+
+            <ImageButton
+                android:id="@+id/btn_dv_c"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="21"
+                android:background="@android:color/transparent"
+                android:src="@drawable/widget_button_selector"
+                android:scaleType="fitCenter"
+                android:contentDescription="Digivice C button" />
+
+            <!-- Bottom dead zone: ~18% (button C bottom edge ≈ 80%) -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="18"
+                android:background="@android:color/transparent" />
+
+        </LinearLayout>
+
+        <!-- Right dead zone: ~2.6% (button hole right edge ≈ 97.4% of bitmap) -->
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:background="@android:color/transparent" />
 
     </LinearLayout>
 

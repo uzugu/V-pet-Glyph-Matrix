@@ -24,22 +24,22 @@ class DebugSkin {
         isAntiAlias = false
     }
 
-    fun render(fullFrame: Bitmap?, outputSize: Int): Bitmap? {
+    fun render(fullFrame: Bitmap?, outputWidth: Int, outputHeight: Int): Bitmap? {
         val src = fullFrame ?: return null
 
-        val output = Bitmap.createBitmap(outputSize, outputSize, Bitmap.Config.ARGB_8888)
+        val output = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         canvas.drawColor(PIXEL_OFF)
 
-        // Scale to fit while maintaining aspect ratio, centered
+        // Scale to fit while maintaining 32:24 aspect ratio, centered
         val scale = minOf(
-            outputSize.toFloat() / SRC_WIDTH,
-            outputSize.toFloat() / SRC_HEIGHT
+            outputWidth.toFloat() / SRC_WIDTH,
+            outputHeight.toFloat() / SRC_HEIGHT
         )
         val scaledW = (SRC_WIDTH * scale).toInt()
         val scaledH = (SRC_HEIGHT * scale).toInt()
-        val offsetX = (outputSize - scaledW) / 2
-        val offsetY = (outputSize - scaledH) / 2
+        val offsetX = (outputWidth - scaledW) / 2
+        val offsetY = (outputHeight - scaledH) / 2
 
         val srcRect = Rect(0, 0, src.width, src.height)
         val dstRect = Rect(offsetX, offsetY, offsetX + scaledW, offsetY + scaledH)

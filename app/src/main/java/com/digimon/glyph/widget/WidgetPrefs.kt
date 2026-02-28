@@ -7,14 +7,27 @@ import android.content.Context
  */
 object WidgetPrefs {
 
-    enum class Skin { GLYPH_MATRIX, DIGIVICE, DEBUG }
+    enum class Skin {
+        GLYPH_MATRIX,
+        DIGIVICE_V1,
+        DIGIVICE_V2,
+        DIGIVICE_V3,
+        DIGIVICE_WHITE,
+        CYBER_HUD,
+        DEBUG
+    }
 
     private const val PREFS = "widget_prefs"
 
     fun getSkin(context: Context, widgetId: Int): Skin {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val name = prefs.getString("skin_$widgetId", Skin.GLYPH_MATRIX.name)
-        return try { Skin.valueOf(name!!) } catch (_: Exception) { Skin.GLYPH_MATRIX }
+        return try {
+            when (name) {
+                "DIGIVICE" -> Skin.DIGIVICE_V3  // legacy migration: old saves → V3
+                else -> Skin.valueOf(name!!)
+            }
+        } catch (_: Exception) { Skin.GLYPH_MATRIX }
     }
 
     fun setSkin(context: Context, widgetId: Int, skin: Skin) {

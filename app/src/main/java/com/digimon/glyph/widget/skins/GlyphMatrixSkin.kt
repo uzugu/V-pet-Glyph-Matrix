@@ -40,10 +40,10 @@ class GlyphMatrixSkin {
         style = Paint.Style.FILL
     }
 
-    fun render(glyphFrame: Bitmap?, outputSize: Int): Bitmap? {
+    fun render(glyphFrame: Bitmap?, outputWidth: Int, outputHeight: Int): Bitmap? {
         val src = glyphFrame ?: return null
 
-        val output = Bitmap.createBitmap(outputSize, outputSize, Bitmap.Config.ARGB_8888)
+        val output = Bitmap.createBitmap(outputWidth, outputHeight, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(output)
         canvas.drawColor(BG_COLOR)
 
@@ -51,11 +51,14 @@ class GlyphMatrixSkin {
         val srcPixels = IntArray(GRID * GRID)
         src.getPixels(srcPixels, 0, GRID, 0, 0, GRID, GRID)
 
-        // Calculate dot geometry
-        val cellSize = outputSize.toFloat() / GRID
-        val dotSize = cellSize * 0.78f  // dot takes ~78% of cell, leaving gap
-        val cornerRadius = dotSize * 0.20f  // 20% border-radius like the web editor
-        val offset = (cellSize - dotSize) / 2f
+        // Calculate dot geometry — cells adapt to W×H so dots fill the widget
+        val cellW = outputWidth.toFloat() / GRID
+        val cellH = outputHeight.toFloat() / GRID
+        val dotW  = cellW * 0.78f
+        val dotH  = cellH * 0.78f
+        val cornerRadius = minOf(dotW, dotH) * 0.20f
+        val offX = (cellW - dotW) / 2f
+        val offY = (cellH - dotH) / 2f
 
         val rect = RectF()
 
@@ -69,8 +72,6 @@ class GlyphMatrixSkin {
                 val hasSignal = srcColor != Color.BLACK && srcColor != 0
                 val inMask = col in startCol until endColExclusive
 
-                // Preserve menu dots that sit outside the strict diamond mask.
-                // Inside mask: draw full matrix (on/off). Outside mask: draw only lit icon signals.
                 if (!inMask && !hasSignal) continue
 
                 dotPaint.color = when {
@@ -79,9 +80,9 @@ class GlyphMatrixSkin {
                     else -> DOT_OFF
                 }
 
-                val x = col * cellSize + offset
-                val y = row * cellSize + offset
-                rect.set(x, y, x + dotSize, y + dotSize)
+                val x = col * cellW + offX
+                val y = row * cellH + offY
+                rect.set(x, y, x + dotW, y + dotH)
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, dotPaint)
             }
         }
