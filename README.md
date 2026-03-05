@@ -2,7 +2,7 @@
 
 Play your favorite Digimon V-pet ROMs natively on Android! This app works seamlessly with the **Nothing Phone (3) Glyph Matrix**, but also features a **Home Screen Widget Mode** so you can raise your Digimon on **ANY Android phone**.
 
-## 🌟 Key Features
+## Key Features
 
 - **Play on Any Phone:** Raise your Digimon directly from your Android Home Screen with beautiful, customizable widgets.
 - **Nothing Phone (3) Exclusive:** Renders authentic LCD pixel art directly to the 25x25 Glyph Matrix on the back of the device. Maps phone motion (flicks) to physical V-pet buttons.
@@ -13,7 +13,7 @@ Play your favorite Digimon V-pet ROMs natively on Android! This app works seamle
 - **True Emulation:** Accurately emulates the original Seiko Epson E0C6200 CPU for a 1:1 authentic V-pet experience. 
 - **Auto-Save:** Rolling autosave with timestamp/ROM identity checks ensures your Digimon's progress is always safe.
 
-## 📥 Installation
+## Installation
 
 **[Download the latest APK from the Releases page!](https://github.com/uzugu/V-pet-Glyph-Matrix/releases)**
 
@@ -22,7 +22,7 @@ Play your favorite Digimon V-pet ROMs natively on Android! This app works seamle
 3. If using a Nothing Phone (3), enable the app under `Settings -> Glyph -> Glyph Toys`.
 4. Add the widget to your home screen!
 
-## 🎮 How to Play
+## How to Play
 
 ### Home Screen Widget (Any Phone)
 Tap the embedded buttons on the widget to interact with your Digimon, just like the real toy! Ensure your launcher is set to allow widgets to update in the background.
@@ -33,7 +33,7 @@ Tap the embedded buttons on the widget to interact with your Digimon, just like 
 - **Glyph button hold** -> B hold
 - Combos like `A+B` and `B+C` are supported via the launcher app.
 
-## 🛠 For Developers & Enthusiasts
+## For Developers & Enthusiasts
 
 This project ports the `BrickEmuPy` architecture directly into Android Kotlin for real-time emulation.
 
@@ -99,6 +99,7 @@ Notes:
 ### Technical Deep Dive
 - Uses `digimonStatsText` live rendering to scrape RAM offsets (e.g. `0x0B` for Species ID) providing the Android UI with exact stage and digimon info.
 - Lobbies auto-generate Crest-themed names (e.g., `Courage-241`) and broadcast the user's Tamer name and Digimon states. 
+- **Battle Protocol Deciphered:** The app intercepts hardware-level V-pet signal sequences, mapping the original physical battle protocol to native Android logic for seamless Local, Online, and AI battling.
 - You can manually track states via emulator telemetry commands!
 
 ## Internet Relay Battle (Experimental)
