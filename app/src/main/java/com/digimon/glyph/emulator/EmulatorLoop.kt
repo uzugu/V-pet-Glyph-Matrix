@@ -182,6 +182,7 @@ class EmulatorLoop(
         return resultRef.get()
     }
 
+
     private fun runLoop() {
         try {
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY)
@@ -427,5 +428,10 @@ class EmulatorLoop(
             val cmd = commandQueue.poll() ?: break
             cmd(emulator)
         }
+    }
+
+    fun getCurrentDigimonStateSync(romName: String?): DigimonState? {
+        if (!running) return null
+        return emulator.getCurrentDigimonState(romName)
     }
 }

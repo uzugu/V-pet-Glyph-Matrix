@@ -1,0 +1,270 @@
+--------- beginning of main
+02-25 00:23:30.585 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:30.593 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:30.593 28102 28102 D DigimonGlyphToy: Process command id=704 type=button_press arg=10
+02-25 00:23:30.593 28102 28102 D DigimonGlyphToy: Command 704 result: button pressed
+02-25 00:23:30.596 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 changed
+02-25 00:23:30.596 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=1
+02-25 00:23:30.682 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=2
+02-25 00:23:31.410 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:31.416 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:31.417 28102 28102 D DigimonGlyphToy: Process command id=705 type=button_press arg=10
+02-25 00:23:31.417 28102 28102 D DigimonGlyphToy: Command 705 result: button pressed
+02-25 00:23:31.420 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=3
+02-25 00:23:31.506 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=4
+02-25 00:23:32.038 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:32.046 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:32.047 28102 28102 D DigimonGlyphToy: Process command id=706 type=button_press arg=10
+02-25 00:23:32.047 28102 28102 D DigimonGlyphToy: Command 706 result: button pressed
+02-25 00:23:32.051 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=5
+02-25 00:23:32.136 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=6
+02-25 00:23:33.175 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:33.182 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:33.183 28102 28102 D DigimonGlyphToy: Process command id=707 type=button_press arg=10
+02-25 00:23:33.183 28102 28102 D DigimonGlyphToy: Command 707 result: button pressed
+02-25 00:23:33.186 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=7
+02-25 00:23:33.272 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=8
+02-25 00:23:34.791 28102 28102 D DigimonGlyphToy: Battle pin edge rx P2=14 seq=2 src=6459523
+02-25 00:23:34.802 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:34.807 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:34.808 28102 28102 D DigimonGlyphToy: Process command id=708 type=button_press arg=11
+02-25 00:23:34.808 28102 28102 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-25 00:23:34.808 28102 28102 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=2 src=369535591 reason=assist_b_down sent=true
+02-25 00:23:34.809 28102 28102 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-25 00:23:34.809 28102 28102 D DigimonGlyphToy: Command 708 result: button pressed
+02-25 00:23:34.811 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=9
+02-25 00:23:34.836 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 changed
+02-25 00:23:34.836 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 count=10
+02-25 00:23:34.836 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 changed
+02-25 00:23:34.836 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 count=11
+02-25 00:23:34.837 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:34.837 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=12
+02-25 00:23:34.841 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=13
+02-25 00:23:34.842 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=14
+02-25 00:23:34.843 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=15
+02-25 00:23:34.844 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=16
+02-25 00:23:34.845 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=17
+02-25 00:23:34.846 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=18
+02-25 00:23:34.849 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=19
+02-25 00:23:34.849 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=20
+02-25 00:23:34.849 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=21
+02-25 00:23:34.850 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=22
+02-25 00:23:34.851 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=23
+02-25 00:23:34.852 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=24
+02-25 00:23:34.919 28102 28102 D DigimonGlyphToy: Battle pin edge rx P2=15 seq=3 src=6459645
+02-25 00:23:34.920 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:34.929 28102 28102 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-25 00:23:34.931 28102 28102 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=3 src=369535712 reason=assist_b_up sent=true
+02-25 00:23:34.931 28102 28102 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-25 00:23:34.961 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=100
+02-25 00:23:35.431 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=200
+02-25 00:23:35.900 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=300
+02-25 00:23:36.371 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=400
+02-25 00:23:36.670 28102 28102 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:23:36.673 28102 28102 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-25 00:23:36.674 28102 28102 D DigimonGlyphToy: Process command id=709 type=button_press arg=11
+02-25 00:23:36.674 28102 28102 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-25 00:23:36.675 28102 28102 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=4 src=369537457 reason=assist_b_down sent=true
+02-25 00:23:36.675 28102 28102 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-25 00:23:36.675 28102 28102 D DigimonGlyphToy: Command 709 result: button pressed
+02-25 00:23:36.686 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.686 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.686 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf7d v=0 changed
+02-25 00:23:36.686 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf7d v=4 (direct)
+02-25 00:23:36.686 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf7d v=4 changed
+02-25 00:23:36.687 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=40399064 rxState=IDLE
+02-25 00:23:36.750 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.750 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.750 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.750 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=64028 rxState=IDLE
+02-25 00:23:36.752 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.752 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.752 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.752 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2014 rxState=WAITING_START_LOW
+02-25 00:23:36.753 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.753 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.753 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.753 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=946 rxState=WAITING_BITS_HIGH
+02-25 00:23:36.756 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.756 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.756 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.756 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.758 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.758 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.758 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.758 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.761 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.761 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.761 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.761 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.762 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.762 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.762 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.762 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.763 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.763 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.763 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.763 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.766 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.767 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.767 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.767 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:23:36.768 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.768 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.768 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.768 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.771 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.771 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.771 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.771 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3204 rxState=RECEIVING_BITS
+02-25 00:23:36.772 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.772 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.772 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.772 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.775 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.775 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.775 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.775 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:23:36.776 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.776 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.776 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.776 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.779 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.779 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=500
+02-25 00:23:36.779 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.779 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.779 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:23:36.780 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.780 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.780 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.780 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.784 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.784 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.784 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.784 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:23:36.785 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.785 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.785 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.785 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.788 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.788 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.788 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.788 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3204 rxState=RECEIVING_BITS
+02-25 00:23:36.789 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.789 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.789 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.789 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:23:36.792 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.792 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.792 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.792 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:23:36.793 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.793 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.793 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.793 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1008 rxState=RECEIVING_BITS
+02-25 00:23:36.795 28102 28102 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-25 00:23:36.796 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.796 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.796 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.796 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:23:36.797 28102 28102 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=5 src=369537578 reason=assist_b_up sent=true
+02-25 00:23:36.797 28102 28102 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-25 00:23:36.799 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.799 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.799 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.799 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.801 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.801 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.801 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.801 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.804 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.804 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.804 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.804 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.805 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.805 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.805 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.806 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1617 rxState=RECEIVING_BITS
+02-25 00:23:36.808 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.808 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.808 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.808 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.810 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.810 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.810 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.810 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.812 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.812 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.812 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.812 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.814 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.814 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.814 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.814 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.817 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.817 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.817 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.817 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.819 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.819 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.819 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.819 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:23:36.821 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:36.822 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 (direct)
+02-25 00:23:36.822 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=14 changed
+02-25 00:23:36.822 28102 28390 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:23:36.822 28102 28390 I VirtualDCom: Decoded packet: 0xfc03
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 (direct)
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf62 v=15 changed
+02-25 00:23:36.823 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1617 rxState=IDLE
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf7d v=4 changed
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf7d v=0 (direct)
+02-25 00:23:36.823 28102 28390 D DigimonGlyphToy: Battle io W addr=0xf7d v=0 changed
+02-25 00:23:36.823 28102 28390 D VirtualDCom: onLocalP2Edge isLow=false dtUs=366 rxState=IDLE
+02-25 00:23:36.836 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-25 00:23:37.100 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=600
+02-25 00:23:37.570 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=700
+02-25 00:23:38.040 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=800
+02-25 00:23:38.511 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=900
+02-25 00:23:38.981 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1000
+02-25 00:23:39.451 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1100
+02-25 00:23:39.921 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1200
+02-25 00:23:40.391 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1300
+02-25 00:23:40.598 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1
+02-25 00:23:40.603 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=2
+02-25 00:23:40.608 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=3
+02-25 00:23:40.612 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=4
+02-25 00:23:40.617 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=5
+02-25 00:23:40.622 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=6
+02-25 00:23:40.626 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=7
+02-25 00:23:40.631 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=8
+02-25 00:23:40.636 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=9
+02-25 00:23:40.640 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=10
+02-25 00:23:40.645 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=11
+02-25 00:23:40.650 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=12
+02-25 00:23:40.655 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=13
+02-25 00:23:40.659 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=14
+02-25 00:23:40.664 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=15
+02-25 00:23:40.669 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=16
+02-25 00:23:40.673 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=17
+02-25 00:23:40.678 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=18
+02-25 00:23:40.683 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=19
+02-25 00:23:40.687 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=20
+02-25 00:23:40.692 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=21
+02-25 00:23:40.697 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=22
+02-25 00:23:40.702 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=23
+02-25 00:23:40.706 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=24
+02-25 00:23:41.064 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=100
+02-25 00:23:41.534 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=200
+02-25 00:23:42.004 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=300
+02-25 00:23:42.475 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=400
+02-25 00:23:42.944 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=500
+02-25 00:23:43.415 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=600
+02-25 00:23:43.885 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=700
+02-25 00:23:44.355 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=800
+02-25 00:23:44.825 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=900
+02-25 00:23:45.296 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1000
+02-25 00:23:45.768 28102 28390 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1100
+02-25 00:24:00.009 28102 28102 D DigimonGlyphToy: Toy message what=1, event=aod
+02-25 00:24:10.293 28102 28102 D DigimonGlyphToy: State saved reason=interval sync=false seq=10891 pc=365 ts=1771975450292

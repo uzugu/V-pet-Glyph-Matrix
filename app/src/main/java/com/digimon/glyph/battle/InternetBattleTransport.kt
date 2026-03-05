@@ -30,7 +30,8 @@ import java.util.concurrent.atomic.AtomicLong
  */
 class InternetBattleTransport(
     context: Context,
-    private val listener: BattleTransport.Listener? = null
+    private val listener: BattleTransport.Listener? = null,
+    private val endpointNameProvider: (() -> String)? = null
 ) : BattleTransport {
 
     private data class RelayConfig(
@@ -62,7 +63,6 @@ class InternetBattleTransport(
 
     private val appContext = context.applicationContext
     private val gson = Gson()
-    private val endpointName = buildEndpointName()
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val generation = AtomicLong(0L)
@@ -225,7 +225,7 @@ class InternetBattleTransport(
                     op = "join",
                     room = config.room,
                     role = if (targetRole == Role.HOST) "host" else "join",
-                    name = endpointName,
+                    name = endpointNameProvider?.invoke() ?: endpointName(),
                     proto = "digimon-battle-v1",
                     timestampMs = System.currentTimeMillis()
                 ),
@@ -456,9 +456,9 @@ class InternetBattleTransport(
         val queryRoom = uri.getQueryParameter("room")?.trim().orEmpty()
         val pathRoom = uri.pathSegments.firstOrNull()?.trim().orEmpty()
         val room = when {
-            queryRoom.isNotEmpty() -> queryRoom
-            pathRoom.isNotEmpty() -> pathRoom
-            else -> DEFAULT_ROOM
+            queryRoom.isNotEmpty() && queryRoom != "auto" -> queryRoom
+            pathRoom.isNotEmpty() && pathRoom != "auto" -> pathRoom
+            else -> BattleTransportSettings.getLobbyName(appContext)
         }
         return RelayConfig(host = host, port = port, room = room)
     }
@@ -468,7 +468,9 @@ class InternetBattleTransport(
         return runCatching { get(key).asString }.getOrNull()
     }
 
-    private fun buildEndpointName(): String {
+    private fun endpointName(): String {
+        val tamer = BattleTransportSettings.getTamerName()
+        if (tamer.isNotBlank()) return tamer
         val model = (Build.MODEL ?: "android").replace(" ", "-").take(20)
         val suffix = (System.currentTimeMillis() % 10_000L).toString().padStart(4, '0')
         return "$model-$suffix"

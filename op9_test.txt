@@ -1,0 +1,5 @@
+--------- beginning of main
+02-24 23:06:50.095  3269  3269 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+02-24 23:06:50.095  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:06:50.095  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:06:50.095  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:136)

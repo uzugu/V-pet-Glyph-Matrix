@@ -34,7 +34,7 @@ object WidgetFramePusher {
     fun ensureRunning(context: Context) {
         if (handler != null) return
         appContext = context.applicationContext
-        renderer = WidgetSkinRenderer()
+        renderer = WidgetSkinRenderer(appContext!!)
         handler = Handler(Looper.getMainLooper())
         handler?.post(pushRunnable)
     }
@@ -91,10 +91,11 @@ object WidgetFramePusher {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
         }
-        val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE_V1 || skin == WidgetPrefs.Skin.DIGIVICE_V2
-                      || skin == WidgetPrefs.Skin.DIGIVICE_V3 || skin == WidgetPrefs.Skin.DIGIVICE_WHITE
-        views.setViewVisibility(R.id.zone_columns, if (isDigivice) android.view.View.GONE else android.view.View.VISIBLE)
-        views.setViewVisibility(R.id.zone_digivice_buttons, if (isDigivice) android.view.View.VISIBLE else android.view.View.GONE)
+        val isDeviceSkin = skin == WidgetPrefs.Skin.DIGIVICE_V1 || skin == WidgetPrefs.Skin.DIGIVICE_V2
+                       || skin == WidgetPrefs.Skin.DIGIVICE_V3 || skin == WidgetPrefs.Skin.DIGIVICE_WHITE
+                       || skin == WidgetPrefs.Skin.BRICK_V1    || skin == WidgetPrefs.Skin.BRICK_V3
+        views.setViewVisibility(R.id.zone_columns, if (isDeviceSkin) android.view.View.GONE else android.view.View.VISIBLE)
+        views.setViewVisibility(R.id.zone_digivice_buttons, if (isDeviceSkin) android.view.View.VISIBLE else android.view.View.GONE)
 
         views.setOnClickPendingIntent(R.id.btn_a, makeIntent(DigimonWidgetProvider.ACTION_BUTTON_A, 0))
         views.setOnClickPendingIntent(R.id.btn_b, makeIntent(DigimonWidgetProvider.ACTION_BUTTON_B, 1))

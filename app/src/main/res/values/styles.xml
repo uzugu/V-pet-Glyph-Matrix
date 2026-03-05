@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="TextAppearance.Cyber.Title" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/teko</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">30sp</item>
+        <item name="android:textColor">@color/text_main</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.05</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.Subtitle" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/share_tech_mono</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/cyber_yellow</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.2</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.SectionHeader" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/teko</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:textColor">@color/text_main</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.1</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.StatValue" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/teko</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">44sp</item>
+        <item name="android:textColor">#ffffff</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.StatLabel" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/share_tech_mono</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">@color/cyber_yellow</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.15</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.Body" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/share_tech_mono</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_main</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.Muted" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/share_tech_mono</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textColor">@color/text_muted</item>
+    </style>
+
+    <style name="TextAppearance.Cyber.Button" parent="TextAppearance.AppCompat">
+        <item name="android:fontFamily">@font/share_tech_mono</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/cyber_blue</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.08</item>
+    </style>
+
+</resources>

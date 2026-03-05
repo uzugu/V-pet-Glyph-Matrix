@@ -289,7 +289,24 @@ class DigimonGlyphToyService : Service() {
         Log.i(TAG, "Battle transport selected: $battleTransportType")
         return when (battleTransportType) {
             BattleTransportType.NEARBY -> BattleLinkManager(this, createBattleTransportListener())
-            BattleTransportType.INTERNET_RELAY -> InternetBattleTransport(this, createBattleTransportListener())
+            BattleTransportType.INTERNET_RELAY -> InternetBattleTransport(
+                context = this,
+                listener = createBattleTransportListener(),
+                endpointNameProvider = {
+                    val base = BattleTransportSettings.getTamerName()
+                    val fallback = (Build.MODEL ?: "android").replace(" ", "-").take(20)
+                    val tamer = if (base.isNotBlank()) base else "$fallback-${(System.currentTimeMillis() % 10_000L).toString().padStart(4, '0')}"
+                    
+                    val state = emulatorLoop?.getCurrentDigimonStateSync(romName)
+                    if (state != null) {
+                        val name = state.info?.name ?: "Unknown"
+                        val stage = state.info?.stage ?: "Unknown Stage"
+                        "$tamer ($name - $stage)"
+                    } else {
+                        tamer
+                    }
+                }
+            )
             BattleTransportType.SIMULATION -> {
                 val preset = BattleTransportSettings.getSimulationPreset()
                 val sim = SimulationBattleTransport(preset)
@@ -746,7 +763,8 @@ class DigimonGlyphToyService : Service() {
                     WidgetFramePusher.isRunning
                 if (shouldPublishFramePreview && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
                     val fullDebug = bridge.renderFullDebugFrame(vram)
-                    FrameDebugState.update(bitmap, fullDebug, now)
+                    val state = emu.getCurrentDigimonState(romName)
+                    FrameDebugState.update(bitmap, fullDebug, now, state)
                     lastDebugFramePublishMs = now
                 }
                 if (debugTelemetryEnabled) {

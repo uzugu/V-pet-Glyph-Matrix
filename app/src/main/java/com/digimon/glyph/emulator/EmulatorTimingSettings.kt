@@ -27,7 +27,7 @@ object EmulatorTimingSettings {
     private var exactTimingEnabled: Boolean = true
 
     @Volatile
-    private var clockCorrectionEnabled: Boolean = true
+    private var clockCorrectionEnabled: Boolean = false
 
     @Volatile
     private var clockCorrectionFactor: Float = DEFAULT_CLOCK_CORRECTION_FACTOR
@@ -42,7 +42,7 @@ object EmulatorTimingSettings {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         exactTimingEnabled = prefs.getBoolean(KEY_EXACT_TIMING_ENABLED, true)
-        clockCorrectionEnabled = prefs.getBoolean(KEY_CLOCK_CORRECTION_ENABLED, true)
+        clockCorrectionEnabled = prefs.getBoolean(KEY_CLOCK_CORRECTION_ENABLED, false)
         clockCorrectionFactor = prefs.getFloat(KEY_CLOCK_CORRECTION_FACTOR, DEFAULT_CLOCK_CORRECTION_FACTOR)
         battleStepModeEnabled = prefs.getBoolean(KEY_BATTLE_STEP_MODE_ENABLED, false)
         battleStepSliceMs = prefs.getInt(KEY_BATTLE_STEP_SLICE_MS, DEFAULT_BATTLE_STEP_SLICE_MS)

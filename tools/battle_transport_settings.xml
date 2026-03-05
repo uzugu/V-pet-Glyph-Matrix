@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
+<map>
+    <string name="simulation_preset">PURE_ECHO</string>
+    <string name="transport_type">INTERNET_RELAY</string>
+    <string name="relay_url">tcp://109.224.229.205:19792/bunnyTest</string>
+</map>

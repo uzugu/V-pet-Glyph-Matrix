@@ -1,68 +1,53 @@
-# Digimon V3 on Nothing Glyph Matrix
+# Digimon Glyph Matrix (for V-pets)
 
-Android app that runs Digimon virtual pet ROMs on the **Nothing Phone (3) Glyph Matrix** (25x25 back LED grid).
+Play your favorite Digimon V-pet ROMs natively on Android! This app works seamlessly with the **Nothing Phone (3) Glyph Matrix**, but also features a **Home Screen Widget Mode** so you can raise your Digimon on **ANY Android phone**.
 
-- Emulates the original **Seiko Epson E0C6200** CPU
-- Renders Digimon LCD output to the Glyph Matrix
-- Maps phone motion + Glyph button to Digimon A/B/C inputs
+## 🌟 Key Features
 
-## Features
+- **Play on Any Phone:** Raise your Digimon directly from your Android Home Screen with beautiful, customizable widgets.
+- **Nothing Phone (3) Exclusive:** Renders authentic LCD pixel art directly to the 25x25 Glyph Matrix on the back of the device. Maps phone motion (flicks) to physical V-pet buttons.
+- **Multiplayer Battles:**
+  - **Online Play:** Connect with friends across the world using internet relays.
+  - **Local Play:** Battle other devices nearby.
+  - **AI Mode:** Practice and battle against bots.
+- **True Emulation:** Accurately emulates the original Seiko Epson E0C6200 CPU for a 1:1 authentic V-pet experience. 
+- **Auto-Save:** Rolling autosave with timestamp/ROM identity checks ensures your Digimon's progress is always safe.
 
-- ROM loader for `.bin` and `.zip` (extracts first `.bin` found)
-- Full E0C6200 emulation pipeline ported from BrickEmuPy architecture
-- Emulator stability fixes for training flow soft-locks
-- Real-time emulator loop with autosave and state restore
-- Save system:
-  - Rolling autosave with timestamp/ROM identity checks
-  - 3 manual save slots
-  - Manual save/load commands from launcher UI
-- Session controls:
-  - Restart emulator
-  - Full reset (cold reset + autosave rewrite)
-  - Explicit combo taps from launcher: `A+B`, `A+C`, `B+C`
-- Audio:
-  - Buzzer playback with envelope/one-shot behavior
-  - In-app audio toggle
-  - Optional haptic-from-audio toggle
-- Display:
-  - Center-priority render/crop tuning for circular Glyph area
-  - Auto text zoom-out heuristic mode
-  - Toggle for text zoom heuristic
-  - 8-position menu ring overlay around the matrix
-  - Pixel-art preview rendering without blur in launcher debug screens
-- Input:
-  - Glyph button hold -> **B** hold
-  - Flick left/right -> **A/C**
-  - Flick toward/away from user -> quick **B** tap
-  - Haptic feedback on successful flick trigger
-  - Combined holds supported (for example A+B and B+C)
-  - Input polling stays active for 60 seconds after interaction, then returns to idle polling
-- Battle link:
-  - Nearby host/join (local phone-to-phone)
-  - Experimental internet relay mode (`tcp://host:port/room`)
-  - In-app transport selector + relay URL field in Battle section
-- Debug and diagnostics:
-  - Launcher reorganized with main gameplay controls + live screen previews first
-  - Debug tools moved to collapsible **Show Debug / Hide Debug** section
-  - Live input/frame debug panel inside collapsible section
-  - One-tap **Share Debug Report** button (exports app/device/settings/battle/input/save snapshot as text)
-  - Optional debug telemetry toggle (off by default)
-  - Live screen previews remain available while launcher observes them, even with debug telemetry off
-  - On-device command bus for runtime setting refresh and save/load commands
-- Timing and power modes:
-  - `Exact timing (higher battery)` toggle in launcher settings
-  - `ON`: accuracy-first pacing, wake lock kept for stable timing
-  - `OFF` (Power Save): reduced baseline speed and lower wake/scheduling pressure for reduced battery/heat
-  - In `OFF`, user interaction temporarily boosts timing to exact mode for 60 seconds, then returns to power-save
+## 📥 Installation
 
-## Requirements
+**[Download the latest APK from the Releases page!](https://github.com/uzugu/V-pet-Glyph-Matrix/releases)**
 
+1. Download and install the APK.
+2. Provide an authentic Digimon ROM file (only Digital Monster **V1, V2, or V3** are currently supported). Accepted formats are `.bin` or `.zip` (8KB or 16KB).
+3. If using a Nothing Phone (3), enable the app under `Settings -> Glyph -> Glyph Toys`.
+4. Add the widget to your home screen!
+
+## 🎮 How to Play
+
+### Home Screen Widget (Any Phone)
+Tap the embedded buttons on the widget to interact with your Digimon, just like the real toy! Ensure your launcher is set to allow widgets to update in the background.
+
+### Nothing Phone (3) Glyph Controls
+- **Flick left/right** -> A/C Buttons
+- **Flick toward/away from you** -> B Button
+- **Glyph button hold** -> B hold
+- Combos like `A+B` and `B+C` are supported via the launcher app.
+
+## 🛠 For Developers & Enthusiasts
+
+This project ports the `BrickEmuPy` architecture directly into Android Kotlin for real-time emulation.
+
+### Requirements to Build:
 - Android Studio (Hedgehog+ recommended)
-- Android SDK 35
-- JDK 17
-- A Nothing phone with Glyph Toys support
-- Digimon ROM file (`8192` or `16384` bytes)
-- Optional for internet relay mode: Python 3 (to run `tools/battle_relay_server.py`)
+- Android SDK 35, JDK 17
+- Optional for hosting your own internet relay mode: Python 3 (`tools/battle_relay_server.py`) or Docker (`docker-compose.relay.yml`).
+
+### Build Instructions:
+```bash
+git clone https://github.com/uzugu/V-pet-Glyph-Matrix.git
+cd V-pet-Glyph-Matrix
+./gradlew assembleDebug
+```
 
 ## Project Setup
 
@@ -111,15 +96,10 @@ Notes:
 - A short vibration confirms successful flick trigger.
 - You can hold combinations by holding Glyph button with A/C actions (A+B or B+C).
 
-## Timing Modes
-
-- `Exact timing (higher battery)` switch is in the launcher app.
-- `ON` is for most accurate speed.
-- `OFF` is Power Save mode:
-  - Lower render/clock pacing
-  - Lower CPU and heat
-  - Speed is intentionally not exact
-  - Interaction with Glyph/flick/combo input boosts to exact timing for 60 seconds
+### Technical Deep Dive
+- Uses `digimonStatsText` live rendering to scrape RAM offsets (e.g. `0x0B` for Species ID) providing the Android UI with exact stage and digimon info.
+- Lobbies auto-generate Crest-themed names (e.g., `Courage-241`) and broadcast the user's Tamer name and Digimon states. 
+- You can manually track states via emulator telemetry commands!
 
 ## Internet Relay Battle (Experimental)
 

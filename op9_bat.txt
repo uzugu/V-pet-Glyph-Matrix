@@ -1,0 +1,134 @@
+--------- beginning of main
+02-24 23:26:20.638 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:20.644 14265 14265 D DigimonGlyphToy: CPU wakelock acquired
+02-24 23:26:20.645 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:26:20.654 14265 14265 D DigimonGlyphToy: Restore attempt rom=digimonv3 hash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3 exists=true seq=5813 ts=1771971929999 savedRom=digimonv3 savedHash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3
+02-24 23:26:20.668 14265 14265 D DigimonGlyphToy: Restore result ok=true pc=4784
+02-24 23:26:20.670 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:26:20.689 14265 14265 D DigimonGlyphToy: Emulator started with ROM: digimonv3 standaloneMode=true
+02-24 23:26:20.696 14265 14265 D DigimonGlyphToy: Process command id=687 type=load_slot arg=3
+02-24 23:26:20.712 14265 18214 D VirtualDCom: onLocalP2Edge isLow=false dtUs=12361 rxState=IDLE
+02-24 23:26:20.713 14265 14265 D DigimonGlyphToy: Command 687 result: slot 3 loaded
+02-24 23:26:23.273 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:23.280 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:26:23.285 14265 14265 D DigimonGlyphToy: Process command id=688 type=load_autosave arg=0
+02-24 23:26:23.301 14265 18214 D VirtualDCom: onLocalP2Edge isLow=false dtUs=2602278 rxState=IDLE
+02-24 23:26:23.301 14265 14265 D DigimonGlyphToy: Command 688 result: autosave loaded
+02-24 23:26:35.051 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:35.056 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:26:35.071 14265 14265 I DigimonGlyphToy: Process command id=689 type=battle_start_join arg=0
+02-24 23:26:35.071 14265 14265 I DigimonGlyphToy: Battle start requested: join
+02-24 23:26:35.071 14265 14265 I BattleLinkManager: startJoin endpointName=LE2113-0637
+02-24 23:26:35.077 14265 14265 I DigimonGlyphToy: Command 689 result: battle join requested
+02-24 23:26:35.142 14265 14265 I BattleLinkManager: Join discovery started serviceId=com.digimon.glyph.battle.v1
+02-24 23:26:37.448 14265 14265 I BattleLinkManager: Connection initiated from=A024-4636
+02-24 23:26:37.462 14265 14265 I BattleLinkManager: Connected peer=A024-4636 endpointId=LYSO
+02-24 23:26:37.473 14265 14265 D DigimonGlyphToy: Battle connected peer=A024-4636
+02-24 23:26:37.473 14265 14265 D BattleLinkManager: pin edge tx count=1 last=P2,15,1,3042998
+02-24 23:26:37.474 14265 14265 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=1 src=3042998 reason=connect_sync sent=true
+02-24 23:26:37.474 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:37.723 14265 14265 D DigimonGlyphToy: Battle pin edge rx P2=15 seq=1 src=366135406
+02-24 23:26:37.723 14265 14265 D BattleLinkManager: pin edge rx count=1 last=P2,15,1,366135406
+02-24 23:26:41.470 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:41.479 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:41.492 14265 14265 D DigimonGlyphToy: Process command id=690 type=button_press arg=10
+02-24 23:26:41.492 14265 14265 D DigimonGlyphToy: Command 690 result: button pressed
+02-24 23:26:41.495 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 changed
+02-24 23:26:41.495 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=1
+02-24 23:26:41.581 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=2
+02-24 23:26:42.051 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:42.057 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:42.057 14265 14265 D DigimonGlyphToy: Process command id=691 type=button_press arg=10
+02-24 23:26:42.057 14265 14265 D DigimonGlyphToy: Command 691 result: button pressed
+02-24 23:26:42.060 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=3
+02-24 23:26:42.145 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=4
+02-24 23:26:42.821 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:42.827 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:42.828 14265 14265 D DigimonGlyphToy: Process command id=692 type=button_press arg=10
+02-24 23:26:42.828 14265 14265 D DigimonGlyphToy: Command 692 result: button pressed
+02-24 23:26:42.831 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=5
+02-24 23:26:42.918 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=6
+02-24 23:26:43.951 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:43.957 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:43.958 14265 14265 D DigimonGlyphToy: Process command id=693 type=button_press arg=10
+02-24 23:26:43.958 14265 14265 D DigimonGlyphToy: Command 693 result: button pressed
+02-24 23:26:43.961 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=7
+02-24 23:26:44.047 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=8
+02-24 23:26:45.384 14265 14265 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:26:45.391 14265 14265 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:26:45.391 14265 14265 D DigimonGlyphToy: Process command id=694 type=button_press arg=11
+02-24 23:26:45.391 14265 14265 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-24 23:26:45.392 14265 14265 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=2 src=3050916 reason=assist_b_down sent=true
+02-24 23:26:45.392 14265 14265 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-24 23:26:45.392 14265 14265 D DigimonGlyphToy: Command 694 result: button pressed
+02-24 23:26:45.395 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=9
+02-24 23:26:45.416 14265 14265 D DigimonGlyphToy: Battle pin edge rx P2=14 seq=2 src=366143289
+02-24 23:26:45.420 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 changed
+02-24 23:26:45.420 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 count=10
+02-24 23:26:45.420 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 changed
+02-24 23:26:45.420 14265 18214 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 count=11
+02-24 23:26:45.422 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-24 23:26:45.422 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=12
+02-24 23:26:45.425 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=13
+02-24 23:26:45.426 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=14
+02-24 23:26:45.427 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=15
+02-24 23:26:45.428 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=16
+02-24 23:26:45.429 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=17
+02-24 23:26:45.430 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=18
+02-24 23:26:45.431 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=19
+02-24 23:26:45.432 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=20
+02-24 23:26:45.433 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=21
+02-24 23:26:45.434 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=22
+02-24 23:26:45.435 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=23
+02-24 23:26:45.436 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=24
+02-24 23:26:45.515 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=100
+02-24 23:26:45.532 14265 14265 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-24 23:26:45.533 14265 14265 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=3 src=3051057 reason=assist_b_up sent=true
+02-24 23:26:45.533 14265 14265 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-24 23:26:45.534 14265 14265 D DigimonGlyphToy: Battle pin edge rx P2=15 seq=3 src=366143412
+02-24 23:26:45.597 14265 14265 D DigimonGlyphToy: Battle pin rx P2 delayed release after 180ms (handshakeWindow=true)
+02-24 23:26:45.598 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-24 23:26:45.780 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=200
+02-24 23:26:46.249 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=300
+02-24 23:26:46.719 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=400
+02-24 23:26:47.190 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=500
+02-24 23:26:47.660 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=600
+02-24 23:26:48.130 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=700
+02-24 23:26:48.600 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=800
+02-24 23:26:49.071 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=900
+02-24 23:26:49.541 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1000
+02-24 23:26:50.012 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1100
+02-24 23:26:50.482 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1200
+02-24 23:26:50.952 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1300
+02-24 23:26:51.422 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1400
+02-24 23:26:51.497 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1
+02-24 23:26:51.502 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=2
+02-24 23:26:51.507 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=3
+02-24 23:26:51.511 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=4
+02-24 23:26:51.516 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=5
+02-24 23:26:51.521 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=6
+02-24 23:26:51.526 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=7
+02-24 23:26:51.530 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=8
+02-24 23:26:51.535 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=9
+02-24 23:26:51.540 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=10
+02-24 23:26:51.544 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=11
+02-24 23:26:51.549 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=12
+02-24 23:26:51.554 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=13
+02-24 23:26:51.558 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=14
+02-24 23:26:51.563 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=15
+02-24 23:26:51.568 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=16
+02-24 23:26:51.572 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=17
+02-24 23:26:51.577 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=18
+02-24 23:26:51.582 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=19
+02-24 23:26:51.586 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=20
+02-24 23:26:51.591 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=21
+02-24 23:26:51.596 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=22
+02-24 23:26:51.600 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=23
+02-24 23:26:51.605 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=24
+02-24 23:26:51.963 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=100
+02-24 23:26:52.433 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=200
+02-24 23:26:52.904 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=300
+02-24 23:26:53.374 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=400
+02-24 23:26:53.844 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=500
+02-24 23:26:54.314 14265 18214 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=600
+02-24 23:27:20.726 14265 14265 D DigimonGlyphToy: State saved reason=interval sync=false seq=5814 pc=365 ts=1771972040725

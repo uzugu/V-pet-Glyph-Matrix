@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixelated crossed swords / battle icon — cyber yellow, 12° tilt -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <group
+        android:pivotX="8"
+        android:pivotY="8"
+        android:rotation="-12">
+        <!-- Left sword blade (diagonal top-left to center) -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M2,2 L3,1 L9,7 L8,8 Z" />
+        <!-- Right sword blade (diagonal top-right to center) -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M13,1 L14,2 L8,8 L7,7 Z" />
+        <!-- Left sword guard -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M7,8 L5,7 L6,6 L8,7 Z" />
+        <!-- Right sword guard -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M9,8 L11,7 L10,6 L8,7 Z" />
+        <!-- Left handle -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M6,10 L5,9 L7,8 L8,9 Z" />
+        <!-- Right handle -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M10,10 L11,9 L9,8 L8,9 Z" />
+        <!-- Center "VS" spark/clash -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M7.5,6.5 L8.5,6.5 L8.5,7.5 L7.5,7.5 Z" />
+        <!-- Lightning sparks -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M6,5 L7,5 L7,6 L6,6 Z" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M9,5 L10,5 L10,6 L9,6 Z" />
+    </group>
+</vector>

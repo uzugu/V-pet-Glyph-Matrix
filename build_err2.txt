@@ -1,0 +1,82 @@
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:mergeDebugShaders UP-TO-DATE
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets UP-TO-DATE
+> Task :app:compressDebugAssets UP-TO-DATE
+> Task :app:desugarDebugFileDependencies UP-TO-DATE
+> Task :app:checkDebugDuplicateClasses UP-TO-DATE
+> Task :app:mergeExtDexDebug UP-TO-DATE
+> Task :app:mergeLibDexDebug UP-TO-DATE
+> Task :app:mergeDebugJniLibFolders UP-TO-DATE
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:validateSigningDebug UP-TO-DATE
+> Task :app:writeDebugAppMetadata UP-TO-DATE
+> Task :app:writeDebugSigningConfigVersions UP-TO-DATE
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/DigimonGlyphToyService.kt:293:27 Unresolved reference 'SimulationBattleTransport'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:464:30 Unresolved reference 'RadioGroup'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:464:47 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:464:53 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:465:13 Unresolved reference 'orientation'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:465:27 Unresolved reference 'RadioGroup'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:466:13 Unresolved reference 'setPadding'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:468:24 Unresolved reference 'RadioButton'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:468:42 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:468:48 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:468:50 Unresolved reference 'text'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:469:26 Unresolved reference 'RadioButton'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:469:44 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:469:50 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:469:52 Unresolved reference 'text'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:470:21 Unresolved reference 'RadioButton'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:470:39 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:470:45 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:470:47 Unresolved reference 'text'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:472:24 Unresolved reference 'addView'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:473:24 Unresolved reference 'addView'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:474:24 Unresolved reference 'addView'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:477:52 Unresolved reference 'isChecked'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:478:62 Unresolved reference 'isChecked'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:479:53 Unresolved reference 'isChecked'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:482:24 Unresolved reference 'setOnCheckedChangeListener'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:482:53 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:482:56 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:484:28 Unresolved reference 'id'.
+e: file:///C:/Users/uzuik/AndroidStudioProjects/DigimonGlyph/app/src/main/java/com/digimon/glyph/RomLoaderActivity.kt:485:23 Unresolved reference 'id'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2s
+27 actionable tasks: 1 executed, 26 up-to-date

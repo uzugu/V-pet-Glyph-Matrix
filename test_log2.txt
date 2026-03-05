@@ -1,0 +1,4 @@
+--------- beginning of main
+02-24 22:56:29.828 15433 15433 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 22:56:29.844 15433 15433 D DigimonGlyphToy: CPU wakelock acquired
+02-24 22:56:29.844 15433 15433 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)

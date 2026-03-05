@@ -1,0 +1,45 @@
+--------- beginning of main
+02-24 22:52:19.962 18909 19307 D E0C6200-Emulator: Timing: wall=270.0s emu=270.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4050 correction=1.00x
+02-24 22:52:19.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1173827 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:52:29.962 18909 19307 D E0C6200-Emulator: Timing: wall=280.0s emu=280.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4200 correction=1.00x
+02-24 22:52:29.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1217320 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:52:39.962 18909 19307 D E0C6200-Emulator: Timing: wall=290.0s emu=290.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4350 correction=1.00x
+02-24 22:52:39.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1260788 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:52:49.962 18909 19307 D E0C6200-Emulator: Timing: wall=300.0s emu=300.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4500 correction=1.00x
+02-24 22:52:49.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1304267 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:52:50.054 18909 18909 D DigimonGlyphToy: State saved reason=interval sync=false seq=10816 pc=365 ts=1771969970054
+02-24 22:52:59.962 18909 19307 D E0C6200-Emulator: Timing: wall=310.0s emu=310.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4650 correction=1.00x
+02-24 22:52:59.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1347757 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:00.013 18909 18909 D DigimonGlyphToy: Toy message what=1, event=aod
+02-24 22:53:09.962 18909 19307 D E0C6200-Emulator: Timing: wall=320.0s emu=320.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4800 correction=1.00x
+02-24 22:53:09.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1391221 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:19.962 18909 19307 D E0C6200-Emulator: Timing: wall=330.0s emu=330.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=4950 correction=1.00x
+02-24 22:53:19.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1434706 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:29.963 18909 19307 D E0C6200-Emulator: Timing: wall=340.0s emu=340.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5100 correction=1.00x
+02-24 22:53:29.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1478189 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:39.963 18909 19307 D E0C6200-Emulator: Timing: wall=350.0s emu=350.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5250 correction=1.00x
+02-24 22:53:39.963 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1521657 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:49.963 18909 19307 D E0C6200-Emulator: Timing: wall=360.0s emu=360.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5400 correction=1.00x
+02-24 22:53:49.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1565152 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:53:50.062 18909 18909 D DigimonGlyphToy: State saved reason=interval sync=false seq=10817 pc=365 ts=1771970030062
+02-24 22:53:59.963 18909 19307 D E0C6200-Emulator: Timing: wall=370.0s emu=370.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5550 correction=1.00x
+02-24 22:53:59.965 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1608621 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:00.009 18909 18909 D DigimonGlyphToy: Toy message what=1, event=aod
+02-24 22:54:05.414  5862  5862 D StateManager: onStateTransitionStart - state: Normal
+02-24 22:54:05.417  5862  5862 D StateManager: onStateTransitionEnd - state: Normal
+02-24 22:54:09.963 18909 19307 D E0C6200-Emulator: Timing: wall=380.0s emu=380.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5700 correction=1.00x
+02-24 22:54:09.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1652100 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:19.963 18909 19307 D E0C6200-Emulator: Timing: wall=390.0s emu=390.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=5850 correction=1.00x
+02-24 22:54:19.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1695590 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:29.963 18909 19307 D E0C6200-Emulator: Timing: wall=400.0s emu=400.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=6000 correction=1.00x
+02-24 22:54:29.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1739051 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:39.963 18909 19307 D E0C6200-Emulator: Timing: wall=410.0s emu=410.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=6150 correction=1.00x
+02-24 22:54:39.964 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1782535 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:49.964 18909 19307 D E0C6200-Emulator: Timing: wall=420.0s emu=420.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=6300 correction=1.00x
+02-24 22:54:49.965 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1826020 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:54:50.089 18909 18909 D DigimonGlyphToy: State saved reason=interval sync=false seq=10818 pc=365 ts=1771970090088
+02-24 22:54:59.964 18909 19307 D E0C6200-Emulator: Timing: wall=430.0s emu=430.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=6450 correction=1.00x
+02-24 22:54:59.965 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1869489 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 22:55:00.026 18909 18909 D DigimonGlyphToy: Toy message what=1, event=aod
+02-24 22:55:09.964 18909 19307 D E0C6200-Emulator: Timing: wall=440.0s emu=440.0s drift=-0.00s (-0.00%) resyncs=2 avgRender=0.6ms frames=6600 correction=1.00x
+02-24 22:55:09.965 18909 19307 D E0C6200-Emulator: CPU: osc1=32768.0/s(32768) timer=256.0/s(256) sw=100.0/s(100) halt=1912984 TM=37 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0

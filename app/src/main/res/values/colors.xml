@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="bg_base">#0a0e17</color>
+    <color name="cyber_blue">#00e5ff</color>
+    <color name="cyber_blue_glow">#6600e5ff</color>
+    <color name="cyber_yellow">#f2ff00</color>
+    <color name="dark_panel">#B30a192f</color>
+    <color name="border_tech">#4D00e5ff</color>
+    <color name="text_main">#e6f1ff</color>
+    <color name="text_muted">#8892b0</color>
+    <color name="cyber_pink">#ff0055</color>
+    <color name="widget_btn_highlight">#80f2ff00</color>
+</resources>

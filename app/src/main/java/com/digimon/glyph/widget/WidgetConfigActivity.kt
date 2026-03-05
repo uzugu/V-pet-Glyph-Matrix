@@ -122,6 +122,8 @@ class WidgetConfigActivity : AppCompatActivity() {
             SkinEntry(WidgetPrefs.Skin.DIGIVICE_V1,    "DIGIVICE  V1",   "Gray/blue shell — 1997 original colorway",            Color.parseColor("#5A6070")),
             SkinEntry(WidgetPrefs.Skin.DIGIVICE_V2,    "DIGIVICE  V2",   "Black/red shell — V2 colorway",                       Color.parseColor("#CC2200")),
             SkinEntry(WidgetPrefs.Skin.DIGIVICE_WHITE, "DIGIVICE  WHITE","White/gold shell — V-Tamer colorway",                 Color.parseColor("#D4A800")),
+            SkinEntry(WidgetPrefs.Skin.BRICK_V1,       "BRICK  V-PET V1","Red brick shell — faithful SVG replica of 1997 V-Pet",Color.parseColor("#B24A4A")),
+            SkinEntry(WidgetPrefs.Skin.BRICK_V3,       "BRICK  V-PET V3","Orange brick shell — SVG replica of V3 device",       Color.parseColor("#F35C00")),
             SkinEntry(WidgetPrefs.Skin.CYBER_HUD,      "CYBER HUD",      "Terminal panel — cyber aesthetic with LCD overlay",   COLOR_CYAN),
             SkinEntry(WidgetPrefs.Skin.DEBUG,          "DEBUG",          "Raw 32×24 LCD — uncropped pixel dump",                COLOR_DIM),
         )

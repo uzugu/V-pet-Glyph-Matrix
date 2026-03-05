@@ -1,0 +1,79 @@
+--------- beginning of main
+02-25 00:27:47.420 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:47.427 30449 30449 D DigimonGlyphToy: CPU wakelock acquired
+02-25 00:27:47.427 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:47.435 30449 30449 D DigimonGlyphToy: Restore attempt rom=digimonv3 hash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3 exists=true seq=10894 ts=1771975630312 savedRom=digimonv3 savedHash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3
+02-25 00:27:47.444 30449 30449 D DigimonGlyphToy: Restore result ok=true pc=365
+02-25 00:27:47.446 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:47.461 30449 30449 D DigimonGlyphToy: Emulator started with ROM: digimonv3 standaloneMode=true
+02-25 00:27:47.471 30449 30449 D DigimonGlyphToy: Process command id=710 type=load_autosave arg=0
+02-25 00:27:47.474 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=25421 rxState=IDLE
+02-25 00:27:47.474 30449 30449 D DigimonGlyphToy: Command 710 result: autosave loaded
+02-25 00:27:50.930 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:50.936 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:50.939 30449 30449 D DigimonGlyphToy: Process command id=711 type=button_press arg=10
+02-25 00:27:50.939 30449 30449 D DigimonGlyphToy: Command 711 result: button pressed
+02-25 00:27:51.339 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:51.342 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:51.346 30449 30449 D DigimonGlyphToy: Process command id=712 type=button_press arg=10
+02-25 00:27:51.346 30449 30449 D DigimonGlyphToy: Command 712 result: button pressed
+02-25 00:27:51.705 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:51.710 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:51.710 30449 30449 D DigimonGlyphToy: Process command id=713 type=button_press arg=10
+02-25 00:27:51.710 30449 30449 D DigimonGlyphToy: Command 713 result: button pressed
+02-25 00:27:52.628 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:52.636 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:52.637 30449 30449 D DigimonGlyphToy: Process command id=714 type=button_press arg=10
+02-25 00:27:52.637 30449 30449 D DigimonGlyphToy: Command 714 result: button pressed
+02-25 00:27:55.648 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:55.654 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:55.655 30449 30449 D DigimonGlyphToy: Process command id=715 type=button_press arg=10
+02-25 00:27:55.656 30449 30449 D DigimonGlyphToy: Command 715 result: button pressed
+02-25 00:27:56.467 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:56.474 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:56.474 30449 30449 D DigimonGlyphToy: Process command id=716 type=button_press arg=11
+02-25 00:27:56.475 30449 30449 D DigimonGlyphToy: Command 716 result: button pressed
+02-25 00:27:58.191 30449 30449 D DigimonGlyphToy: Starting in standalone widget mode
+02-25 00:27:58.193 30449 30449 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-25 00:27:58.195 30449 30449 D DigimonGlyphToy: Process command id=717 type=button_press arg=11
+02-25 00:27:58.196 30449 30449 D DigimonGlyphToy: Command 717 result: button pressed
+02-25 00:27:58.206 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=10735138 rxState=IDLE
+02-25 00:27:58.270 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=64028 rxState=IDLE
+02-25 00:27:58.272 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2014 rxState=WAITING_START_LOW
+02-25 00:27:58.273 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=946 rxState=WAITING_BITS_HIGH
+02-25 00:27:58.276 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:27:58.278 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:27:58.280 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2747 rxState=RECEIVING_BITS
+02-25 00:27:58.282 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1678 rxState=RECEIVING_BITS
+02-25 00:27:58.283 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.286 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:27:58.287 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.291 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3204 rxState=RECEIVING_BITS
+02-25 00:27:58.292 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.295 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:27:58.296 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.299 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:27:58.300 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.303 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:27:58.304 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.308 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3205 rxState=RECEIVING_BITS
+02-25 00:27:58.309 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.312 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3265 rxState=RECEIVING_BITS
+02-25 00:27:58.313 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=1007 rxState=RECEIVING_BITS
+02-25 00:27:58.316 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=3266 rxState=RECEIVING_BITS
+02-25 00:27:58.319 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.321 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1679 rxState=RECEIVING_BITS
+02-25 00:27:58.323 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.325 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1618 rxState=RECEIVING_BITS
+02-25 00:27:58.328 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.330 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1679 rxState=RECEIVING_BITS
+02-25 00:27:58.332 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.334 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1679 rxState=RECEIVING_BITS
+02-25 00:27:58.337 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.338 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1679 rxState=RECEIVING_BITS
+02-25 00:27:58.341 30449 30587 D VirtualDCom: onLocalP2Edge isLow=true dtUs=2746 rxState=RECEIVING_BITS
+02-25 00:27:58.341 30449 30587 I VirtualDCom: Decoded packet: 0xfc03
+02-25 00:27:58.343 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=1618 rxState=IDLE
+02-25 00:27:58.343 30449 30587 D VirtualDCom: onLocalP2Edge isLow=false dtUs=366 rxState=IDLE
+02-25 00:28:47.479 30449 30449 D DigimonGlyphToy: State saved reason=interval sync=false seq=10895 pc=365 ts=1771975727479
+02-25 00:29:47.490 30449 30449 D DigimonGlyphToy: State saved reason=interval sync=false seq=10896 pc=365 ts=1771975787489

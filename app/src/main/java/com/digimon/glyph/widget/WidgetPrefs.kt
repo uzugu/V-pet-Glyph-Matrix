@@ -13,6 +13,8 @@ object WidgetPrefs {
         DIGIVICE_V2,
         DIGIVICE_V3,
         DIGIVICE_WHITE,
+        BRICK_V1,
+        BRICK_V3,
         CYBER_HUD,
         DEBUG
     }

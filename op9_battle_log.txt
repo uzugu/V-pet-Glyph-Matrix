@@ -1,0 +1,294 @@
+--------- beginning of main
+02-24 23:07:18.383 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:18.401 16494 16494 D DigimonGlyphToy: CPU wakelock acquired
+02-24 23:07:18.401 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:18.411 16494 16494 D DigimonGlyphToy: Restore attempt rom=digimonv3 hash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3 exists=true seq=5797 ts=1771437038373 savedRom=digimonv3 savedHash=059df7ee74de7e26a9df9f7f9d82bcd87af4c47af180728e44f3c3d056289db3
+02-24 23:07:18.425 16494 16494 D DigimonGlyphToy: Restore result ok=true pc=365
+02-24 23:07:18.427 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:18.450 16494 16494 D DigimonGlyphToy: Emulator started with ROM: digimonv3 standaloneMode=true
+02-24 23:07:18.452 16494 16494 D DigimonGlyphToy: Process command id=666 type=load_slot arg=3
+02-24 23:07:18.456 16494 16494 D DigimonGlyphToy: Command 666 result: slot 3 loaded
+02-24 23:07:19.825  3269  3269 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+02-24 23:07:19.825  3269  3269 D StateManager: 	at com.android.quickstep.util.ScalingWorkspaceRevealAnim.<init>(ScalingWorkspaceRevealAnim.kt:89)
+02-24 23:07:19.825  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1719)
+02-24 23:07:19.825  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager$WallpaperOpenLauncherAnimationRunner.onAnimationStart(QuickstepTransitionManager.java:1852)
+02-24 23:07:22.577  3269  3269 D StateManager: goToState - fromState: Normal, toState: SpringLoaded, partial trace:
+02-24 23:07:22.577  3269  3269 D StateManager: 	at com.android.launcher3.Workspace.onDragStart(Workspace.java:516)
+02-24 23:07:22.577  3269  3269 D StateManager: 	at com.android.launcher3.dragndrop.DragController.callOnDragStart(DragController.java:228)
+02-24 23:07:22.577  3269  3269 D StateManager: 	at com.android.launcher3.dragndrop.LauncherDragController.startDrag(LauncherDragController.java:156)
+02-24 23:07:22.588  3269  3269 D StateManager: onStateTransitionStart - state: SpringLoaded
+02-24 23:07:22.742  3269  3269 D StateManager: onStateTransitionEnd - state: SpringLoaded
+02-24 23:07:22.883  3269  3269 D StateManager: goToState - fromState: SpringLoaded, toState: Normal, partial trace:
+02-24 23:07:22.883  3269  3269 D StateManager: 	at com.android.launcher3.Workspace.onDrop(Workspace.java:2227)
+02-24 23:07:22.883  3269  3269 D StateManager: 	at com.android.launcher3.dragndrop.DragController.drop(DragController.java:538)
+02-24 23:07:22.883  3269  3269 D StateManager: 	at com.android.launcher3.dragndrop.DragController.onDriverDragEnd(DragController.java:390)
+02-24 23:07:23.387  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:07:23.552  3269  3269 D StateManager: onStateTransitionEnd - state: Normal
+02-24 23:07:28.430 16494 16664 D E0C6200-Emulator: Timing: wall=10,0s emu=10,0s drift=0,00s (0,00%) resyncs=0 avgRender=0,5ms frames=150 correction=1,00x
+02-24 23:07:28.431 16494 16664 D E0C6200-Emulator: CPU: osc1=32767,8/s(32768) timer=256,1/s(256) sw=100,1/s(100) halt=43542 TM=195 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:07:37.167  3269  3269 D StateManager: goToState - fromState: Normal, toState: Overview, partial trace:
+02-24 23:07:37.167  3269  3269 D StateManager: 	at com.android.quickstep.LauncherActivityInterface.switchToRecentsIfVisible(LauncherActivityInterface.java:222)
+02-24 23:07:37.167  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeWhenRecentsIsNotVisible(OverviewCommandHelper.kt:340)
+02-24 23:07:37.167  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeCommand(OverviewCommandHelper.kt:175)
+02-24 23:07:37.173  3269  3269 D StateManager: onStateTransitionStart - state: Overview
+02-24 23:07:37.431  3269  3269 D StateManager: onStateTransitionEnd - state: Overview
+02-24 23:07:38.202  3269  3269 D StateManager: goToState - fromState: Overview, toState: Normal, partial trace:
+02-24 23:07:38.202  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:38.202  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:07:38.202  3269  3269 D StateManager: 	at com.android.quickstep.TaskViewUtils$9.lambda$onAnimationSuccess$0(TaskViewUtils.java:661)
+02-24 23:07:38.214  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:07:38.220  3269  3269 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:136)
+02-24 23:07:38.220  3269  3269 D StateManager: cancelAnimation - with ongoing animation, partial trace:
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:277)
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:176)
+02-24 23:07:38.220  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:38.221  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:07:38.224  3269  3269 D StateManager: onStateTransitionEnd - state: Normal
+02-24 23:07:38.428 16494 16664 D E0C6200-Emulator: Timing: wall=20,0s emu=20,0s drift=0,00s (0,00%) resyncs=0 avgRender=0,6ms frames=300 correction=1,00x
+02-24 23:07:38.429 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=87084 TM=195 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:07:41.887  3269  3269 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+02-24 23:07:41.887  3269  3269 D StateManager: 	at com.android.quickstep.util.ScalingWorkspaceRevealAnim.<init>(ScalingWorkspaceRevealAnim.kt:89)
+02-24 23:07:41.887  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1719)
+02-24 23:07:41.887  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager$WallpaperOpenLauncherAnimationRunner.onAnimationStart(QuickstepTransitionManager.java:1852)
+02-24 23:07:42.507 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:42.515 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:42.516 16494 16494 D DigimonGlyphToy: Process command id=667 type=button_press arg=11
+02-24 23:07:42.516 16494 16494 D DigimonGlyphToy: Command 667 result: button pressed
+02-24 23:07:44.191  3269  3269 D StateManager: goToState - fromState: Normal, toState: Overview, partial trace:
+02-24 23:07:44.191  3269  3269 D StateManager: 	at com.android.quickstep.LauncherActivityInterface.switchToRecentsIfVisible(LauncherActivityInterface.java:222)
+02-24 23:07:44.191  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeWhenRecentsIsNotVisible(OverviewCommandHelper.kt:340)
+02-24 23:07:44.191  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeCommand(OverviewCommandHelper.kt:175)
+02-24 23:07:44.198  3269  3269 D StateManager: onStateTransitionStart - state: Overview
+02-24 23:07:44.455  3269  3269 D StateManager: onStateTransitionEnd - state: Overview
+02-24 23:07:45.094  3269  3269 D StateManager: goToState - fromState: Overview, toState: Normal, partial trace:
+02-24 23:07:45.094  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:45.094  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:07:45.094  3269  3269 D StateManager: 	at com.android.quickstep.TaskViewUtils$9.lambda$onAnimationSuccess$0(TaskViewUtils.java:661)
+02-24 23:07:45.109  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:07:45.116  3269  3269 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:136)
+02-24 23:07:45.116  3269  3269 D StateManager: cancelAnimation - with ongoing animation, partial trace:
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:277)
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:176)
+02-24 23:07:45.116  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:45.117  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:07:45.118  3269  3269 D StateManager: onStateTransitionEnd - state: Normal
+02-24 23:07:47.415 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:47.423 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:47.430 16494 16494 D DigimonGlyphToy: Process command id=668 type=press_combo arg=2
+02-24 23:07:47.449 16494 16494 D DigimonGlyphToy: Command 668 result: combo A+C triggered
+02-24 23:07:48.428 16494 16664 D E0C6200-Emulator: Timing: wall=30,0s emu=30,0s drift=-0,00s (-0,00%) resyncs=0 avgRender=0,5ms frames=450 correction=1,00x
+02-24 23:07:48.429 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,2/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=126139 TM=195 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:07:49.630  3269  3269 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+02-24 23:07:49.630  3269  3269 D StateManager: 	at com.android.quickstep.util.ScalingWorkspaceRevealAnim.<init>(ScalingWorkspaceRevealAnim.kt:89)
+02-24 23:07:49.630  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1719)
+02-24 23:07:49.630  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager$WallpaperOpenLauncherAnimationRunner.onAnimationStart(QuickstepTransitionManager.java:1852)
+02-24 23:07:50.702 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:50.713 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:50.713 16494 16494 D DigimonGlyphToy: Process command id=669 type=button_press arg=10
+02-24 23:07:50.714 16494 16494 D DigimonGlyphToy: Command 669 result: button pressed
+02-24 23:07:51.836 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:51.842 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:51.842 16494 16494 D DigimonGlyphToy: Process command id=670 type=button_press arg=10
+02-24 23:07:51.843 16494 16494 D DigimonGlyphToy: Command 670 result: button pressed
+02-24 23:07:52.198 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:52.206 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:52.206 16494 16494 D DigimonGlyphToy: Process command id=671 type=button_press arg=10
+02-24 23:07:52.206 16494 16494 D DigimonGlyphToy: Command 671 result: button pressed
+02-24 23:07:52.509 16494 16494 D DigimonGlyphToy: Process command id=672 type=button_press arg=10
+02-24 23:07:52.509 16494 16494 D DigimonGlyphToy: Command 672 result: button pressed
+02-24 23:07:52.510 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:52.516 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:52.860 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:52.867 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:52.868 16494 16494 D DigimonGlyphToy: Process command id=673 type=button_press arg=10
+02-24 23:07:52.868 16494 16494 D DigimonGlyphToy: Command 673 result: button pressed
+02-24 23:07:54.067 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:54.073 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:54.074 16494 16494 D DigimonGlyphToy: Process command id=674 type=button_press arg=11
+02-24 23:07:54.074 16494 16494 D DigimonGlyphToy: Command 674 result: button pressed
+02-24 23:07:54.834 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:07:54.842 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:07:54.842 16494 16494 D DigimonGlyphToy: Process command id=675 type=button_press arg=12
+02-24 23:07:54.842 16494 16494 D DigimonGlyphToy: Command 675 result: button pressed
+02-24 23:07:58.430 16494 16664 D E0C6200-Emulator: Timing: wall=40,0s emu=40,0s drift=0,00s (0,00%) resyncs=0 avgRender=0,4ms frames=600 correction=1,00x
+02-24 23:07:58.431 16494 16664 D E0C6200-Emulator: CPU: osc1=32766,6/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=167082 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:07:58.871  3269  3269 D StateManager: goToState - fromState: Normal, toState: Normal, partial trace:
+02-24 23:07:58.871  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:465)
+02-24 23:07:58.871  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.moveToRestState(StateManager.java:456)
+02-24 23:07:58.871  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StatefulActivity.onStop(StatefulActivity.java:136)
+02-24 23:08:08.432 16494 16664 D E0C6200-Emulator: Timing: wall=50,0s emu=50,0s drift=0,00s (0,01%) resyncs=0 avgRender=0,3ms frames=750 correction=1,00x
+02-24 23:08:08.433 16494 16664 D E0C6200-Emulator: CPU: osc1=32766,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=211273 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:08:16.624 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:16.633 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=false stepGate=false stepSliceMs=10 correctionOverride=none)
+02-24 23:08:16.644 16494 16494 I DigimonGlyphToy: Process command id=676 type=battle_start_join arg=0
+02-24 23:08:16.644 16494 16494 I DigimonGlyphToy: Battle start requested: join
+02-24 23:08:16.645 16494 16494 I BattleLinkManager: startJoin endpointName=LE2113-8381
+02-24 23:08:16.650 16494 16494 I DigimonGlyphToy: Command 676 result: battle join requested
+02-24 23:08:16.713 16494 16494 I BattleLinkManager: Join discovery started serviceId=com.digimon.glyph.battle.v1
+02-24 23:08:18.432 16494 16664 D E0C6200-Emulator: Timing: wall=60,0s emu=60,0s drift=-0,00s (-0,00%) resyncs=0 avgRender=0,3ms frames=900 correction=1,00x
+02-24 23:08:18.432 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,1/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=255479 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:08:18.483 16494 16494 D DigimonGlyphToy: State saved reason=interval sync=false seq=5798 pc=365 ts=1771970898483
+02-24 23:08:19.189 16494 16494 I BattleLinkManager: Connection initiated from=A024-9323
+02-24 23:08:19.391 16494 16494 I BattleLinkManager: Connected peer=A024-9323 endpointId=D2EG
+02-24 23:08:19.401 16494 16494 D DigimonGlyphToy: Battle connected peer=A024-9323
+02-24 23:08:19.401 16494 16494 D BattleLinkManager: pin edge tx count=1 last=P2,15,1,1944926
+02-24 23:08:19.401 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=1 src=1944926 reason=connect_sync sent=true
+02-24 23:08:19.402 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:20.351 16494 16494 D DigimonGlyphToy: Battle pin edge rx P2=15 seq=1 src=365037162
+02-24 23:08:20.351 16494 16494 D BattleLinkManager: pin edge rx count=1 last=P2,15,1,365037162
+02-24 23:08:21.283  3269  3269 D StateManager: createAtomicAnimation - fromState: Background, toState: Normal, partial trace:
+02-24 23:08:21.283  3269  3269 D StateManager: 	at com.android.quickstep.util.ScalingWorkspaceRevealAnim.<init>(ScalingWorkspaceRevealAnim.kt:89)
+02-24 23:08:21.283  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager.createWallpaperOpenAnimations(QuickstepTransitionManager.java:1719)
+02-24 23:08:21.283  3269  3269 D StateManager: 	at com.android.launcher3.QuickstepTransitionManager$WallpaperOpenLauncherAnimationRunner.onAnimationStart(QuickstepTransitionManager.java:1852)
+02-24 23:08:21.501  3269  3269 D StateManager: goToState - fromState: Normal, toState: Overview, partial trace:
+02-24 23:08:21.501  3269  3269 D StateManager: 	at com.android.quickstep.LauncherActivityInterface.switchToRecentsIfVisible(LauncherActivityInterface.java:222)
+02-24 23:08:21.501  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeWhenRecentsIsNotVisible(OverviewCommandHelper.kt:340)
+02-24 23:08:21.501  3269  3269 D StateManager: 	at com.android.quickstep.OverviewCommandHelper.executeCommand(OverviewCommandHelper.kt:175)
+02-24 23:08:21.502  3269  3269 D StateManager: cancelAnimation - with ongoing animation, partial trace:
+02-24 23:08:21.502  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:277)
+02-24 23:08:21.502  3269  3269 D StateManager: 	at com.android.launcher3.statemanager.StateManager.goToState(StateManager.java:187)
+02-24 23:08:21.502  3269  3269 D StateManager: 	at com.android.quickstep.LauncherActivityInterface.switchToRecentsIfVisible(LauncherActivityInterface.java:222)
+02-24 23:08:21.508  3269  3269 D StateManager: onStateTransitionStart - state: Overview
+02-24 23:08:21.767  3269  3269 D StateManager: onStateTransitionEnd - state: Overview
+02-24 23:08:22.562  3269  3269 D StateManager: goToState - fromState: Overview, toState: Normal, partial trace:
+02-24 23:08:22.562  3269  3269 D StateManager: 	at com.android.launcher3.Launcher.onNewIntent(Launcher.java:1687)
+02-24 23:08:22.562  3269  3269 D StateManager: 	at com.android.launcher3.uioverrides.QuickstepLauncher.onNewIntent(QuickstepLauncher.java:901)
+02-24 23:08:22.562  3269  3269 D StateManager: 	at android.app.Activity.onNewIntent(Activity.java:2472)
+02-24 23:08:22.573  3269  3269 D StateManager: onStateTransitionStart - state: Normal
+02-24 23:08:22.834  3269  3269 D StateManager: onStateTransitionEnd - state: Normal
+02-24 23:08:25.883 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:25.890 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:25.891 16494 16494 D DigimonGlyphToy: Process command id=677 type=button_press arg=11
+02-24 23:08:25.891 16494 16494 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-24 23:08:25.892 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=2 src=1951416 reason=assist_b_down sent=true
+02-24 23:08:25.892 16494 16494 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-24 23:08:25.892 16494 16494 D DigimonGlyphToy: Command 677 result: button pressed
+02-24 23:08:25.892 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 changed
+02-24 23:08:25.892 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=1
+02-24 23:08:26.012 16494 16494 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-24 23:08:26.014 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=3 src=1951537 reason=assist_b_up sent=true
+02-24 23:08:26.014 16494 16494 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-24 23:08:26.018 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=2
+02-24 23:08:27.387 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:27.394 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:27.394 16494 16494 D DigimonGlyphToy: Process command id=678 type=button_press arg=11
+02-24 23:08:27.395 16494 16494 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-24 23:08:27.395 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=4 src=1952919 reason=assist_b_down sent=true
+02-24 23:08:27.396 16494 16494 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-24 23:08:27.396 16494 16494 D DigimonGlyphToy: Command 678 result: button pressed
+02-24 23:08:27.400 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=3
+02-24 23:08:27.540 16494 16494 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-24 23:08:27.541 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=5 src=1953065 reason=assist_b_up sent=true
+02-24 23:08:27.541 16494 16494 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-24 23:08:28.431 16494 16664 D E0C6200-Emulator: Timing: wall=70,0s emu=70,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,3ms frames=1050 correction=1,00x
+02-24 23:08:28.431 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=294847 TM=143 CTRL_OSC=D CTRL_SW=0 SWL=0 SWH=0
+02-24 23:08:29.848 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:29.854 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:29.855 16494 16494 D DigimonGlyphToy: Process command id=679 type=button_press arg=10
+02-24 23:08:29.855 16494 16494 D DigimonGlyphToy: Command 679 result: button pressed
+02-24 23:08:29.858 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=4
+02-24 23:08:29.945 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=5
+02-24 23:08:34.938 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:34.943 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:34.944 16494 16494 D DigimonGlyphToy: Process command id=680 type=button_press arg=10
+02-24 23:08:34.944 16494 16494 D DigimonGlyphToy: Command 680 result: button pressed
+02-24 23:08:34.947 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=6
+02-24 23:08:35.033 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=7
+02-24 23:08:35.502 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:35.509 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:35.510 16494 16494 D DigimonGlyphToy: Process command id=681 type=button_press arg=10
+02-24 23:08:35.510 16494 16494 D DigimonGlyphToy: Command 681 result: button pressed
+02-24 23:08:35.513 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=8
+02-24 23:08:35.599 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=9
+02-24 23:08:36.328 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:36.334 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:36.335 16494 16494 D DigimonGlyphToy: Process command id=682 type=button_press arg=10
+02-24 23:08:36.336 16494 16494 D DigimonGlyphToy: Command 682 result: button pressed
+02-24 23:08:36.339 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=1
+02-24 23:08:36.423 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=2
+02-24 23:08:37.262 16494 16494 D DigimonGlyphToy: Starting in standalone widget mode
+02-24 23:08:37.270 16494 16494 D DigimonGlyphToy: Timing mode set to EXACT (userExact=true boostActive=false battleLock=true stepGate=false stepSliceMs=10 correctionOverride=1.0)
+02-24 23:08:37.270 16494 16494 D DigimonGlyphToy: Process command id=683 type=button_press arg=11
+02-24 23:08:37.270 16494 16494 D DigimonGlyphToy: Battle local B down assistEnabled=true
+02-24 23:08:37.271 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=14 seq=6 src=1962795 reason=assist_b_down sent=true
+02-24 23:08:37.271 16494 16494 D DigimonGlyphToy: Battle assist tx P2=14 (b_down, sent=true)
+02-24 23:08:37.271 16494 16494 D DigimonGlyphToy: Command 683 result: button pressed
+02-24 23:08:37.274 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf14 v=0 count=3
+02-24 23:08:37.299 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 changed
+02-24 23:08:37.299 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf26 v=9 count=4
+02-24 23:08:37.299 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 changed
+02-24 23:08:37.299 16494 16664 D DigimonGlyphToy: Battle io W addr=0xf27 v=1 count=5
+02-24 23:08:37.300 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-24 23:08:37.300 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=6
+02-24 23:08:37.305 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=7
+02-24 23:08:37.309 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=8
+02-24 23:08:37.314 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=9
+02-24 23:08:37.319 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=10
+02-24 23:08:37.324 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=11
+02-24 23:08:37.328 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=12
+02-24 23:08:37.333 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=13
+02-24 23:08:37.338 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=14
+02-24 23:08:37.342 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=15
+02-24 23:08:37.347 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=16
+02-24 23:08:37.352 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=17
+02-24 23:08:37.357 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=18
+02-24 23:08:37.361 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=19
+02-24 23:08:37.366 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=20
+02-24 23:08:37.372 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=21
+02-24 23:08:37.376 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=22
+02-24 23:08:37.381 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=23
+02-24 23:08:37.386 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=24
+02-24 23:08:37.422 16494 16494 D DigimonGlyphToy: Battle local B up assistEnabled=true
+02-24 23:08:37.423 16494 16494 D DigimonGlyphToy: Battle pin edge tx P2=15 seq=7 src=1962947 reason=assist_b_up sent=true
+02-24 23:08:37.423 16494 16494 D DigimonGlyphToy: Battle assist tx P2=15 (b_up, sent=true)
+02-24 23:08:37.743 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=100
+02-24 23:08:38.213 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=200
+02-24 23:08:38.431 16494 16664 D E0C6200-Emulator: Timing: wall=80,0s emu=80,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,3ms frames=1200 correction=1,00x
+02-24 23:08:38.431 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=332126 TM=143 CTRL_OSC=D CTRL_SW=0 SWL=0 SWH=0
+02-24 23:08:38.684 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=300
+02-24 23:08:39.154 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=400
+02-24 23:08:39.265 16494 16494 D DigimonGlyphToy: Battle pin edge rx P2=14 seq=2 src=365057133
+02-24 23:08:39.267 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 changed
+02-24 23:08:39.349 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=14 count=500
+02-24 23:08:39.390 16494 16494 D DigimonGlyphToy: Battle pin edge rx P2=15 seq=3 src=365057255
+02-24 23:08:39.394 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 changed
+02-24 23:08:39.760 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=600
+02-24 23:08:40.231 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=700
+02-24 23:08:40.701 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=800
+02-24 23:08:41.171 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=900
+02-24 23:08:41.641 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1000
+02-24 23:08:42.112 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1100
+02-24 23:08:42.582 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1200
+02-24 23:08:43.052 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1300
+02-24 23:08:43.523 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1400
+02-24 23:08:43.993 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1500
+02-24 23:08:44.463 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1600
+02-24 23:08:44.933 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1700
+02-24 23:08:45.404 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1800
+02-24 23:08:45.874 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1900
+02-24 23:08:46.339 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=1
+02-24 23:08:46.344 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=2
+02-24 23:08:46.348 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=3
+02-24 23:08:46.353 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=4
+02-24 23:08:46.358 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=5
+02-24 23:08:46.362 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=6
+02-24 23:08:46.367 16494 16664 D DigimonGlyphToy: Battle io R addr=0xf62 v=15 count=7
+02-24 23:08:48.432 16494 16664 D E0C6200-Emulator: Timing: wall=90,0s emu=90,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,3ms frames=1350 correction=1,00x
+02-24 23:08:48.433 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=341024 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:08:58.432 16494 16664 D E0C6200-Emulator: Timing: wall=100,0s emu=100,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,3ms frames=1500 correction=1,00x
+02-24 23:08:58.433 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,1/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=384506 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:09:08.432 16494 16664 D E0C6200-Emulator: Timing: wall=110,0s emu=110,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,2ms frames=1650 correction=1,00x
+02-24 23:09:08.433 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=427996 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:09:18.432 16494 16664 D E0C6200-Emulator: Timing: wall=120,0s emu=120,0s drift=-0,00s (-0,00%) resyncs=1 avgRender=0,2ms frames=1800 correction=1,00x
+02-24 23:09:18.434 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=471459 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:09:18.513 16494 16494 D DigimonGlyphToy: State saved reason=interval sync=false seq=5799 pc=365 ts=1771970958512
+02-24 23:09:28.433 16494 16664 D E0C6200-Emulator: Timing: wall=130,0s emu=130,0s drift=-0,00s (-0,00%) resyncs=2 avgRender=0,2ms frames=1950 correction=1,00x
+02-24 23:09:28.434 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=514828 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0
+02-24 23:09:38.433 16494 16664 D E0C6200-Emulator: Timing: wall=140,0s emu=140,0s drift=-0,00s (-0,00%) resyncs=2 avgRender=0,2ms frames=2100 correction=1,00x
+02-24 23:09:38.434 16494 16664 D E0C6200-Emulator: CPU: osc1=32768,0/s(32768) timer=256,0/s(256) sw=100,0/s(100) halt=558307 TM=143 CTRL_OSC=0 CTRL_SW=0 SWL=0 SWH=0

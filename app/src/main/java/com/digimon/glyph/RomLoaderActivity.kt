@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Typeface
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.os.Build
@@ -24,6 +27,9 @@ import android.widget.TextView
 import android.widget.Toast
 import android.widget.RadioGroup
 import android.widget.RadioButton
+import android.app.AlertDialog
+import android.text.Editable
+import android.text.TextWatcher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -61,12 +67,17 @@ class RomLoaderActivity : AppCompatActivity() {
     private lateinit var indicatorA: TextView
     private lateinit var indicatorB: TextView
     private lateinit var indicatorC: TextView
-    private lateinit var fullDebugImage: ImageView
-    private lateinit var glyphDebugImage: ImageView
+    private lateinit var digimonStatsText: TextView
     private lateinit var slot1Text: TextView
     private lateinit var slot2Text: TextView
     private lateinit var slot3Text: TextView
     private lateinit var battleStatusText: TextView
+    private lateinit var battlePeerName: TextView
+    private lateinit var battleBadge: TextView
+    private lateinit var statRomValue: TextView
+    private lateinit var statEmuValue: TextView
+    private lateinit var statEmuLabel: TextView
+    private lateinit var inputClockFactor: EditText
     private var lastFrameUpdateMs: Long = -1L
     private var lastAckId: Long = 0L
     private var lastAckText: String = "-"
@@ -109,363 +120,230 @@ class RomLoaderActivity : AppCompatActivity() {
         BattleStateStore.init(this)
         BattleTransportSettings.init(this)
 
-        val scrollView = ScrollView(this).apply {
-            isFillViewport = true
-        }
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(48, 96, 48, 48)
-        }
-        scrollView.addView(layout)
+        setContentView(R.layout.activity_rom_loader)
 
-        val title = TextView(this).apply {
-            text = "Digimon Glyph Emulator"
-            textSize = 24f
-            setPadding(0, 0, 0, 20)
-        }
-        layout.addView(title)
+        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
+        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
 
-        statusText = TextView(this).apply {
-            textSize = 16f
-            setPadding(0, 0, 0, 16)
-        }
-        layout.addView(statusText)
+        val mainTitle = findViewById<TextView>(R.id.main_title)
+        statusText = findViewById(R.id.statusText)
+        val btnPickRom = findViewById<Button>(R.id.btn_pick_rom)
+        val btnStartEmu = findViewById<Button>(R.id.btn_start_emu)
+        val btnStopEmu = findViewById<Button>(R.id.btn_stop_emu)
+        digimonStatsText = findViewById(R.id.digimonStatsText)
+        
+        val switchZoom = findViewById<Switch>(R.id.switch_zoom)
+        val switchAudio = findViewById<Switch>(R.id.switch_audio)
+        val switchExactTiming = findViewById<Switch>(R.id.switch_exact_timing)
+        val switchHaptic = findViewById<Switch>(R.id.switch_haptic)
 
-        val loadButton = Button(this).apply {
-            text = getString(R.string.pick_rom)
-            setOnClickListener {
-                pickRom.launch(arrayOf(
-                    "application/zip",
-                    "application/octet-stream",
-                    "application/x-zip-compressed",
-                    "*/*"
-                ))
-            }
-        }
-        layout.addView(loadButton)
+        val btnToggleSave = findViewById<Button>(R.id.btn_toggle_save)
+        val layoutSaveTools = findViewById<LinearLayout>(R.id.layout_save_tools)
+        autosaveText = findViewById(R.id.autosaveText)
+        val btnSaveAuto = findViewById<Button>(R.id.btn_save_auto)
+        val btnLoadAuto = findViewById<Button>(R.id.btn_load_auto)
+        
+        val slotContainer = findViewById<LinearLayout>(R.id.slot_container)
+        slot1Text = addSlotRow(slotContainer, 1)
+        slot2Text = addSlotRow(slotContainer, 2)
+        slot3Text = addSlotRow(slotContainer, 3)
 
-        val serviceRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 8, 0, 12)
+        val btnRestart = findViewById<Button>(R.id.btn_restart)
+        val btnFullReset = findViewById<Button>(R.id.btn_full_reset)
+        
+        val btnComboAb = findViewById<Button>(R.id.btn_combo_ab)
+        val btnComboAc = findViewById<Button>(R.id.btn_combo_ac)
+        val btnComboBc = findViewById<Button>(R.id.btn_combo_bc)
+
+        val btnToggleBattle = findViewById<Button>(R.id.btn_toggle_battle)
+        val layoutBattle = findViewById<LinearLayout>(R.id.layout_battle)
+        val rgTransport = findViewById<RadioGroup>(R.id.rg_transport)
+        val rbNearby = findViewById<RadioButton>(R.id.rb_nearby)
+        val rbInternet = findViewById<RadioButton>(R.id.rb_internet)
+        val rbSim = findViewById<RadioButton>(R.id.rb_sim)
+        
+        val rgPreset = findViewById<RadioGroup>(R.id.rg_preset)
+        val rbPureEcho = findViewById<RadioButton>(R.id.rb_pure_echo)
+        val rbXor = findViewById<RadioButton>(R.id.rb_xor)
+        val rbGlobal = findViewById<RadioButton>(R.id.rb_global)
+
+        val inputTamerName = findViewById<EditText>(R.id.input_tamer_name)
+        val btnTutorial = findViewById<Button>(R.id.btn_tutorial)
+
+        val btnBattleHost = findViewById<Button>(R.id.btn_battle_host)
+        val btnBattleJoin = findViewById<Button>(R.id.btn_battle_join)
+        val btnBattleStop = findViewById<Button>(R.id.btn_battle_stop)
+        battleStatusText = findViewById(R.id.battleStatusText)
+        battlePeerName = findViewById(R.id.battlePeerName)
+        battleBadge = findViewById(R.id.battleBadge)
+        statRomValue = findViewById(R.id.stat_rom_value)
+        statEmuValue = findViewById(R.id.stat_emu_value)
+        statEmuLabel = findViewById(R.id.stat_emu_label)
+
+        val statRomCard = findViewById<android.widget.FrameLayout>(R.id.stat_rom_card)
+        val statEmuCard = findViewById<android.widget.FrameLayout>(R.id.stat_emu_card)
+        val btnToggleAdvanced = findViewById<Button>(R.id.btn_toggle_advanced)
+        val layoutAdvanced = findViewById<LinearLayout>(R.id.layout_advanced)
+        val switchClockCorrection = findViewById<Switch>(R.id.switch_clock_correction)
+        val inputClockFactor = findViewById<EditText>(R.id.input_clock_factor)
+        commandStatusText = findViewById(R.id.commandStatusText)
+        val btnShareDebug = findViewById<Button>(R.id.btn_share_debug)
+        val switchDebugTelemetry = findViewById<Switch>(R.id.switch_debug_telemetry)
+        
+        val indicatorRow = findViewById<LinearLayout>(R.id.indicatorRow)
+        indicatorA = buildIndicator("A")
+        indicatorB = buildIndicator("B")
+        indicatorC = buildIndicator("C")
+        indicatorRow.addView(indicatorA)
+        indicatorRow.addView(indicatorB)
+        indicatorRow.addView(indicatorC)
+
+        debugText = TextView(this).apply {
+            textSize = 13f
+            typeface = shareTech
+            setPadding(0, 0, 0, 32)
+            setTextColor(Color.WHITE)
         }
-        serviceRow.addView(Button(this).apply {
-            text = "Start Emulator"
-            setOnClickListener {
+        layoutAdvanced.addView(debugText)
+
+        // Apply Fonts — also apply Teko to shadow layers so they wrap identically to main title
+        val titleShadowCyan = findViewById<TextView>(R.id.title_shadow_cyan)
+        val titleShadowPink = findViewById<TextView>(R.id.title_shadow_pink)
+        mainTitle.typeface = teko
+        titleShadowCyan.typeface = teko
+        titleShadowPink.typeface = teko
+        btnPickRom.typeface = teko
+        btnStartEmu.typeface = teko
+        btnStopEmu.typeface = teko
+        btnToggleSave.typeface = teko
+        btnToggleBattle.typeface = teko
+        btnToggleAdvanced.typeface = teko
+        btnTutorial.typeface = teko
+        statRomValue.typeface = teko
+        statEmuValue.typeface = teko
+
+        val shareTechViews = listOf(
+            statusText, switchZoom, switchAudio, switchExactTiming, switchHaptic,
+            autosaveText, btnSaveAuto, btnLoadAuto, btnRestart, btnFullReset,
+            btnComboAb, btnComboAc, btnComboBc,
+            rbNearby, rbInternet, rbSim, rbPureEcho, rbXor, rbGlobal,
+            btnBattleHost, btnBattleJoin, btnBattleStop, battleStatusText,
+            battlePeerName, battleBadge, statEmuLabel,
+            switchClockCorrection, inputClockFactor, commandStatusText, btnShareDebug, switchDebugTelemetry,
+            debugText
+        )
+        shareTechViews.forEach { if (it is TextView) it.typeface = shareTech }
+
+        // Stat card shortcuts: ROM card → mount, Emulator card → toggle start/stop
+        statRomCard.setOnClickListener {
+            pickRom.launch(arrayOf(
+                "application/zip",
+                "application/octet-stream",
+                "application/x-zip-compressed",
+                "*/*"
+            ))
+        }
+        statEmuCard.setOnClickListener {
+            if (statEmuValue.text.toString() == "ACTIVE") {
+                stopBackendService()
+                Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
+            } else {
                 startBackendService()
                 Toast.makeText(this@RomLoaderActivity, "Start requested", Toast.LENGTH_SHORT).show()
             }
-        })
-        serviceRow.addView(Button(this).apply {
-            text = "Stop Emulator"
-            setOnClickListener {
-                stopBackendService()
-                Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
-            }
-        })
-        layout.addView(serviceRow)
+        }
 
-        val infoText = TextView(this).apply {
-            text = buildString {
-                appendLine("Quick start:")
-                appendLine("1. Load a Digimon ROM (.bin or .zip)")
-                appendLine("2. Start Digimon V3 from Glyph Toys (Nothing) or use widget mode")
-                appendLine()
-                appendLine("Controls:")
-                appendLine("  Flick left/right = A/C")
-                appendLine("  Flick toward/away = quick B")
-                appendLine("  Hold Glyph button = B hold")
-            }
-            textSize = 14f
-            setPadding(0, 18, 0, 18)
+        // Setup Bindings
+        btnPickRom.setOnClickListener {
+            pickRom.launch(arrayOf(
+                "application/zip",
+                "application/octet-stream",
+                "application/x-zip-compressed",
+                "*/*"
+            ))
         }
-        layout.addView(infoText)
 
-        val screenTitle = TextView(this).apply {
-            text = "Live Screens"
-            textSize = 16f
-            setPadding(0, 0, 0, 8)
+        btnStartEmu.setOnClickListener {
+            startBackendService()
+            Toast.makeText(this@RomLoaderActivity, "Start requested", Toast.LENGTH_SHORT).show()
         }
-        layout.addView(screenTitle)
 
-        val frameRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 18)
+        btnStopEmu.setOnClickListener {
+            stopBackendService()
+            Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
         }
-        val fullCol = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            layoutParams = lp
-        }
-        val glyphCol = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            layoutParams = lp
-        }
-        fullCol.addView(TextView(this).apply {
-            text = "Full Digivice"
-            textSize = 13f
-            setPadding(0, 0, 0, 6)
-        })
-        glyphCol.addView(TextView(this).apply {
-            text = "Glyph + Overlay"
-            textSize = 13f
-            setPadding(0, 0, 0, 6)
-        })
 
-        fullDebugImage = ImageView(this).apply {
-            setBackgroundColor(Color.BLACK)
-            adjustViewBounds = true
-            minimumHeight = 170
-            scaleType = ImageView.ScaleType.FIT_CENTER
+        switchZoom.isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
+        switchZoom.setOnCheckedChangeListener { _, isChecked ->
+            DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
-        glyphDebugImage = ImageView(this).apply {
-            setBackgroundColor(Color.BLACK)
-            adjustViewBounds = true
-            minimumHeight = 170
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        }
-        fullCol.addView(fullDebugImage)
-        glyphCol.addView(glyphDebugImage)
-        frameRow.addView(fullCol)
-        frameRow.addView(glyphCol)
-        layout.addView(frameRow)
 
-        val zoomModeSwitch = Switch(this).apply {
-            text = "Auto zoom-out for menu text"
-            isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
-            setPadding(0, 0, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
+        switchAudio.isChecked = EmulatorAudioSettings.isAudioEnabled()
+        switchAudio.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorAudioSettings.setAudioEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
-        layout.addView(zoomModeSwitch)
 
-        val audioSwitch = Switch(this).apply {
-            text = "Emulator audio"
-            isChecked = EmulatorAudioSettings.isAudioEnabled()
-            setPadding(0, 8, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorAudioSettings.setAudioEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        switchExactTiming.isChecked = EmulatorTimingSettings.isExactTimingEnabled()
+        switchExactTiming.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorTimingSettings.setExactTimingEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }
+
+        switchHaptic.isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
+        switchHaptic.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorAudioSettings.setHapticAudioEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }
+
+        btnSaveAuto.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, "Save autosave")
+        }
+
+        btnLoadAuto.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_LOAD_AUTOSAVE, 0, "Load autosave")
+        }
+
+        btnRestart.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_RESTART, 0, "Restart emulator")
+        }
+
+        btnFullReset.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Full reset")
+        }
+
+        btnComboAb.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AB, "Combo A+B")
+        }
+
+        btnComboAc.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AC, "Combo A+C")
+        }
+
+        btnComboBc.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
+        }
+
+        btnToggleSave.setOnClickListener {
+            val showing = layoutSaveTools.visibility == LinearLayout.VISIBLE
+            layoutSaveTools.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
+        }
+
+        btnToggleBattle.setOnClickListener {
+            val showing = layoutBattle.visibility == LinearLayout.VISIBLE
+            if (!showing) {
+                layoutBattle.visibility = LinearLayout.VISIBLE
+                checkTamerNamePrompt()
+            } else {
+                layoutBattle.visibility = LinearLayout.GONE
             }
         }
-        layout.addView(audioSwitch)
 
-        val exactTimingSwitch = Switch(this).apply {
-            text = "Exact timing (higher battery)"
-            isChecked = EmulatorTimingSettings.isExactTimingEnabled()
-            setPadding(0, 8, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorTimingSettings.setExactTimingEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
+        btnToggleAdvanced.setOnClickListener {
+            val showing = layoutAdvanced.visibility == LinearLayout.VISIBLE
+            layoutAdvanced.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
         }
-        layout.addView(exactTimingSwitch)
-
-        val saveToolsToggle = Button(this).apply {
-            text = "Show Save and Controls"
-            setPadding(0, 10, 0, 8)
-        }
-        layout.addView(saveToolsToggle)
-
-        val saveToolsContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = LinearLayout.GONE
-        }
-        layout.addView(saveToolsContainer)
-
-        val battleToggle = Button(this).apply {
-            text = "Show Battle (Beta)"
-            setPadding(0, 8, 0, 8)
-        }
-        layout.addView(battleToggle)
-
-        val battleContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = LinearLayout.GONE
-        }
-        layout.addView(battleContainer)
-
-        val advancedToggle = Button(this).apply {
-            text = "Show Advanced and Debug"
-            setPadding(0, 8, 0, 8)
-        }
-        layout.addView(advancedToggle)
-
-        val advancedContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = LinearLayout.GONE
-        }
-        layout.addView(advancedContainer)
-
-        // Clock correction: toggle + editable speed factor
-        val clockCorrectionSwitch = Switch(this).apply {
-            text = "Clock speed correction"
-            isChecked = EmulatorTimingSettings.isClockCorrectionEnabled()
-            setPadding(0, 8, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorTimingSettings.setClockCorrectionEnabled(this@RomLoaderActivity, isChecked)
-            }
-        }
-        advancedContainer.addView(clockCorrectionSwitch)
-
-        val clockFactorLayout = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 4, 0, 0)
-        }
-        val clockFactorLabel = TextView(this).apply {
-            text = "Speed factor: "
-            textSize = 14f
-        }
-        val clockFactorInput = EditText(this).apply {
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-            setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
-            textSize = 14f
-            setEms(5)
-            setOnFocusChangeListener { _, hasFocus ->
-                if (!hasFocus) {
-                    val value = text.toString().toFloatOrNull()
-                    if (value != null && value in 0.5f..3.0f) {
-                        EmulatorTimingSettings.setClockCorrectionFactor(this@RomLoaderActivity, value)
-                        Toast.makeText(this@RomLoaderActivity, "Clock factor set to %.2f".format(value), Toast.LENGTH_SHORT).show()
-                    } else {
-                        setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
-                        Toast.makeText(this@RomLoaderActivity, "Value must be 0.50-3.00", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-        clockFactorLayout.addView(clockFactorLabel)
-        clockFactorLayout.addView(clockFactorInput)
-        advancedContainer.addView(clockFactorLayout)
-
-        val hapticSwitch = Switch(this).apply {
-            text = "Vibrate from emulator sound"
-            isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
-            setPadding(0, 8, 0, 0)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorAudioSettings.setHapticAudioEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
-        }
-        layout.addView(hapticSwitch)
-
-        autosaveText = TextView(this).apply {
-            textSize = 14f
-            setPadding(0, 20, 0, 4)
-        }
-        saveToolsContainer.addView(autosaveText)
-
-        val autosaveButtons = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 10)
-        }
-        autosaveButtons.addView(Button(this).apply {
-            text = "Save Now"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, "Save autosave")
-            }
-        })
-        autosaveButtons.addView(Button(this).apply {
-            text = "Load Auto"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_LOAD_AUTOSAVE, 0, "Load autosave")
-            }
-        })
-        saveToolsContainer.addView(autosaveButtons)
-
-        val slotTitle = TextView(this).apply {
-            text = "Manual Save Slots"
-            textSize = 15f
-            setPadding(0, 4, 0, 8)
-        }
-        saveToolsContainer.addView(slotTitle)
-
-        slot1Text = addSlotRow(saveToolsContainer, 1)
-        slot2Text = addSlotRow(saveToolsContainer, 2)
-        slot3Text = addSlotRow(saveToolsContainer, 3)
-
-        val controlRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 8, 0, 8)
-        }
-        controlRow.addView(Button(this).apply {
-            text = "Restart"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_RESTART, 0, "Restart emulator")
-            }
-        })
-        controlRow.addView(Button(this).apply {
-            text = "Full Reset"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Full reset")
-            }
-        })
-        saveToolsContainer.addView(controlRow)
-
-        val comboTitle = TextView(this).apply {
-            text = "Combo Buttons"
-            textSize = 15f
-            setPadding(0, 8, 0, 8)
-        }
-        saveToolsContainer.addView(comboTitle)
-
-        val comboRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 8)
-        }
-        comboRow.addView(Button(this).apply {
-            text = "A+B"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AB, "Combo A+B")
-            }
-        })
-        comboRow.addView(Button(this).apply {
-            text = "A+C"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AC, "Combo A+C")
-            }
-        })
-        comboRow.addView(Button(this).apply {
-            text = "B+C"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
-            }
-        })
-        saveToolsContainer.addView(comboRow)
-
-        val battleTitle = TextView(this).apply {
-            text = "Battle Mode (Beta)"
-            textSize = 15f
-            setPadding(0, 8, 0, 8)
-        }
-        battleContainer.addView(battleTitle)
-
-        // relayUrlInput removed to enforce hardcoded Internet Relay URL
-        val transportGroup = RadioGroup(this).apply {
-            orientation = RadioGroup.VERTICAL
-            setPadding(0, 0, 0, 8)
-        }
-        val rbNearby = RadioButton(this).apply { text = "Nearby (Local)" }
-        val rbInternet = RadioButton(this).apply { text = "Internet Relay (Experimental)" }
-        val rbSim = RadioButton(this).apply { text = "Single Player Battle (Simulated/Echo)" }
-
-        transportGroup.addView(rbNearby)
-        transportGroup.addView(rbInternet)
-        transportGroup.addView(rbSim)
-
-        val presetGroup = RadioGroup(this).apply {
-            orientation = RadioGroup.VERTICAL
-            setPadding(32, 0, 0, 16)
-        }
-        val rbPureEcho = RadioButton(this).apply { text = "Preset: Pure Echo (Guaranteed Tie)" }
-        val rbXor = RadioButton(this).apply { text = "Preset: XOR Checksum (Randomized)" }
-        val rbGlobal = RadioButton(this).apply { text = "Preset: Global Checksum (Randomized)" }
-
-        presetGroup.addView(rbPureEcho)
-        presetGroup.addView(rbXor)
-        presetGroup.addView(rbGlobal)
 
         when (BattleTransportSettings.getTransportType()) {
             BattleTransportType.NEARBY -> rbNearby.isChecked = true
@@ -479,160 +357,87 @@ class RomLoaderActivity : AppCompatActivity() {
             SimulationPreset.GLOBAL_CHECKSUM -> rbGlobal.isChecked = true
         }
         
-        presetGroup.visibility = if (rbSim.isChecked) LinearLayout.VISIBLE else LinearLayout.GONE
+        rgPreset.visibility = if (rbSim.isChecked) LinearLayout.VISIBLE else LinearLayout.GONE
 
-        presetGroup.setOnCheckedChangeListener { _, checkedId ->
+        rgPreset.setOnCheckedChangeListener { _, checkedId ->
             val preset = when (checkedId) {
-                rbXor.id -> SimulationPreset.XOR_CHECKSUM
-                rbGlobal.id -> SimulationPreset.GLOBAL_CHECKSUM
+                R.id.rb_xor -> SimulationPreset.XOR_CHECKSUM
+                R.id.rb_global -> SimulationPreset.GLOBAL_CHECKSUM
                 else -> SimulationPreset.PURE_ECHO
             }
             BattleTransportSettings.setSimulationPreset(this@RomLoaderActivity, preset)
-            // Re-creating the transport with the new preset settings
             sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Simulation preset")
         }
 
-        transportGroup.setOnCheckedChangeListener { _, checkedId ->
+        rgTransport.setOnCheckedChangeListener { _, checkedId ->
             val type = when (checkedId) {
-                rbInternet.id -> BattleTransportType.INTERNET_RELAY
-                rbSim.id -> BattleTransportType.SIMULATION
+                R.id.rb_internet -> BattleTransportType.INTERNET_RELAY
+                R.id.rb_sim -> BattleTransportType.SIMULATION
                 else -> BattleTransportType.NEARBY
             }
             BattleTransportSettings.setTransportType(this@RomLoaderActivity, type)
-            // relayUrlInput visibility toggle removed
-            presetGroup.visibility = if (type == BattleTransportType.SIMULATION) LinearLayout.VISIBLE else LinearLayout.GONE
+            rgPreset.visibility = if (type == BattleTransportType.SIMULATION) LinearLayout.VISIBLE else LinearLayout.GONE
             sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle transport")
         }
-        
-        battleContainer.addView(transportGroup)
-        battleContainer.addView(presetGroup)
-        // battleContainer.addView(relayUrlInput) removed
 
-        val battleRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 8)
+        inputTamerName.setText(BattleTransportSettings.getTamerName())
+        inputTamerName.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                BattleTransportSettings.setTamerName(this@RomLoaderActivity, s?.toString() ?: "")
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        btnTutorial.setOnClickListener {
+            startActivity(Intent(this, TutorialActivity::class.java))
         }
-        battleRow.addView(Button(this).apply {
-            text = "Host"
-            setOnClickListener {
-                runWithBattlePermissions {
-                    sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, "Battle host")
+
+        btnBattleHost.setOnClickListener {
+            runWithBattlePermissions {
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, "Battle host")
+            }
+        }
+
+        btnBattleJoin.setOnClickListener {
+            runWithBattlePermissions {
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, "Battle join")
+            }
+        }
+
+        btnBattleStop.setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
+        }
+
+        switchClockCorrection.isChecked = EmulatorTimingSettings.isClockCorrectionEnabled()
+        switchClockCorrection.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorTimingSettings.setClockCorrectionEnabled(this@RomLoaderActivity, isChecked)
+        }
+
+        inputClockFactor.setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
+        inputClockFactor.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val value = inputClockFactor.text.toString().toFloatOrNull()
+                if (value != null && value in 0.5f..3.0f) {
+                    EmulatorTimingSettings.setClockCorrectionFactor(this@RomLoaderActivity, value)
+                    Toast.makeText(this@RomLoaderActivity, "Clock factor set to %.2f".format(value), Toast.LENGTH_SHORT).show()
+                } else {
+                    inputClockFactor.setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
+                    Toast.makeText(this@RomLoaderActivity, "Value must be 0.50-3.00", Toast.LENGTH_SHORT).show()
                 }
             }
-        })
-        battleRow.addView(Button(this).apply {
-            text = "Join"
-            setOnClickListener {
-                runWithBattlePermissions {
-                    sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, "Battle join")
-                }
-            }
-        })
-        battleRow.addView(Button(this).apply {
-            text = "Stop"
-            setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
-            }
-        })
-        battleContainer.addView(battleRow)
-
-        battleStatusText = TextView(this).apply {
-            textSize = 13f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 12)
-        }
-        battleContainer.addView(battleStatusText)
-
-        commandStatusText = TextView(this).apply {
-            textSize = 13f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 14)
-        }
-        advancedContainer.addView(commandStatusText)
-
-        val shareDebugButton = Button(this).apply {
-            text = "Share Debug Report"
-            setPadding(0, 0, 0, 8)
-            setOnClickListener {
-                shareDebugReport()
-            }
-        }
-        advancedContainer.addView(shareDebugButton)
-
-        val debugToggle = Button(this).apply {
-            text = "Show Debug Telemetry"
-            setPadding(0, 8, 0, 8)
-        }
-        advancedContainer.addView(debugToggle)
-
-        val debugContainer = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            visibility = LinearLayout.GONE
-        }
-        advancedContainer.addView(debugContainer)
-
-        val debugSwitch = Switch(this).apply {
-            text = "Emulator debug telemetry"
-            isChecked = EmulatorDebugSettings.isDebugEnabled()
-            setPadding(0, 0, 0, 8)
-            setOnCheckedChangeListener { _, isChecked ->
-                EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
-                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-            }
-        }
-        debugContainer.addView(debugSwitch)
-
-        val debugTitle = TextView(this).apply {
-            text = "Live Input Debug"
-            textSize = 16f
-            setPadding(0, 8, 0, 10)
-        }
-        debugContainer.addView(debugTitle)
-
-        val indicatorRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 16)
-        }
-        indicatorA = buildIndicator("A")
-        indicatorB = buildIndicator("B")
-        indicatorC = buildIndicator("C")
-        indicatorRow.addView(indicatorA)
-        indicatorRow.addView(indicatorB)
-        indicatorRow.addView(indicatorC)
-        debugContainer.addView(indicatorRow)
-
-        debugText = TextView(this).apply {
-            textSize = 13f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 0, 0, 32)
-        }
-        debugContainer.addView(debugText)
-
-        debugToggle.setOnClickListener {
-            val showing = debugContainer.visibility == LinearLayout.VISIBLE
-            debugContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
-            debugToggle.text = if (showing) "Show Debug Telemetry" else "Hide Debug Telemetry"
         }
 
-        saveToolsToggle.setOnClickListener {
-            val showing = saveToolsContainer.visibility == LinearLayout.VISIBLE
-            saveToolsContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
-            saveToolsToggle.text = if (showing) "Show Save and Controls" else "Hide Save and Controls"
+        btnShareDebug.setOnClickListener {
+            shareDebugReport()
         }
 
-        battleToggle.setOnClickListener {
-            val showing = battleContainer.visibility == LinearLayout.VISIBLE
-            battleContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
-            battleToggle.text = if (showing) "Show Battle (Beta)" else "Hide Battle (Beta)"
+        switchDebugTelemetry.isChecked = EmulatorDebugSettings.isDebugEnabled()
+        switchDebugTelemetry.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
-        advancedToggle.setOnClickListener {
-            val showing = advancedContainer.visibility == LinearLayout.VISIBLE
-            advancedContainer.visibility = if (showing) LinearLayout.GONE else LinearLayout.VISIBLE
-            advancedToggle.text = if (showing) "Show Advanced and Debug" else "Hide Advanced and Debug"
-        }
-
-        setContentView(scrollView)
         updateStatus()
         refreshSaveAndCommandInfo()
         renderDebugState()
@@ -641,6 +446,32 @@ class RomLoaderActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         mainHandler.post(debugRefresh)
+    }
+
+    private fun checkTamerNamePrompt() {
+        if (BattleTransportSettings.getTamerName().isBlank()) {
+            val input = EditText(this).apply {
+                hint = "TAMER_404"
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                setPadding(50, 40, 50, 40)
+                textSize = 16f
+            }
+            AlertDialog.Builder(this)
+                .setTitle("IDENTIFY TAMER")
+                .setMessage("Enter your Tamer Alias for the System Link Lobbies.")
+                .setView(input)
+                .setPositiveButton("INITIATE") { _, _ ->
+                    val name = input.text.toString().trim()
+                    if (name.isNotBlank()) {
+                        BattleTransportSettings.setTamerName(this, name)
+                        findViewById<EditText>(R.id.input_tamer_name)?.setText(name)
+                    } else {
+                        // Keep blank, it will auto-gen later in relay.
+                    }
+                }
+                .setCancelable(false)
+                .show()
+        }
     }
 
     override fun onPause() {
@@ -653,18 +484,64 @@ class RomLoaderActivity : AppCompatActivity() {
         val nameFile = File(filesDir, "current_rom_name")
         if (romFile.exists()) {
             val name = if (nameFile.exists()) nameFile.readText().trim() else "unknown"
-            statusText.text = "Current ROM: $name (${romFile.length()} bytes)"
+            statusText.text = "ROM loaded: $name"
+            val (base, version) = parseRomNameParts(name)
+            if (version != null) {
+                val display = "$base $version"
+                val spannable = SpannableString(display)
+                spannable.setSpan(
+                    ForegroundColorSpan(ContextCompat.getColor(this, R.color.cyber_yellow)),
+                    base.length + 1,
+                    display.length,
+                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                statRomValue.text = spannable
+            } else {
+                statRomValue.text = base
+            }
         } else {
             statusText.text = getString(R.string.rom_not_found)
+            statRomValue.text = "—"
         }
+    }
+
+    private fun parseRomNameParts(name: String): Pair<String, String?> {
+        val match = Regex("(.*?)(v\\d+)$", RegexOption.IGNORE_CASE).find(name.trim())
+        return if (match != null)
+            Pair(match.groupValues[1].uppercase(), match.groupValues[2].uppercase())
+        else
+            Pair(name.uppercase(), null)
     }
 
     private fun renderDebugState() {
         val frameSnap = FrameDebugState.snapshot()
         if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
             lastFrameUpdateMs = frameSnap.updatedAtMs
-            setPixelPreview(fullDebugImage, frameSnap.fullFrame)
-            setPixelPreview(glyphDebugImage, frameSnap.glyphFrame)
+            val state = frameSnap.digimonState
+            digimonStatsText.text = if (state != null) {
+                val name = state.info?.name ?: "UNKNOWN"
+                val stage = state.info?.stage ?: "UNKNOWN STAGE"
+                """
+                DIGIMON RAW DATA
+                ----------------
+                SPECIES : $name
+                STAGE   : $stage
+                AGE     : ${state.age}
+                WEIGHT  : ${state.weight}g
+                """.trimIndent()
+            } else {
+                "AWAITING SIGNAL..."
+            }
+        }
+        // Update emulator state stat card
+        val emuFrameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE
+                            else System.currentTimeMillis() - frameSnap.updatedAtMs
+        statEmuValue.text = if (emuFrameAgeMs < 2000L) "ACTIVE" else "IDLE"
+        statEmuLabel.text = when {
+            emuFrameAgeMs == Long.MAX_VALUE -> "► NO SIGNAL"
+            emuFrameAgeMs < 2000L          -> "► FRAME  ${emuFrameAgeMs}ms AGO"
+            emuFrameAgeMs < 60_000L        -> "► LAST  ${emuFrameAgeMs / 1000}s AGO"
+            else                           -> "► EMULATOR STATE"
         }
 
         refreshSaveAndCommandInfo()
@@ -707,10 +584,11 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun buildIndicator(label: String): TextView {
+        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
         return TextView(this).apply {
             text = "$label: OFF"
             textSize = 14f
-            typeface = Typeface.MONOSPACE
+            typeface = shareTech
             setTextColor(Color.WHITE)
             setPadding(18, 10, 18, 10)
             setBackgroundColor(Color.parseColor("#424242"))
@@ -729,38 +607,45 @@ class RomLoaderActivity : AppCompatActivity() {
         view.setTextColor(if (active) Color.BLACK else Color.WHITE)
     }
 
-    private fun setPixelPreview(imageView: ImageView, bitmap: Bitmap?) {
-        if (bitmap == null) {
-            imageView.setImageDrawable(null)
-            return
-        }
-        val drawable = BitmapDrawable(resources, bitmap)
-        drawable.setFilterBitmap(false)
-        drawable.setDither(false)
-        imageView.setImageDrawable(drawable)
-    }
 
     private fun addSlotRow(parent: LinearLayout, slot: Int): TextView {
+        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
+        
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, 0, 0, 6)
+            setPadding(0, 0, 0, 12)
         }
         val info = TextView(this).apply {
             textSize = 13f
-            typeface = Typeface.MONOSPACE
+            typeface = shareTech
+            setTextColor(Color.WHITE)
             text = "Slot $slot: empty"
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             layoutParams = lp
             setPadding(0, 8, 8, 8)
         }
         val saveBtn = Button(this).apply {
-            text = "Save"
+            text = "SAVE"
+            typeface = teko
+            textSize = 16f
+            setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_blue))
+            setBackgroundResource(R.drawable.cyber_button_bg)
+            val lp = LinearLayout.LayoutParams(200, 120) // approx 60dp wide, 40dp high
+            lp.marginEnd = 16
+            layoutParams = lp
             setOnClickListener {
                 sendCommand(EmulatorCommandBus.CMD_SAVE_SLOT, slot, "Save slot $slot")
             }
         }
         val loadBtn = Button(this).apply {
-            text = "Load"
+            text = "LOAD"
+            typeface = teko
+            textSize = 16f
+            setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_yellow))
+            setBackgroundResource(R.drawable.cyber_button_bg)
+            val lp = LinearLayout.LayoutParams(200, 120)
+            layoutParams = lp
             setOnClickListener {
                 sendCommand(EmulatorCommandBus.CMD_LOAD_SLOT, slot, "Load slot $slot")
             }
@@ -880,10 +765,19 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         val battle = BattleStateStore.read(this)
         val battleAgeMs = if (battle.updatedAtMs == 0L) "-" else "${System.currentTimeMillis() - battle.updatedAtMs}ms"
-        val peer = battle.peerName ?: "-"
+        val peer = battle.peerName
         val transport = BattleTransportSettings.getTransportType()
-        battleStatusText.text =
-            "Battle[$transport]: ${battle.status} (${battle.role})  peer=$peer  age=$battleAgeMs\n${battle.message}"
+        battleStatusText.text = "[$transport] ${battle.status}  age=$battleAgeMs\n${battle.message}"
+        // Update lobby-style peer name and badge
+        battlePeerName.text = if (peer != null) peer.uppercase() else "NO ACTIVE LINK"
+        val badgeText = when (battle.status) {
+            BattleStateStore.Status.CONNECTED -> "BATTLING"
+            BattleStateStore.Status.ADVERTISING,
+            BattleStateStore.Status.DISCOVERING,
+            BattleStateStore.Status.CONNECTING -> "SCANNING"
+            else -> "WAITING"
+        }
+        battleBadge.text = badgeText
         commandStatusText.text = "Last command: $lastAckText"
     }
 
@@ -893,16 +787,18 @@ class RomLoaderActivity : AppCompatActivity() {
         currentRomName: String?,
         currentRomHash: String?
     ): String {
-        if (!info.exists) return "$label: empty"
-        val ts = formatTime(info.timestampMs)
-        val saveRom = info.romName ?: "unknown"
+        val slotId = label.filter { it.isDigit() }.ifEmpty { "AUTO" }
+        if (!info.exists) return "SLT.$slotId  ──────  [EMPTY]"
+        val compact = if (info.timestampMs <= 0L) "─────────────" else
+            SimpleDateFormat("yy.MM.dd HH:mm", Locale.US).format(Date(info.timestampMs))
         val match = when {
             currentRomHash != null && info.romHash != null -> currentRomHash == info.romHash
             currentRomName != null && info.romName != null -> currentRomName == info.romName
             else -> true
         }
-        val tag = if (match) "match" else "other rom"
-        return "$label: $ts  [$tag]  ($saveRom)"
+        val tag = if (match) "[OK]" else "[DIFF]"
+        val romShort = (info.romName ?: "?").uppercase().take(8)
+        return "SLT.$slotId  $compact  $tag · $romShort"
     }
 
     private fun readCurrentRomIdentity(): Pair<String?, String?> {

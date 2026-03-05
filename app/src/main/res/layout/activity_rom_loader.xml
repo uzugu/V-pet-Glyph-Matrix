@@ -1,0 +1,1148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- GLITCH HEADER                                       -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+
+            <!-- Cyan shadow layer (offset right+down) -->
+            <TextView
+                android:id="@+id/title_shadow_cyan"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:textColor="#7700e5ff"
+                android:gravity="center"
+                android:translationX="2dp"
+                android:translationY="2dp" />
+
+            <!-- Pink shadow layer (offset left+up) -->
+            <TextView
+                android:id="@+id/title_shadow_pink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:textColor="#77ff0055"
+                android:gravity="center"
+                android:translationX="-2dp"
+                android:translationY="-2dp" />
+
+            <!-- Main text -->
+            <TextView
+                android:id="@+id/main_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:gravity="center" />
+        </FrameLayout>
+
+        <!-- Subtitle / status -->
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="V-Pet Emulator Ready"
+            android:textAppearance="@style/TextAppearance.Cyber.Subtitle"
+            android:gravity="center"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- STAT CARDS                                          -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp">
+
+            <!-- Card 1: ROM Archive -->
+            <FrameLayout
+                android:id="@+id/stat_rom_card"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/stat_card_bg"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="16dp" />
+
+                <!-- Left accent bar -->
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/cyber_blue"
+                    android:layout_gravity="start" />
+
+                <!-- Content -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="16dp">
+
+                    <TextView
+                        android:id="@+id/stat_rom_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textAppearance="@style/TextAppearance.Cyber.StatValue" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="► ROM ARCHIVE"
+                        android:textAppearance="@style/TextAppearance.Cyber.StatLabel"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </FrameLayout>
+
+            <!-- Card 2: Emulator State -->
+            <FrameLayout
+                android:id="@+id/stat_emu_card"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/stat_card_bg"
+                    android:orientation="vertical"
+                    android:paddingStart="20dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="16dp" />
+
+                <!-- Left accent bar -->
+                <View
+                    android:layout_width="4dp"
+                    android:layout_height="match_parent"
+                    android:background="@color/cyber_blue"
+                    android:layout_gravity="start" />
+
+                <!-- Content -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingTop="16dp"
+                    android:paddingEnd="8dp"
+                    android:paddingBottom="16dp">
+
+                    <TextView
+                        android:id="@+id/stat_emu_value"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="IDLE"
+                        android:textAppearance="@style/TextAppearance.Cyber.StatValue" />
+
+                    <TextView
+                        android:id="@+id/stat_emu_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="► NO SIGNAL"
+                        android:textAppearance="@style/TextAppearance.Cyber.StatLabel"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+            </FrameLayout>
+        </LinearLayout>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- MAIN PANEL with corner brackets                     -->
+        <!-- ═══════════════════════════════════════════════════ -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- The main content panel -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@drawable/cyber_panel_bg"
+                android:padding="20dp">
+
+                <!-- ROM Controls -->
+                <Button
+                    android:id="@+id/btn_pick_rom"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="MOUNT ROM ARCHIVE"
+                    android:textColor="@color/cyber_blue"
+                    android:textAppearance="@style/TextAppearance.Cyber.Button"
+                    android:background="@drawable/cyber_button_bg" />
+
+                <LinearLayout
+                    android:id="@+id/rom_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:weightSum="2"
+                    android:layout_marginTop="10dp">
+
+                    <Button
+                        android:id="@+id/btn_start_emu"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="EXECUTE"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg"
+                        android:layout_marginEnd="6dp" />
+
+                    <Button
+                        android:id="@+id/btn_stop_emu"
+                        android:layout_width="0dp"
+                        android:layout_height="52dp"
+                        android:layout_weight="1"
+                        android:text="TERMINATE"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg"
+                        android:layout_marginStart="6dp" />
+                </LinearLayout>
+
+                <!-- ─── LIVE VISUAL STREAM ─── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@color/cyber_yellow"
+                            android:rotation="45"
+                            android:layout_marginEnd="10dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="LIVE VISUAL STREAM"
+                            android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:background="@drawable/section_divider"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/digimonStatsText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="150dp"
+                        android:background="@drawable/cyber_panel_bg"
+                        android:padding="16dp"
+                        android:text="AWAITING SIGNAL..."
+                        android:textAppearance="@style/TextAppearance.Cyber.Body"
+                        android:textColor="@color/cyber_blue"
+                        android:textSize="16sp"
+                        android:fontFamily="monospace" />
+                </LinearLayout>
+
+                <!-- ─── SYSTEM CONFIG ─── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="20dp"
+                    android:layout_marginBottom="4dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <View
+                            android:layout_width="12dp"
+                            android:layout_height="12dp"
+                            android:background="@color/cyber_yellow"
+                            android:rotation="45"
+                            android:layout_marginEnd="10dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SYSTEM CONFIG"
+                            android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:background="@drawable/section_divider"
+                        android:layout_marginTop="8dp" />
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switch_zoom"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="AUTO ZOOM-OUT LOGIC"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null"
+                    android:layout_marginTop="8dp" />
+
+                <Switch
+                    android:id="@+id/switch_audio"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="EMULATOR AUDIO ENGINE"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null" />
+
+                <Switch
+                    android:id="@+id/switch_exact_timing"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="PRECISE CYCLE SYNC (BATTERY HEAVY)"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null" />
+
+                <Switch
+                    android:id="@+id/switch_haptic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="HAPTIC PULSE SYNTHESIS"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null" />
+
+                <!-- ─── MEMORY STATES ─── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="76dp"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/cyber_button_bg">
+
+                    <!-- Left icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|start"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_cyber_chip"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Right icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|end"
+                        android:layout_marginEnd="14dp"
+                        android:src="@drawable/ic_cyber_chip"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Yellow underline accent -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:layout_gravity="bottom"
+                        android:layout_marginStart="72dp"
+                        android:layout_marginEnd="72dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="#FFD600"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Button on top — transparent, captures all touch events -->
+                    <Button
+                        android:id="@+id/btn_toggle_save"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="66dp"
+                        android:paddingEnd="66dp"
+                        android:gravity="center"
+                        android:background="@android:color/transparent"
+                        android:text="MEMORY STATES AND MACROS"
+                        android:textColor="@color/cyber_blue"
+                        android:textSize="15sp"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/layout_save_tools"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/autosaveText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.Cyber.Muted" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btn_save_auto"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="FORCE AUTOSAVE"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginEnd="4dp" />
+
+                        <Button
+                            android:id="@+id/btn_load_auto"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="LOAD AUTOSAVE"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="4dp" />
+                    </LinearLayout>
+
+                    <!-- Section label: Manual Archives -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:background="@color/cyber_blue"
+                                android:rotation="45"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="MANUAL ARCHIVES"
+                                android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                                android:textAllCaps="true"
+                                android:letterSpacing="0.1" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/slot_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="2"
+                        android:layout_marginTop="12dp">
+
+                        <Button
+                            android:id="@+id/btn_restart"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="SOFT REBOOT"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginEnd="4dp" />
+
+                        <Button
+                            android:id="@+id/btn_full_reset"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="HARD RESET"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="4dp" />
+                    </LinearLayout>
+
+                    <!-- Section label: Macro Inputs -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:background="@color/cyber_blue"
+                                android:rotation="45"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="MACRO INPUTS"
+                                android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                                android:textAllCaps="true"
+                                android:letterSpacing="0.1" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="3"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btn_combo_ab"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="A + B"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginEnd="4dp" />
+
+                        <Button
+                            android:id="@+id/btn_combo_ac"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="A + C"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="2dp"
+                            android:layout_marginEnd="2dp" />
+
+                        <Button
+                            android:id="@+id/btn_combo_bc"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="B + C"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="4dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+
+
+                <!-- ─── MULTIPLAYER BATTLE ─── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="76dp"
+                    android:layout_marginTop="16dp"
+                    android:background="@drawable/cyber_button_bg">
+
+                    <!-- Left icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|start"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_cyber_globe"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Right icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|end"
+                        android:layout_marginEnd="14dp"
+                        android:src="@drawable/ic_cyber_globe"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Yellow underline accent -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:layout_gravity="bottom"
+                        android:layout_marginStart="72dp"
+                        android:layout_marginEnd="72dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="#FFD600"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Button on top — transparent, captures all touch events -->
+                    <Button
+                        android:id="@+id/btn_toggle_battle"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="66dp"
+                        android:paddingEnd="66dp"
+                        android:gravity="center"
+                        android:background="@android:color/transparent"
+                        android:text="MULTIPLAYER BATTLE SUITE"
+                        android:textColor="@color/cyber_blue"
+                        android:textSize="15sp"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/layout_battle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginTop="8dp">
+
+                    <!-- Section label: Tamer Identity -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:background="@color/cyber_blue"
+                                android:rotation="45"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="TAMER IDENTITY"
+                                android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                                android:textAllCaps="true"
+                                android:letterSpacing="0.1" />
+                        </LinearLayout>
+
+                        <EditText
+                            android:id="@+id/input_tamer_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:hint="TAMER_404"
+                            android:textColor="@color/cyber_yellow"
+                            android:textColorHint="@color/text_muted"
+                            android:backgroundTint="@color/border_tech"
+                            android:fontFamily="monospace"
+                            android:textSize="14sp"
+                            android:inputType="textNoSuggestions|textVisiblePassword"
+                            android:maxLines="1" />
+                    </LinearLayout>
+
+                    <!-- Section label: Transport Protocol -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginBottom="4dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <View
+                                android:layout_width="8dp"
+                                android:layout_height="8dp"
+                                android:background="@color/cyber_blue"
+                                android:rotation="45"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="TRANSPORT PROTOCOL"
+                                android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                                android:textAllCaps="true"
+                                android:letterSpacing="0.1" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <RadioGroup
+                        android:id="@+id/rg_transport"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp">
+
+                        <RadioButton
+                            android:id="@+id/rb_nearby"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Local Network Proxy"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_main" />
+
+                        <RadioButton
+                            android:id="@+id/rb_internet"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Online Server Mode"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_main" />
+
+                        <RadioButton
+                            android:id="@+id/rb_sim"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Local Simulation AI"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_main" />
+                    </RadioGroup>
+
+                    <RadioGroup
+                        android:id="@+id/rg_preset"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="24dp"
+                        android:layout_marginTop="8dp">
+
+                        <RadioButton
+                            android:id="@+id/rb_pure_echo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Echo Vector (100% Tie)"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_muted" />
+
+                        <RadioButton
+                            android:id="@+id/rb_xor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="XOR Entropy Checksum"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_muted" />
+
+                        <RadioButton
+                            android:id="@+id/rb_global"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Global State Parity"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_muted" />
+                    </RadioGroup>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="3"
+                        android:layout_marginTop="16dp">
+
+                        <Button
+                            android:id="@+id/btn_battle_host"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="BROADCAST"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginEnd="4dp" />
+
+                        <Button
+                            android:id="@+id/btn_battle_join"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="SCAN"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="2dp"
+                            android:layout_marginEnd="2dp" />
+
+                        <Button
+                            android:id="@+id/btn_battle_stop"
+                            android:layout_width="0dp"
+                            android:layout_height="48dp"
+                            android:layout_weight="1"
+                            android:text="DISCONNECT"
+                            android:textColor="@color/cyber_blue"
+                            android:textAppearance="@style/TextAppearance.Cyber.Button"
+                            android:background="@drawable/cyber_button_bg"
+                            android:layout_marginStart="4dp" />
+                    </LinearLayout>
+
+                    <!-- Battle status lobby-item row -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="@drawable/battle_item_bg"
+                        android:layout_marginTop="12dp"
+                        android:minHeight="56dp"
+                        android:gravity="center_vertical">
+
+                        <!-- Left cyan accent bar -->
+                        <View
+                            android:layout_width="4dp"
+                            android:layout_height="match_parent"
+                            android:background="@color/cyber_blue"
+                            android:minHeight="56dp" />
+
+                        <!-- Status text block -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:paddingStart="12dp"
+                            android:paddingTop="10dp"
+                            android:paddingBottom="10dp">
+
+                            <TextView
+                                android:id="@+id/battlePeerName"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="NO ACTIVE LINK"
+                                android:textAppearance="@style/TextAppearance.Cyber.Body"
+                                android:letterSpacing="0.05" />
+
+                            <TextView
+                                android:id="@+id/battleStatusText"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                                android:layout_marginTop="2dp" />
+                        </LinearLayout>
+
+                        <!-- Badge -->
+                        <TextView
+                            android:id="@+id/battleBadge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="WAITING"
+                            android:fontFamily="monospace"
+                            android:textSize="11sp"
+                            android:textColor="@color/cyber_yellow"
+                            android:textAllCaps="true"
+                            android:letterSpacing="0.05"
+                            android:background="@drawable/cyber_button_bg"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:layout_marginEnd="12dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- ─── MANUAL & TUTORIALS ─── -->
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="76dp"
+                    android:layout_marginTop="20dp"
+                    android:background="@drawable/cyber_button_bg">
+
+                    <!-- Left icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|start"
+                        android:layout_marginStart="14dp"
+                        android:src="@drawable/ic_cyber_book"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Right icon -->
+                    <ImageView
+                        android:layout_width="44dp"
+                        android:layout_height="44dp"
+                        android:layout_gravity="center_vertical|end"
+                        android:layout_marginEnd="14dp"
+                        android:src="@drawable/ic_cyber_book"
+                        android:tint="#00E5FF"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Yellow underline accent -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="2dp"
+                        android:layout_gravity="bottom"
+                        android:layout_marginStart="72dp"
+                        android:layout_marginEnd="72dp"
+                        android:layout_marginBottom="10dp"
+                        android:background="#FFD600"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <!-- Button on top — transparent, captures all touch events -->
+                    <Button
+                        android:id="@+id/btn_tutorial"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingStart="66dp"
+                        android:paddingEnd="66dp"
+                        android:gravity="center"
+                        android:background="@android:color/transparent"
+                        android:text="EMULATOR OPERATIONS MANUAL"
+                        android:textColor="@color/cyber_blue"
+                        android:textSize="15sp"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button" />
+
+                </FrameLayout>
+
+                <!-- ─── ADVANCED DIAGNOSTICS ─── -->
+                <Button
+                    android:id="@+id/btn_toggle_advanced"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="ADVANCED DIAGNOSTICS"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_muted"
+                    android:textSize="12sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.1"
+                    android:layout_marginTop="16dp"
+                    android:background="#00000000" />
+
+                <LinearLayout
+                    android:id="@+id/layout_advanced"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginTop="4dp">
+
+                    <Switch
+                        android:id="@+id/switch_clock_correction"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="OSCILLATOR CORRECTION"
+                        android:fontFamily="monospace"
+                        android:textColor="@color/text_main"
+                        android:thumb="@drawable/cyber_switch_thumb"
+                        android:track="@drawable/cyber_switch_track"
+                        android:thumbTint="@null"
+                        android:trackTint="@null" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="SPEED MULTIPLIER:"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_muted"
+                            android:textSize="12sp"
+                            android:layout_marginEnd="8dp" />
+
+                        <EditText
+                            android:id="@+id/input_clock_factor"
+                            android:layout_width="60dp"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/cyber_yellow"
+                            android:backgroundTint="@color/border_tech"
+                            android:fontFamily="monospace"
+                            android:inputType="numberDecimal" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/commandStatusText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:textAppearance="@style/TextAppearance.Cyber.Muted" />
+
+                    <Button
+                        android:id="@+id/btn_share_debug"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="EXPORT TELEMETRY"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg"
+                        android:layout_marginTop="16dp" />
+
+                    <LinearLayout
+                        android:id="@+id/layout_debug_toggles"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="16dp">
+
+                        <Switch
+                            android:id="@+id/switch_debug_telemetry"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="ENABLE DEBUG PIN OUT"
+                            android:fontFamily="monospace"
+                            android:textColor="@color/text_main"
+                            android:thumb="@drawable/cyber_switch_thumb"
+                            android:track="@drawable/cyber_switch_track"
+                            android:thumbTint="@null"
+                            android:trackTint="@null" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/indicatorRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+            <!-- End main content panel -->
+
+            <!-- ── Corner brackets (yellow, top-left) ── -->
+            <View
+                android:layout_width="24dp"
+                android:layout_height="3dp"
+                android:background="@color/cyber_yellow"
+                android:layout_gravity="top|start"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="10dp" />
+
+            <View
+                android:layout_width="3dp"
+                android:layout_height="24dp"
+                android:background="@color/cyber_yellow"
+                android:layout_gravity="top|start"
+                android:layout_marginTop="10dp"
+                android:layout_marginStart="10dp" />
+
+            <!-- ── Corner brackets (yellow, bottom-right) ── -->
+            <View
+                android:layout_width="24dp"
+                android:layout_height="3dp"
+                android:background="@color/cyber_yellow"
+                android:layout_gravity="bottom|end"
+                android:layout_marginBottom="10dp"
+                android:layout_marginEnd="10dp" />
+
+            <View
+                android:layout_width="3dp"
+                android:layout_height="24dp"
+                android:background="@color/cyber_yellow"
+                android:layout_gravity="bottom|end"
+                android:layout_marginBottom="10dp"
+                android:layout_marginEnd="10dp" />
+
+        </FrameLayout>
+        <!-- End panel + brackets -->
+
+    </LinearLayout>
+</ScrollView>

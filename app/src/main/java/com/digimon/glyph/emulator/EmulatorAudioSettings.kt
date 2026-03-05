@@ -12,14 +12,14 @@ object EmulatorAudioSettings {
     private const val KEY_HAPTIC_AUDIO_ENABLED = "haptic_audio_enabled"
 
     @Volatile
-    private var audioEnabled: Boolean = false
+    private var audioEnabled: Boolean = true
     @Volatile
     private var hapticAudioEnabled: Boolean = false
 
     @Synchronized
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        audioEnabled = prefs.getBoolean(KEY_AUDIO_ENABLED, false)
+        audioEnabled = prefs.getBoolean(KEY_AUDIO_ENABLED, true)
         hapticAudioEnabled = prefs.getBoolean(KEY_HAPTIC_AUDIO_ENABLED, false)
     }
 

@@ -23,6 +23,8 @@ object BattleTransportSettings {
     private const val KEY_TRANSPORT_TYPE = "transport_type"
     private const val KEY_RELAY_URL = "relay_url"
     private const val KEY_SIMULATION_PRESET = "simulation_preset"
+    private const val KEY_TAMER_NAME = "tamer_name"
+    private const val KEY_LOBBY_NAME = "lobby_name"
 
     @Volatile
     private var transportType: BattleTransportType = BattleTransportType.NEARBY
@@ -33,11 +35,19 @@ object BattleTransportSettings {
     @Volatile
     private var simulationPreset: SimulationPreset = SimulationPreset.PURE_ECHO
 
+    @Volatile
+    private var tamerName: String = ""
+
+    @Volatile
+    private var lobbyName: String = ""
+
     @Synchronized
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         transportType = parseType(prefs.getString(KEY_TRANSPORT_TYPE, null))
         simulationPreset = parsePreset(prefs.getString(KEY_SIMULATION_PRESET, null))
+        tamerName = prefs.getString(KEY_TAMER_NAME, "") ?: ""
+        lobbyName = prefs.getString(KEY_LOBBY_NAME, "") ?: ""
     }
 
     fun getTransportType(): BattleTransportType = transportType
@@ -68,6 +78,41 @@ object BattleTransportSettings {
             .edit()
             .putString(KEY_SIMULATION_PRESET, preset.name)
             .apply()
+    }
+
+    fun getTamerName(): String = tamerName
+
+    fun setTamerName(context: Context, name: String) {
+        tamerName = name.trim()
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_TAMER_NAME, tamerName)
+            .apply()
+    }
+
+    fun getLobbyName(context: Context): String {
+        if (lobbyName.isBlank()) {
+            lobbyName = generateThemedName()
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LOBBY_NAME, lobbyName)
+                .apply()
+        }
+        return lobbyName
+    }
+
+    fun setLobbyName(context: Context, name: String) {
+        lobbyName = name.trim()
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LOBBY_NAME, lobbyName)
+            .apply()
+    }
+
+    private fun generateThemedName(): String {
+        val themes = listOf("Bravery", "Friendship", "Courage", "Hope", "Light", "Sincerity", "Knowledge", "Love", "Miracle", "Destiny")
+        val number = (100..999).random()
+        return "${themes.random()}-$number"
     }
 
     private fun parseType(value: String?): BattleTransportType {

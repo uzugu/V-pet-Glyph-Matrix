@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixelated 3.5" floppy disc icon — cyber yellow, 15° tilt -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <group
+        android:pivotX="8"
+        android:pivotY="8"
+        android:rotation="-12">
+        <!-- Outer body (square with top-right notch) -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="
+                M2,1 L11,1 L13,3 L13,14 L2,14 Z" />
+        <!-- Metal shutter (bottom center) - dark cutout -->
+        <path
+            android:fillColor="#0A0D0F"
+            android:pathData="M5,9 L10,9 L10,14 L5,14 Z" />
+        <!-- Shutter slide -->
+        <path
+            android:fillColor="#FFD600"
+            android:pathData="M6,9 L8,9 L8,14 L6,14 Z" />
+        <!-- Label area (top center) - dark cutout -->
+        <path
+            android:fillColor="#0A0D0F"
+            android:pathData="M4,1 L11,1 L11,5 L4,5 Z" />
+        <!-- Label lines -->
+        <path
+            android:fillColor="#556070"
+            android:pathData="M5,2.5 L10,2.5"
+            android:strokeWidth="0.6"
+            android:strokeColor="#556070" />
+        <path
+            android:fillColor="#556070"
+            android:pathData="M5,3.5 L9,3.5"
+            android:strokeWidth="0.6"
+            android:strokeColor="#556070" />
+    </group>
+</vector>

@@ -857,6 +857,20 @@ class E0C6200(
         "EIT" to EIT, "HALT" to HALT, "SWL" to SWL, "SWH" to SWH
     )
 
+    @Synchronized
+    fun getCurrentDigimonState(romName: String?): DigimonState? {
+        if (romName == null) return null
+        
+        val speciesId = RAM[0x0B]
+        val age = RAM[0x5E]
+        val weightTens = RAM[0x57]
+        val weightOnes = RAM[0x56]
+        val weight = weightTens * 10 + weightOnes
+        
+        val info = DigimonDatabase.getDigimonInfo(romName, speciesId)
+        return DigimonState(info, age, weight)
+    }
+
     @Suppress("UNCHECKED_CAST")
     @Synchronized
     fun restoreState(state: Map<String, Any>) {
