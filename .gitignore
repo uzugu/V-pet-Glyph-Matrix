@@ -16,3 +16,15 @@ sdk_extracted/
 __pycache__/
 *.pyc
 relay*.log
+
+# Diagnostics & Scripts
+/*.txt
+/*.log
+/*.json
+/*.xml
+/*.py
+/extracted_classes/
+/.state_migration/
+/tools/digimon_state.xml
+/tools/battle_transport_settings.xml
+CLAUDE.md
