@@ -1,6 +1,8 @@
 package com.digimon.glyph
 
 import android.Manifest
+import android.app.AlarmManager
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -11,6 +13,7 @@ import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
 import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
+import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -38,6 +41,10 @@ import com.digimon.glyph.battle.BattleStateStore
 import com.digimon.glyph.battle.BattleTransportSettings
 import com.digimon.glyph.battle.BattleTransportType
 import com.digimon.glyph.battle.SimulationPreset
+import com.digimon.glyph.emulator.DigimonAttentionSettings
+import com.digimon.glyph.emulator.DigimonDatabase
+import com.digimon.glyph.emulator.DigimonDndScheduler
+import com.digimon.glyph.emulator.DigimonDndSettings
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
@@ -47,6 +54,8 @@ import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.StateManager
 import com.digimon.glyph.input.InputDebugState
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -64,6 +73,7 @@ class RomLoaderActivity : AppCompatActivity() {
     private lateinit var autosaveText: TextView
     private lateinit var commandStatusText: TextView
     private lateinit var debugText: TextView
+    private lateinit var ramDebugText: TextView
     private lateinit var indicatorA: TextView
     private lateinit var indicatorB: TextView
     private lateinit var indicatorC: TextView
@@ -82,6 +92,12 @@ class RomLoaderActivity : AppCompatActivity() {
     private var lastAckId: Long = 0L
     private var lastAckText: String = "-"
     private var pendingNearbyAction: (() -> Unit)? = null
+    private var attentionNotificationsSwitch: Switch? = null
+    private var ramWatchProfile = RamWatchProfile.CORE
+    private var baselineRam: IntArray? = null
+    private var baselineVram: IntArray? = null
+    private var baselineAtMs: Long = 0L
+    private var baselineRomLabel: String? = null
     private val stateManager by lazy { StateManager(this) }
     private val mainHandler = Handler(Looper.getMainLooper())
     private val debugRefresh = object : Runnable {
@@ -111,12 +127,59 @@ class RomLoaderActivity : AppCompatActivity() {
         }
     }
 
+    private val requestNotificationPermission = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val enabled = granted || hasNotificationPermission()
+        DigimonAttentionSettings.setAttentionNotificationsEnabled(this, enabled)
+        attentionNotificationsSwitch?.isChecked = enabled
+        if (!enabled) {
+            Toast.makeText(this, "Notification permission is required for attention alerts", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private enum class RamWatchProfile(
+        val label: String,
+        val addresses: IntArray,
+        val rowDump: Boolean = false
+    ) {
+        CORE(
+            label = "CORE",
+            addresses = intArrayOf(0x0B, 0x31, 0x34, 0x35, 0x3D, 0x3E, 0x40, 0x41, 0x56, 0x57, 0x62)
+        ),
+        CARE(
+            label = "CARE",
+            addresses = intArrayOf(0x31, 0x40, 0x41, 0x46, 0x47, 0x58, 0x59, 0x5A, 0x5B, 0x5C)
+        ),
+        TRAIN(
+            label = "TRAIN",
+            addresses = intArrayOf(0x29, 0x2A, 0x2B, 0x31, 0x34, 0x35, 0x3D, 0x9D, 0x9E, 0x9F)
+        ),
+        BATTLE(
+            label = "BATTLE",
+            addresses = ((0x20..0x3F).toList() + (0x60..0x7F).toList()).toIntArray(),
+            rowDump = true
+        ),
+        PAGE0(
+            label = "PAGE0",
+            addresses = (0x00..0x9F).toList().toIntArray(),
+            rowDump = true
+        );
+
+        fun next(): RamWatchProfile {
+            val values = values()
+            return values[(ordinal + 1) % values.size]
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         DisplayRenderSettings.init(this)
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
         EmulatorTimingSettings.init(this)
+        DigimonAttentionSettings.init(this)
+        DigimonDndSettings.init(this)
         BattleStateStore.init(this)
         BattleTransportSettings.init(this)
 
@@ -188,7 +251,23 @@ class RomLoaderActivity : AppCompatActivity() {
         val inputClockFactor = findViewById<EditText>(R.id.input_clock_factor)
         commandStatusText = findViewById(R.id.commandStatusText)
         val btnShareDebug = findViewById<Button>(R.id.btn_share_debug)
+        val btnExportStates = findViewById<Button>(R.id.btn_export_states)
+        val btnRamProfile = findViewById<Button>(R.id.btn_ram_profile)
+        val btnRamBaseline = findViewById<Button>(R.id.btn_ram_baseline)
+        val btnRamClearBaseline = findViewById<Button>(R.id.btn_ram_clear_baseline)
+        val btnExportRawSnapshot = findViewById<Button>(R.id.btn_export_raw_snapshot)
+        ramDebugText = findViewById(R.id.ramDebugText)
+        val switchAttentionNotifications = findViewById<Switch>(R.id.switch_attention_notifications)
+        val switchShowCareMistakes = findViewById<Switch>(R.id.switch_show_care_mistakes)
+        val switchDndEnabled = findViewById<Switch>(R.id.switch_dnd_enabled)
+        val switchDndFreezeMode = findViewById<Switch>(R.id.switch_dnd_freeze_mode)
+        val btnDndStartTime = findViewById<Button>(R.id.btn_dnd_start_time)
+        val btnDndEndTime = findViewById<Button>(R.id.btn_dnd_end_time)
+        val switchDndAutoResume = findViewById<Switch>(R.id.switch_dnd_auto_resume)
+        val switchDndSuppressNotifications = findViewById<Switch>(R.id.switch_dnd_suppress_notifications)
+        val textDndStatus = findViewById<TextView>(R.id.text_dnd_status)
         val switchDebugTelemetry = findViewById<Switch>(R.id.switch_debug_telemetry)
+        attentionNotificationsSwitch = switchAttentionNotifications
         
         val indicatorRow = findViewById<LinearLayout>(R.id.indicatorRow)
         indicatorA = buildIndicator("A")
@@ -201,7 +280,7 @@ class RomLoaderActivity : AppCompatActivity() {
         debugText = TextView(this).apply {
             textSize = 13f
             typeface = shareTech
-            setPadding(0, 0, 0, 32)
+            setPadding(0, 0, 0, 16)
             setTextColor(Color.WHITE)
         }
         layoutAdvanced.addView(debugText)
@@ -219,6 +298,8 @@ class RomLoaderActivity : AppCompatActivity() {
         btnToggleBattle.typeface = teko
         btnToggleAdvanced.typeface = teko
         btnTutorial.typeface = teko
+        btnDndStartTime.typeface = teko
+        btnDndEndTime.typeface = teko
         statRomValue.typeface = teko
         statEmuValue.typeface = teko
 
@@ -229,7 +310,11 @@ class RomLoaderActivity : AppCompatActivity() {
             rbNearby, rbInternet, rbSim, rbPureEcho, rbXor, rbGlobal,
             btnBattleHost, btnBattleJoin, btnBattleStop, battleStatusText,
             battlePeerName, battleBadge, statEmuLabel,
-            switchClockCorrection, inputClockFactor, commandStatusText, btnShareDebug, switchDebugTelemetry,
+            switchClockCorrection, inputClockFactor, commandStatusText, btnShareDebug, btnExportStates,
+            btnRamProfile, btnRamBaseline, btnRamClearBaseline, btnExportRawSnapshot, ramDebugText,
+            switchAttentionNotifications, switchShowCareMistakes,
+            switchDndEnabled, switchDndFreezeMode, switchDndAutoResume, switchDndSuppressNotifications, textDndStatus,
+            switchDebugTelemetry,
             debugText
         )
         shareTechViews.forEach { if (it is TextView) it.typeface = shareTech }
@@ -285,9 +370,9 @@ class RomLoaderActivity : AppCompatActivity() {
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
-        switchExactTiming.isChecked = EmulatorTimingSettings.isExactTimingEnabled()
+        switchExactTiming.isChecked = EmulatorTimingSettings.isFullAccuracyEnabled()
         switchExactTiming.setOnCheckedChangeListener { _, isChecked ->
-            EmulatorTimingSettings.setExactTimingEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorTimingSettings.setFullAccuracyEnabled(this@RomLoaderActivity, isChecked)
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
@@ -296,6 +381,8 @@ class RomLoaderActivity : AppCompatActivity() {
             EmulatorAudioSettings.setHapticAudioEnabled(this@RomLoaderActivity, isChecked)
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
+
+        updateRamProfileButton(btnRamProfile)
 
         btnSaveAuto.setOnClickListener {
             sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, "Save autosave")
@@ -323,6 +410,38 @@ class RomLoaderActivity : AppCompatActivity() {
 
         btnComboBc.setOnClickListener {
             sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
+        }
+
+        btnRamProfile.setOnClickListener {
+            ramWatchProfile = ramWatchProfile.next()
+            updateRamProfileButton(btnRamProfile)
+            renderDebugState()
+        }
+
+        btnRamBaseline.setOnClickListener {
+            val snap = FrameDebugState.snapshot()
+            val ram = snap.ram
+            val vram = snap.vram
+            if (ram == null || vram == null) {
+                Toast.makeText(this, "No live emulator frame available for baseline", Toast.LENGTH_SHORT).show()
+            } else {
+                baselineRam = ram.copyOf()
+                baselineVram = vram.copyOf()
+                baselineAtMs = snap.updatedAtMs
+                baselineRomLabel = readCurrentRomIdentity().first
+                Toast.makeText(this, "RAM baseline marked", Toast.LENGTH_SHORT).show()
+                renderDebugState()
+            }
+        }
+
+        btnRamClearBaseline.setOnClickListener {
+            clearRamBaseline()
+            Toast.makeText(this, "RAM baseline cleared", Toast.LENGTH_SHORT).show()
+            renderDebugState()
+        }
+
+        btnExportRawSnapshot.setOnClickListener {
+            shareRawSnapshot()
         }
 
         btnToggleSave.setOnClickListener {
@@ -390,7 +509,11 @@ class RomLoaderActivity : AppCompatActivity() {
         })
 
         btnTutorial.setOnClickListener {
-            startActivity(Intent(this, TutorialActivity::class.java))
+            val versionHint = readCurrentRomIdentity().first
+            startActivity(
+                Intent(this, TutorialActivity::class.java)
+                    .putExtra(EvolutionGuideActivity.EXTRA_VERSION_HINT, versionHint)
+            )
         }
 
         btnBattleHost.setOnClickListener {
@@ -432,6 +555,81 @@ class RomLoaderActivity : AppCompatActivity() {
             shareDebugReport()
         }
 
+        btnExportStates.setOnClickListener {
+            exportSaveStateBundle()
+        }
+
+        switchAttentionNotifications.isChecked =
+            DigimonAttentionSettings.isAttentionNotificationsEnabled() && hasNotificationPermission()
+        switchAttentionNotifications.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !hasNotificationPermission()) {
+                requestNotificationPermissionIfNeeded()
+            } else {
+                DigimonAttentionSettings.setAttentionNotificationsEnabled(this@RomLoaderActivity, isChecked)
+            }
+        }
+
+        switchShowCareMistakes.isChecked = DigimonAttentionSettings.isShowCareMistakesEnabled()
+        switchShowCareMistakes.setOnCheckedChangeListener { _, isChecked ->
+            DigimonAttentionSettings.setShowCareMistakesEnabled(this@RomLoaderActivity, isChecked)
+            renderDebugState()
+        }
+
+        switchDndEnabled.isChecked = DigimonDndSettings.isEnabled()
+        switchDndFreezeMode.isChecked = DigimonDndSettings.isFreezeMode()
+        switchDndAutoResume.isChecked = DigimonDndSettings.isAutoResumeEnabled()
+        switchDndSuppressNotifications.isChecked = DigimonDndSettings.isSuppressNotificationsEnabled()
+        btnDndStartTime.text = "START ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())}"
+        btnDndEndTime.text = "END ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
+
+        switchDndEnabled.setOnCheckedChangeListener { _, isChecked ->
+            DigimonDndSettings.setEnabled(this@RomLoaderActivity, isChecked)
+            if (isChecked) {
+                requestExactAlarmAccessIfNeeded()
+            }
+            DigimonDndScheduler.reschedule(this@RomLoaderActivity)
+            refreshBackendSettingsSilently()
+            updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+            renderDebugState()
+        }
+
+        switchDndFreezeMode.setOnCheckedChangeListener { _, isChecked ->
+            DigimonDndSettings.setMode(
+                this@RomLoaderActivity,
+                if (isChecked) DigimonDndSettings.Mode.FREEZE else DigimonDndSettings.Mode.SILENT
+            )
+            DigimonDndScheduler.reschedule(this@RomLoaderActivity)
+            refreshBackendSettingsSilently()
+            updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+            renderDebugState()
+        }
+
+        btnDndStartTime.setOnClickListener {
+            showDndTimePicker(isStart = true) {
+                updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+                renderDebugState()
+            }
+        }
+
+        btnDndEndTime.setOnClickListener {
+            showDndTimePicker(isStart = false) {
+                updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+                renderDebugState()
+            }
+        }
+
+        switchDndAutoResume.setOnCheckedChangeListener { _, isChecked ->
+            DigimonDndSettings.setAutoResumeEnabled(this@RomLoaderActivity, isChecked)
+            refreshBackendSettingsSilently()
+            updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+        }
+
+        switchDndSuppressNotifications.setOnCheckedChangeListener { _, isChecked ->
+            DigimonDndSettings.setSuppressNotificationsEnabled(this@RomLoaderActivity, isChecked)
+            refreshBackendSettingsSilently()
+            updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
+        }
+
         switchDebugTelemetry.isChecked = EmulatorDebugSettings.isDebugEnabled()
         switchDebugTelemetry.setOnCheckedChangeListener { _, isChecked ->
             EmulatorDebugSettings.setDebugEnabled(this@RomLoaderActivity, isChecked)
@@ -439,12 +637,20 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         updateStatus()
+        updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
         refreshSaveAndCommandInfo()
         renderDebugState()
     }
 
     override fun onResume() {
         super.onResume()
+        findViewById<TextView?>(R.id.text_dnd_status)?.let { status ->
+            updateDndStatus(
+                status,
+                findViewById(R.id.btn_dnd_start_time),
+                findViewById(R.id.btn_dnd_end_time)
+            )
+        }
         mainHandler.post(debugRefresh)
     }
 
@@ -484,8 +690,8 @@ class RomLoaderActivity : AppCompatActivity() {
         val nameFile = File(filesDir, "current_rom_name")
         if (romFile.exists()) {
             val name = if (nameFile.exists()) nameFile.readText().trim() else "unknown"
-            statusText.text = "ROM loaded: $name"
             val (base, version) = parseRomNameParts(name)
+            statusText.text = if (version != null) "ROM loaded: $base $version" else "ROM loaded: $name"
             if (version != null) {
                 val display = "$base $version"
                 val spannable = SpannableString(display)
@@ -506,6 +712,17 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun parseRomNameParts(name: String): Pair<String, String?> {
+        val detectedVersion = DigimonDatabase.resolveVersion(name)
+        if (detectedVersion != null) {
+            val base = name
+                .replace(Regex("(?i)digimon\\s*v?[123]"), "Digimon")
+                .replace(Regex("(?i)v[123]"), "")
+                .replace(Regex("[_\\-]+"), " ")
+                .trim()
+                .ifBlank { "Digimon" }
+                .uppercase()
+            return Pair(base, detectedVersion)
+        }
         val match = Regex("(.*?)(v\\d+)$", RegexOption.IGNORE_CASE).find(name.trim())
         return if (match != null)
             Pair(match.groupValues[1].uppercase(), match.groupValues[2].uppercase())
@@ -521,14 +738,41 @@ class RomLoaderActivity : AppCompatActivity() {
             digimonStatsText.text = if (state != null) {
                 val name = state.info?.name ?: "UNKNOWN"
                 val stage = state.info?.stage ?: "UNKNOWN STAGE"
-                """
-                DIGIMON RAW DATA
-                ----------------
-                SPECIES : $name
-                STAGE   : $stage
-                AGE     : ${state.age}
-                WEIGHT  : ${state.weight}g
-                """.trimIndent()
+                val showCareMistakes = DigimonAttentionSettings.isShowCareMistakesEnabled()
+                val dnd = when {
+                    DigimonDndSettings.isFrozenNow() -> "SLEEP"
+                    DigimonDndSettings.isDndActiveNow() -> if (DigimonDndSettings.isFreezeMode()) "WINDOW" else "QUIET"
+                    else -> "OFF"
+                }
+                val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (System.currentTimeMillis() - frameSnap.updatedAtMs)
+                buildString {
+                    appendLine("SYS.MONITOR :: LIVE PET STREAM")
+                    appendLine("FRAME ${formatFrameAge(frameAgeMs)}  ATTN ${formatFlag(state.needsAttention)}")
+                    appendLine("DND   $dnd")
+                    appendLine("================================")
+                    appendLine("MON    $name")
+                    appendLine("STAGE  $stage")
+                    appendLine("AGE    ${state.age}D")
+                    appendLine("WEIGHT ${state.weight}G")
+                    appendLine("--------------------------------")
+                    appendLine("HUNGER   ${formatMeterValue(state.hunger)}")
+                    appendLine("PROTEIN  ${formatMeterValue(state.protein)}")
+                    appendLine("OVERFD   ${formatCounterValue(state.overfeed)}")
+                    appendLine("CARE     ${if (showCareMistakes) formatCounterValue(state.careMistakes) else "LOCKED"}")
+                    appendLine("CARE TMR ${formatMinutesLeft(state.careTimerMinutesLeft)}")
+                    appendLine("--------------------------------")
+                    appendLine("TRAIN    ${formatCounterValue(state.training)}")
+                    appendLine("SHITSU   --")
+                    appendLine("SLEEP    --")
+                    appendLine("POOP     --")
+                    appendLine("WINS     ${formatCounterValue(state.wins)}   LOSES ${formatCounterValue(state.losses)}")
+                    appendLine("SHOURI   ${formatPercentValue(state.winRate)}")
+                    appendLine("--------------------------------")
+                    append("RAW H=${formatNibble(state.hunger)} P=${formatNibble(state.protein)} O=${formatNibble(state.overfeed)}")
+                    append(" TR=${formatCounterRaw(state.training)} C=${formatNibble(state.careMistakes)} T=${formatMinutesRaw(state.careTimerMinutesLeft)}")
+                    append(" W=${formatCounterRaw(state.wins)} L=${formatCounterRaw(state.losses)} R=${formatCounterRaw(state.winRate)}")
+                    append(" A=${if (state.needsAttention) "1" else "0"}")
+                }
             } else {
                 "AWAITING SIGNAL..."
             }
@@ -545,6 +789,7 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         refreshSaveAndCommandInfo()
+        renderRamDebugState(frameSnap)
 
         if (!EmulatorDebugSettings.isDebugEnabled()) {
             setIndicatorState(indicatorA, "A", false, Color.parseColor("#00C853"))
@@ -581,6 +826,228 @@ class RomLoaderActivity : AppCompatActivity() {
                 appendLine("open Glyph Toy and flick to see live values")
             }
         }
+    }
+
+    private fun formatFrameAge(ageMs: Long?): String {
+        if (ageMs == null) return "--"
+        return "${ageMs}MS"
+    }
+
+    private fun formatFlag(active: Boolean): String = if (active) "OPEN" else "IDLE"
+
+    private fun formatCounterValue(value: Int?): String = value?.toString() ?: "--"
+
+    private fun formatCounterRaw(value: Int?): String = value?.toString() ?: "-"
+
+    private fun formatMinutesLeft(value: Int?): String = value?.let { "${it.toString().padStart(2, ' ')}M" } ?: "--"
+
+    private fun formatPercentValue(value: Int?): String = value?.let { "${it}%" } ?: "--%"
+
+    private fun formatNibble(value: Int?): String = value?.let { it.and(0xF).toString(16).uppercase() } ?: "-"
+
+    private fun formatMinutesRaw(value: Int?): String = value?.toString() ?: "-"
+
+    private fun formatMeterValue(value: Int?): String {
+        if (value == null) return "--  [....]"
+        val clamped = value.coerceIn(0, 4)
+        return "${value.toString().padStart(2, ' ')}  [${"#".repeat(clamped)}${".".repeat(4 - clamped)}]"
+    }
+
+    private fun renderRamDebugState(frameSnap: FrameDebugState.Snapshot) {
+        val ram = frameSnap.ram
+        val vram = frameSnap.vram
+        val (romName, _) = readCurrentRomIdentity()
+        if (baselineRomLabel != null && baselineRomLabel != romName) {
+            clearRamBaseline()
+        }
+        ramDebugText.text = if (ram == null || vram == null) {
+            "RAW RAM WATCH\nawaiting live frame..."
+        } else {
+            buildRamDebugText(frameSnap, romName)
+        }
+    }
+
+    private fun buildRamDebugText(frameSnap: FrameDebugState.Snapshot, romName: String?): String {
+        val ram = frameSnap.ram ?: return "RAW RAM WATCH\nawaiting live frame..."
+        val vram = frameSnap.vram ?: return "RAW RAM WATCH\nawaiting live frame..."
+        val profile = ramWatchProfile
+        val baseline = baselineRam
+        val baselineVramLocal = baselineVram
+        val profileDiffs = if (baseline != null) collectRamDiffs(ram, baseline, profile.addresses.asIterable()) else emptyList()
+        val globalDiffs = if (baseline != null) collectRamDiffs(ram, baseline, 0x00..0x9F) else emptyList()
+        val vramDiffs = if (baselineVramLocal != null) collectRamDiffs(vram, baselineVramLocal, vram.indices) else emptyList()
+        val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (System.currentTimeMillis() - frameSnap.updatedAtMs)
+        val baselineAgeText = if (baselineAtMs == 0L) "--" else formatFrameAge(System.currentTimeMillis() - baselineAtMs)
+        return buildString {
+            appendLine("RAW RAM WATCH :: ${profile.label}")
+            appendLine("ROM ${romName ?: "-"}  FRAME ${formatFrameAge(frameAgeMs)}  BASE ${if (baseline != null) baselineAgeText else "OFF"}")
+            appendLine("--------------------------------")
+            append(renderProfileValues(ram, profile))
+            appendLine()
+            appendLine("--------------------------------")
+            appendLine("PROFILE Δ ${if (profileDiffs.isEmpty()) "-" else ""}")
+            if (profileDiffs.isNotEmpty()) {
+                appendLine(formatDiffList(profileDiffs.take(16)))
+            }
+            appendLine("GLOBAL Δ ${if (globalDiffs.isEmpty()) "-" else ""}")
+            if (globalDiffs.isNotEmpty()) {
+                appendLine(formatDiffList(globalDiffs.take(16)))
+            }
+            appendLine("VRAM Δ ${if (vramDiffs.isEmpty()) "-" else ""}")
+            if (vramDiffs.isNotEmpty()) {
+                appendLine(formatDiffList(vramDiffs.take(12)))
+            }
+        }.trimEnd()
+    }
+
+    private fun renderProfileValues(ram: IntArray, profile: RamWatchProfile): String {
+        return if (profile.rowDump) {
+            val rows = profile.addresses.map { it and 0xF0 }.distinct().sorted()
+            buildString {
+                for (row in rows) {
+                    append(row.toString(16).uppercase().padStart(2, '0'))
+                    append(": ")
+                    for (col in 0..0xF) {
+                        val addr = row + col
+                        append((ram.getOrNull(addr) ?: 0).and(0xF).toString(16).uppercase())
+                        if (col != 0xF) append(' ')
+                    }
+                    appendLine()
+                }
+            }.trimEnd()
+        } else {
+            buildString {
+                profile.addresses.forEachIndexed { index, addr ->
+                    append(addr.toString(16).uppercase().padStart(2, '0'))
+                    append('=')
+                    append((ram.getOrNull(addr) ?: 0).and(0xF).toString(16).uppercase())
+                    if ((index + 1) % 6 == 0) appendLine() else append("  ")
+                }
+            }.trimEnd()
+        }
+    }
+
+    private fun collectRamDiffs(current: IntArray, baseline: IntArray, addresses: Iterable<Int>): List<Triple<Int, Int, Int>> {
+        val diffs = ArrayList<Triple<Int, Int, Int>>()
+        for (addr in addresses) {
+            val before = baseline.getOrNull(addr) ?: continue
+            val after = current.getOrNull(addr) ?: continue
+            if (before != after) {
+                diffs += Triple(addr, before, after)
+            }
+        }
+        return diffs
+    }
+
+    private fun formatDiffList(diffs: List<Triple<Int, Int, Int>>): String {
+        return buildString {
+            diffs.forEachIndexed { index, (addr, before, after) ->
+                append(addr.toString(16).uppercase().padStart(2, '0'))
+                append(':')
+                append(before.and(0xF).toString(16).uppercase())
+                append('>')
+                append(after.and(0xF).toString(16).uppercase())
+                if ((index + 1) % 4 == 0) appendLine() else append("  ")
+            }
+        }.trimEnd()
+    }
+
+    private fun updateRamProfileButton(button: Button) {
+        button.text = "WATCH ${ramWatchProfile.label}"
+    }
+
+    private fun clearRamBaseline() {
+        baselineRam = null
+        baselineVram = null
+        baselineAtMs = 0L
+        baselineRomLabel = null
+    }
+
+    private fun shareRawSnapshot() {
+        try {
+            val report = buildRawSnapshotReport()
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val outDir = File(cacheDir, "reports")
+            if (!outDir.exists()) outDir.mkdirs()
+            val outFile = File(outDir, "digimon_raw_snapshot_$stamp.txt")
+            outFile.writeText(report)
+            shareFile(
+                file = outFile,
+                mimeType = "text/plain",
+                subject = "Digimon Glyph Raw Snapshot $stamp",
+                chooserTitle = "Share raw snapshot"
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to export raw snapshot: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun buildRawSnapshotReport(): String {
+        val frame = FrameDebugState.snapshot()
+        val (romName, romHash) = readCurrentRomIdentity()
+        val ram = frame.ram
+        val vram = frame.vram
+        return buildString {
+            appendLine("Digimon Glyph Raw Snapshot")
+            appendLine("generated_at=${formatTime(System.currentTimeMillis())}")
+            appendLine("rom_name=${romName ?: "-"}")
+            appendLine("rom_sha256=${romHash ?: "-"}")
+            appendLine("watch_profile=${ramWatchProfile.label}")
+            appendLine("baseline_active=${baselineRam != null}")
+            appendLine()
+            if (frame.digimonState != null) {
+                appendLine("[digimon]")
+                appendLine("name=${frame.digimonState.info?.name ?: "-"}")
+                appendLine("stage=${frame.digimonState.info?.stage ?: "-"}")
+                appendLine("age=${frame.digimonState.age}")
+                appendLine("weight=${frame.digimonState.weight}")
+                appendLine("hunger=${frame.digimonState.hunger ?: "-"}")
+                appendLine("protein=${frame.digimonState.protein ?: "-"}")
+                appendLine("overfeed=${frame.digimonState.overfeed ?: "-"}")
+                appendLine("training=${frame.digimonState.training ?: "-"}")
+                appendLine("care=${frame.digimonState.careMistakes ?: "-"}")
+                appendLine("wins=${frame.digimonState.wins ?: "-"}")
+                appendLine("losses=${frame.digimonState.losses ?: "-"}")
+                appendLine("win_rate=${frame.digimonState.winRate ?: "-"}")
+                appendLine("attention=${frame.digimonState.needsAttention}")
+                appendLine()
+            }
+            appendLine("[ram]")
+            if (ram == null) {
+                appendLine("unavailable")
+            } else {
+                appendLine(formatRamPages(ram))
+            }
+            appendLine()
+            appendLine("[vram]")
+            if (vram == null) {
+                appendLine("unavailable")
+            } else {
+                appendLine(formatRamPages(vram, rowWidth = 0x10))
+            }
+            if (ram != null && baselineRam != null) {
+                appendLine()
+                appendLine("[baseline_diff]")
+                appendLine(formatDiffList(collectRamDiffs(ram, baselineRam!!, 0x00..0x9F).take(64)))
+            }
+        }
+    }
+
+    private fun formatRamPages(values: IntArray, rowWidth: Int = 0x10): String {
+        return buildString {
+            var rowStart = 0
+            while (rowStart < values.size) {
+                append(rowStart.toString(16).uppercase().padStart(2, '0'))
+                append(": ")
+                val rowEnd = (rowStart + rowWidth).coerceAtMost(values.size)
+                for (addr in rowStart until rowEnd) {
+                    append(values[addr].and(0xF).toString(16).uppercase())
+                    if (addr != rowEnd - 1) append(' ')
+                }
+                appendLine()
+                rowStart += rowWidth
+            }
+        }.trimEnd()
     }
 
     private fun buildIndicator(label: String): TextView {
@@ -663,6 +1130,11 @@ class RomLoaderActivity : AppCompatActivity() {
         Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
     }
 
+    private fun refreshBackendSettingsSilently() {
+        startBackendService()
+        EmulatorCommandBus.post(this, EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0)
+    }
+
     private fun startBackendService() {
         try {
             // Ensure command poll loop is alive even when toy/widget binding is not active.
@@ -702,6 +1174,74 @@ class RomLoaderActivity : AppCompatActivity() {
             return
         }
         action()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (hasNotificationPermission()) {
+            DigimonAttentionSettings.setAttentionNotificationsEnabled(this, true)
+            attentionNotificationsSwitch?.isChecked = true
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            DigimonAttentionSettings.setAttentionNotificationsEnabled(this, true)
+            attentionNotificationsSwitch?.isChecked = true
+        }
+    }
+
+    private fun requestExactAlarmAccessIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+        if (DigimonDndScheduler.canScheduleExactAlarms(this)) return
+        Toast.makeText(
+            this,
+            "Exact alarm access is off. Quiet hours still work, but wake timing may be less precise.",
+            Toast.LENGTH_LONG
+        ).show()
+    }
+
+    private fun showDndTimePicker(isStart: Boolean, onUpdated: () -> Unit) {
+        val current = if (isStart) DigimonDndSettings.getStartMinutes() else DigimonDndSettings.getEndMinutes()
+        val hour = current / 60
+        val minute = current % 60
+        TimePickerDialog(
+            this,
+            { _, selectedHour, selectedMinute ->
+                val total = selectedHour * 60 + selectedMinute
+                if (isStart) {
+                    DigimonDndSettings.setStartMinutes(this, total)
+                } else {
+                    DigimonDndSettings.setEndMinutes(this, total)
+                }
+                DigimonDndScheduler.reschedule(this)
+                refreshBackendSettingsSilently()
+                onUpdated()
+            },
+            hour,
+            minute,
+            true
+        ).show()
+    }
+
+    private fun updateDndStatus(statusView: TextView, startButton: Button, endButton: Button) {
+        DigimonDndSettings.init(this)
+        startButton.text = "START ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())}"
+        endButton.text = "END ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
+        val mode = if (DigimonDndSettings.isFreezeMode()) "FREEZE" else "SILENT"
+        statusView.text = when {
+            !DigimonDndSettings.isEnabled() -> "DND OFF"
+            DigimonDndSettings.isFrozenNow() -> "DND ACTIVE  $mode  RESUME ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
+            DigimonDndSettings.isDndActiveNow() -> "DND ACTIVE  $mode"
+            else -> "NEXT DND ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())} → ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}  $mode"
+        }
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     private fun hasNearbyPermissions(): Boolean {
@@ -752,11 +1292,11 @@ class RomLoaderActivity : AppCompatActivity() {
 
     private fun refreshSaveAndCommandInfo() {
         val (currentRomName, currentRomHash) = readCurrentRomIdentity()
-        val auto = stateManager.getAutosaveInfo()
+        val auto = stateManager.getAutosaveInfo(currentRomName, currentRomHash)
         autosaveText.text = buildSaveLine("Autosave", auto, currentRomName, currentRomHash)
-        slot1Text.text = buildSaveLine("Slot 1", stateManager.getSlotInfo(1), currentRomName, currentRomHash)
-        slot2Text.text = buildSaveLine("Slot 2", stateManager.getSlotInfo(2), currentRomName, currentRomHash)
-        slot3Text.text = buildSaveLine("Slot 3", stateManager.getSlotInfo(3), currentRomName, currentRomHash)
+        slot1Text.text = buildSaveLine("Slot 1", stateManager.getSlotInfo(1, currentRomName, currentRomHash), currentRomName, currentRomHash)
+        slot2Text.text = buildSaveLine("Slot 2", stateManager.getSlotInfo(2, currentRomName, currentRomHash), currentRomName, currentRomHash)
+        slot3Text.text = buildSaveLine("Slot 3", stateManager.getSlotInfo(3, currentRomName, currentRomHash), currentRomName, currentRomHash)
 
         val ack = EmulatorCommandBus.readAck(this)
         if (ack != null && ack.id > lastAckId) {
@@ -835,22 +1375,97 @@ class RomLoaderActivity : AppCompatActivity() {
             if (!outDir.exists()) outDir.mkdirs()
             val outFile = File(outDir, "digimon_debug_report_$stamp.txt")
             outFile.writeText(report)
-
-            val uri = FileProvider.getUriForFile(
-                this,
-                "$packageName.fileprovider",
-                outFile
+            shareFile(
+                file = outFile,
+                mimeType = "text/plain",
+                subject = "Digimon Glyph Debug Report $stamp",
+                chooserTitle = "Share debug report"
             )
-            val intent = Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Digimon Glyph Debug Report $stamp")
-                putExtra(Intent.EXTRA_STREAM, uri)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-            startActivity(Intent.createChooser(intent, "Share debug report"))
         } catch (e: Exception) {
             Toast.makeText(this, "Failed to share report: ${e.message}", Toast.LENGTH_LONG).show()
         }
+    }
+
+    private fun exportSaveStateBundle() {
+        try {
+            val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val outDir = File(cacheDir, "reports")
+            if (!outDir.exists()) outDir.mkdirs()
+            val outFile = File(outDir, "digimon_state_bundle_$stamp.zip")
+            val reportBytes = buildDebugReport().toByteArray(Charsets.UTF_8)
+            val rawSnapshotBytes = buildRawSnapshotReport().toByteArray(Charsets.UTF_8)
+            val dataDir = File(applicationInfo.dataDir)
+            val sharedPrefsDir = File(dataDir, "shared_prefs")
+            val filesDir = File(dataDir, "files")
+            val exportedEntries = ArrayList<String>()
+
+            ZipOutputStream(outFile.outputStream().buffered()).use { zip ->
+                fun addEntry(name: String, bytes: ByteArray) {
+                    zip.putNextEntry(ZipEntry(name))
+                    zip.write(bytes)
+                    zip.closeEntry()
+                    exportedEntries.add(name)
+                }
+
+                addEntry("debug_report.txt", reportBytes)
+                addEntry("raw_snapshot.txt", rawSnapshotBytes)
+
+                listOf(
+                    "digimon_state.xml",
+                    "battle_transport_settings.xml",
+                    "battle_state.xml",
+                    "emulator_audio_settings.xml",
+                    "emulator_debug_settings.xml",
+                    "emulator_timing_settings.xml"
+                ).forEach { name ->
+                    val file = File(sharedPrefsDir, name)
+                    if (file.exists()) {
+                        addEntry("shared_prefs/$name", file.readBytes())
+                    }
+                }
+
+                listOf("current_rom_name", "current_rom.bin").forEach { name ->
+                    val file = File(filesDir, name)
+                    if (file.exists()) {
+                        addEntry("files/$name", file.readBytes())
+                    }
+                }
+            }
+
+            if (exportedEntries.isEmpty()) {
+                Toast.makeText(this, "No save-state files found to export", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            shareFile(
+                file = outFile,
+                mimeType = "application/zip",
+                subject = "Digimon Glyph Save State Bundle $stamp",
+                chooserTitle = "Share save state bundle"
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to export save states: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun shareFile(
+        file: File,
+        mimeType: String,
+        subject: String,
+        chooserTitle: String
+    ) {
+        val uri = FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider",
+            file
+        )
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = mimeType
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, chooserTitle))
     }
 
     private fun buildDebugReport(): String {
@@ -863,10 +1478,10 @@ class RomLoaderActivity : AppCompatActivity() {
         val inputAgeMs = if (input.timestampMs == 0L) -1L else (now - input.timestampMs)
         val frame = FrameDebugState.snapshot()
         val frameAgeMs = if (frame.updatedAtMs == 0L) -1L else (now - frame.updatedAtMs)
-        val autosave = stateManager.getAutosaveInfo()
-        val slot1 = stateManager.getSlotInfo(1)
-        val slot2 = stateManager.getSlotInfo(2)
-        val slot3 = stateManager.getSlotInfo(3)
+        val autosave = stateManager.getAutosaveInfo(romName, romHash)
+        val slot1 = stateManager.getSlotInfo(1, romName, romHash)
+        val slot2 = stateManager.getSlotInfo(2, romName, romHash)
+        val slot3 = stateManager.getSlotInfo(3, romName, romHash)
         val transportType = BattleTransportSettings.getTransportType()
         val relayUrl = BattleTransportSettings.getRelayUrl()
         val pkgInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -908,7 +1523,7 @@ class RomLoaderActivity : AppCompatActivity() {
             appendLine("audio_enabled=${EmulatorAudioSettings.isAudioEnabled()}")
             appendLine("haptic_audio_enabled=${EmulatorAudioSettings.isHapticAudioEnabled()}")
             appendLine("debug_enabled=${EmulatorDebugSettings.isDebugEnabled()}")
-            appendLine("exact_timing_enabled=${EmulatorTimingSettings.isExactTimingEnabled()}")
+            appendLine("full_accuracy_enabled=${EmulatorTimingSettings.isFullAccuracyEnabled()}")
             appendLine("clock_correction_enabled=${EmulatorTimingSettings.isClockCorrectionEnabled()}")
             appendLine("clock_correction_factor=${EmulatorTimingSettings.getClockCorrectionFactor()}")
             appendLine("battle_step_mode_enabled=${EmulatorTimingSettings.isBattleStepModeEnabled()}")
@@ -930,10 +1545,10 @@ class RomLoaderActivity : AppCompatActivity() {
             appendLine("status=${ack?.status ?: "-"}")
             appendLine()
             appendLine("[saves]")
-            appendLine("autosave_exists=${autosave.exists} ts=${autosave.timestampMs} rom=${autosave.romName ?: "-"} hash=${autosave.romHash ?: "-"} seq=${stateManager.getAutosaveSeq()}")
-            appendLine("slot1_exists=${slot1.exists} ts=${slot1.timestampMs} rom=${slot1.romName ?: "-"} hash=${slot1.romHash ?: "-"} seq=${stateManager.getSlotSeq(1)}")
-            appendLine("slot2_exists=${slot2.exists} ts=${slot2.timestampMs} rom=${slot2.romName ?: "-"} hash=${slot2.romHash ?: "-"} seq=${stateManager.getSlotSeq(2)}")
-            appendLine("slot3_exists=${slot3.exists} ts=${slot3.timestampMs} rom=${slot3.romName ?: "-"} hash=${slot3.romHash ?: "-"} seq=${stateManager.getSlotSeq(3)}")
+            appendLine("autosave_exists=${autosave.exists} ts=${autosave.timestampMs} rom=${autosave.romName ?: "-"} hash=${autosave.romHash ?: "-"} seq=${stateManager.getAutosaveSeq(romName, romHash)}")
+            appendLine("slot1_exists=${slot1.exists} ts=${slot1.timestampMs} rom=${slot1.romName ?: "-"} hash=${slot1.romHash ?: "-"} seq=${stateManager.getSlotSeq(1, romName, romHash)}")
+            appendLine("slot2_exists=${slot2.exists} ts=${slot2.timestampMs} rom=${slot2.romName ?: "-"} hash=${slot2.romHash ?: "-"} seq=${stateManager.getSlotSeq(2, romName, romHash)}")
+            appendLine("slot3_exists=${slot3.exists} ts=${slot3.timestampMs} rom=${slot3.romName ?: "-"} hash=${slot3.romHash ?: "-"} seq=${stateManager.getSlotSeq(3, romName, romHash)}")
             appendLine()
             appendLine("[input_debug]")
             appendLine("snapshot_age_ms=$inputAgeMs")

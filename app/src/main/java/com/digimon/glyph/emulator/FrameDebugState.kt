@@ -12,7 +12,9 @@ object FrameDebugState {
         val updatedAtMs: Long,
         val glyphFrame: Bitmap?,
         val fullFrame: Bitmap?,
-        val digimonState: DigimonState?
+        val digimonState: DigimonState?,
+        val ram: IntArray?,
+        val vram: IntArray?
     )
 
     @Volatile
@@ -28,16 +30,30 @@ object FrameDebugState {
     private var digimonState: DigimonState? = null
 
     @Volatile
+    private var ram: IntArray? = null
+
+    @Volatile
+    private var vram: IntArray? = null
+
+    @Volatile
     private var lastReadAtMs: Long = 0L
 
     @Synchronized
-    fun update(glyph: Bitmap, full: Bitmap, atMs: Long, state: DigimonState? = null) {
-        // Copy the glyph bitmap — the original is a shared mutable object owned by the
-        // emulator loop / Glyph SDK and may be recycled before the widget reads it.
-        // fullDebug is already freshly allocated each call so no copy needed there.
+    fun update(
+        glyph: Bitmap,
+        full: Bitmap,
+        atMs: Long,
+        state: DigimonState? = null,
+        ramData: IntArray? = null,
+        vramData: IntArray? = null
+    ) {
+        // Copy both bitmaps — DisplayBridge reuses backing bitmaps, so widgets/debug
+        // readers need stable snapshots that cannot be mutated under them.
         glyphFrame = glyph.copy(glyph.config ?: Bitmap.Config.ARGB_8888, false)
-        fullFrame = full
+        fullFrame = full.copy(full.config ?: Bitmap.Config.ARGB_8888, false)
         digimonState = state
+        ram = ramData?.copyOf()
+        vram = vramData?.copyOf()
         updatedAtMs = atMs
     }
 
@@ -46,13 +62,15 @@ object FrameDebugState {
         glyphFrame = null
         fullFrame = null
         digimonState = null
+        ram = null
+        vram = null
         updatedAtMs = 0L
         lastReadAtMs = 0L
     }
 
     fun snapshot(): Snapshot {
         lastReadAtMs = SystemClock.uptimeMillis()
-        return Snapshot(updatedAtMs, glyphFrame, fullFrame, digimonState)
+        return Snapshot(updatedAtMs, glyphFrame, fullFrame, digimonState, ram, vram)
     }
 
     fun isObserved(windowMs: Long, nowMs: Long = SystemClock.uptimeMillis()): Boolean {

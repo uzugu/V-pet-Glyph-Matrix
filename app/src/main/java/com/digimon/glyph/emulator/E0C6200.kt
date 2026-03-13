@@ -602,6 +602,12 @@ class E0C6200(
     }
 
     @Synchronized
+    fun getRAM(): IntArray = RAM.copyOf()
+
+    @Synchronized
+    fun getRawVRAM(): IntArray = VRAM.copyOf()
+
+    @Synchronized
     fun getDisplaySnapshot(lastGeneration: Long): DisplaySnapshot? {
         if (displayGeneration == lastGeneration) return null
         return DisplaySnapshot(displayGeneration, buildDisplayVram())
@@ -860,15 +866,49 @@ class E0C6200(
     @Synchronized
     fun getCurrentDigimonState(romName: String?): DigimonState? {
         if (romName == null) return null
-        
+        val isClassicVpet = DigimonDatabase.resolveVersion(romName) != null
         val speciesId = RAM[0x0B]
         val age = RAM[0x5E]
         val weightTens = RAM[0x57]
         val weightOnes = RAM[0x56]
         val weight = weightTens * 10 + weightOnes
-        
+
+        val hunger = if (isClassicVpet) RAM[0x3E] else null
+        val protein = if (isClassicVpet) RAM[0x3D] else null
+        val overfeed = if (isClassicVpet) RAM[0x62] else null
+        val training = if (isClassicVpet) (RAM[0x35] shl 4) or RAM[0x34] else null
+        val careMistakes = if (isClassicVpet) RAM[0x31] else null
+        val wins = if (isClassicVpet) RAM[0x90] else null
+        val totalBattles = if (isClassicVpet) RAM[0x94] else null
+        val losses = if (wins != null && totalBattles != null) (totalBattles - wins).coerceAtLeast(0) else null
+        val winRate = if (wins != null && totalBattles != null && totalBattles > 0) {
+            ((wins * 100.0) / totalBattles).toInt()
+        } else {
+            null
+        }
+        val needsAttention = isClassicVpet && (VRAM[0] and 0x1) != 0
+        val careTimerMinutesLeft = if (isClassicVpet && needsAttention) {
+            (20 - (RAM[0x41] * 10 + RAM[0x40])).coerceIn(0, 20)
+        } else {
+            null
+        }
+
         val info = DigimonDatabase.getDigimonInfo(romName, speciesId)
-        return DigimonState(info, age, weight)
+        return DigimonState(
+            info = info,
+            age = age,
+            weight = weight,
+            hunger = hunger,
+            protein = protein,
+            overfeed = overfeed,
+            training = training,
+            careMistakes = careMistakes,
+            wins = wins,
+            losses = losses,
+            winRate = winRate,
+            careTimerMinutesLeft = careTimerMinutesLeft,
+            needsAttention = needsAttention
+        )
     }
 
     @Suppress("UNCHECKED_CAST")

@@ -5,7 +5,17 @@ data class DigimonInfo(val name: String, val stage: String)
 data class DigimonState(
     val info: DigimonInfo?,
     val age: Int,
-    val weight: Int
+    val weight: Int,
+    val hunger: Int? = null,
+    val protein: Int? = null,
+    val overfeed: Int? = null,
+    val training: Int? = null,
+    val careMistakes: Int? = null,
+    val wins: Int? = null,
+    val losses: Int? = null,
+    val winRate: Int? = null,
+    val careTimerMinutesLeft: Int? = null,
+    val needsAttention: Boolean = false
 )
 
 object DigimonDatabase {
@@ -24,9 +34,9 @@ object DigimonDatabase {
         0xA to DigimonInfo("Seadramon", "Champion"),
         0xB to DigimonInfo("Numemon", "Champion"),
         0xC to DigimonInfo("MetalGreymon", "Ultimate"),
-        0xD to DigimonInfo("Mamemon", "Ultimate"),
-        0xE to DigimonInfo("Monzaemon", "Ultimate"),
-        0xF to DigimonInfo("Grave", "Dead")
+        0xD to DigimonInfo("Monzaemon", "Ultimate"),
+        0xE to DigimonInfo("Mamemon", "Ultimate"),
+        0xF to DigimonInfo("Death", "Dead")
     )
 
     private val v2Map = mapOf(
@@ -41,11 +51,11 @@ object DigimonDatabase {
         8 to DigimonInfo("Frigimon", "Champion"),
         9 to DigimonInfo("Birdramon", "Champion"),
         0xA to DigimonInfo("Whamon", "Champion"),
-        0xB to DigimonInfo("Vegiemon", "Champion"),
+        0xB to DigimonInfo("Vegimon", "Champion"),
         0xC to DigimonInfo("SkullGreymon", "Ultimate"),
         0xD to DigimonInfo("MetalMamemon", "Ultimate"),
         0xE to DigimonInfo("Vademon", "Ultimate"),
-        0xF to DigimonInfo("Grave", "Dead")
+        0xF to DigimonInfo("Death", "Dead")
     )
 
     private val v3Map = mapOf(
@@ -64,16 +74,38 @@ object DigimonDatabase {
         0xC to DigimonInfo("Andromon", "Ultimate"),
         0xD to DigimonInfo("Giromon", "Ultimate"),
         0xE to DigimonInfo("Etemon", "Ultimate"),
-        0xF to DigimonInfo("Grave", "Dead")
+        0xF to DigimonInfo("Death", "Dead")
     )
 
-    fun getDigimonInfo(romName: String, speciesId: Int): DigimonInfo? {
-        val upperName = romName.uppercase()
+    fun resolveVersion(romName: String?): String? {
+        val upperName = romName?.uppercase()?.replace(Regex("[^A-Z0-9]"), "") ?: return null
         return when {
-            upperName.contains("V1") -> v1Map[speciesId]
-            upperName.contains("V2") -> v2Map[speciesId]
-            upperName.contains("V3") -> v3Map[speciesId]
-            else -> null // Unknown ROM version
+            upperName.contains("DIGIMONV1") || upperName == "DIGIMON" || upperName.endsWith("V1") -> "V1"
+            upperName.contains("DIGIMONV2") || upperName.endsWith("V2") -> "V2"
+            upperName.contains("DIGIMONV3") || upperName.endsWith("V3") -> "V3"
+            else -> null
         }
+    }
+
+    fun getDigimonInfo(romName: String, speciesId: Int): DigimonInfo? {
+        return when (resolveVersion(romName)) {
+            "V1" -> v1Map[speciesId]
+            "V2" -> v2Map[speciesId]
+            "V3" -> v3Map[speciesId]
+            else -> null
+        }
+    }
+
+    fun getVersionRoster(version: String): List<Pair<Int, DigimonInfo>> {
+        val roster = when (version.uppercase()) {
+            "V1" -> v1Map
+            "V2" -> v2Map
+            "V3" -> v3Map
+            else -> emptyMap()
+        }
+        return roster
+            .filterKeys { it in 1..0xE }
+            .toSortedMap()
+            .map { it.key to it.value }
     }
 }

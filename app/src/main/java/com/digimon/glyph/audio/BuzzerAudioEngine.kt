@@ -51,9 +51,7 @@ class BuzzerAudioEngine {
         }
         thread?.join(300)
         thread = null
-        audioTrack?.pause()
-        audioTrack?.flush()
-        audioTrack?.release()
+        releaseTrackQuietly(audioTrack)
         audioTrack = null
         toneOn = false
     }
@@ -94,11 +92,11 @@ class BuzzerAudioEngine {
             val now = System.nanoTime()
             if (!enabled) {
                 if (trackPlaying) {
-                    track?.pause()
+                    pauseTrackQuietly(track)
                     trackPlaying = false
                 }
                 if (track != null && lastActiveNs > 0L && now - lastActiveNs >= IDLE_RELEASE_NS) {
-                    track.release()
+                    releaseTrackQuietly(track)
                     track = null
                     audioTrack = null
                 }
@@ -130,11 +128,11 @@ class BuzzerAudioEngine {
             val active = toneOn || now < holdToneUntilNs
             if (!active) {
                 if (trackPlaying && lastActiveNs > 0L && now - lastActiveNs >= IDLE_PAUSE_NS) {
-                    track.pause()
+                    pauseTrackQuietly(track)
                     trackPlaying = false
                 }
                 if (lastActiveNs > 0L && now - lastActiveNs >= IDLE_RELEASE_NS) {
-                    track.release()
+                    releaseTrackQuietly(track)
                     track = null
                     audioTrack = null
                     trackPlaying = false
@@ -167,8 +165,7 @@ class BuzzerAudioEngine {
             }
             val written = track.write(buffer, 0, buffer.size, AudioTrack.WRITE_BLOCKING)
             if (written < 0) {
-                track.pause()
-                track.release()
+                releaseTrackQuietly(track)
                 track = null
                 audioTrack = null
                 trackPlaying = false
@@ -182,9 +179,7 @@ class BuzzerAudioEngine {
             }
         }
 
-        track?.pause()
-        track?.flush()
-        track?.release()
+        releaseTrackQuietly(track)
     }
 
     private fun createTrack(): AudioTrack? {
@@ -213,5 +208,20 @@ class BuzzerAudioEngine {
             .setTransferMode(AudioTrack.MODE_STREAM)
             .setBufferSizeInBytes(minBuffer)
             .build()
+    }
+
+    private fun pauseTrackQuietly(track: AudioTrack?) {
+        if (track == null) return
+        if (track.state != AudioTrack.STATE_INITIALIZED) return
+        runCatching { track.pause() }
+    }
+
+    private fun releaseTrackQuietly(track: AudioTrack?) {
+        if (track == null) return
+        if (track.state == AudioTrack.STATE_INITIALIZED) {
+            runCatching { track.pause() }
+            runCatching { track.flush() }
+        }
+        runCatching { track.release() }
     }
 }

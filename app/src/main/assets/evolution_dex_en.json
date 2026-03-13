@@ -1,0 +1,794 @@
+{
+  "V1": [
+    {
+      "speciesId": 1,
+      "name": "Botamon",
+      "jpName": "ボタモン",
+      "anchor": "1-1",
+      "header": "Baby I",
+      "activity": "Irregular",
+      "lifespan": "About 1 hour",
+      "weight": "5g",
+      "fullness": "4",
+      "cycle": "3 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "Hatches from DigiEgg",
+      "evolvesToText": [
+        "Koromon"
+      ],
+      "flavor": "黒い産毛に覆われたデジモンの原点。この時点ではデジモンの前身たるたまごっち先輩の「ベビっち」と大差ない見た目だが、\n口を開けば「酸性のアワ」なんて物騒なモノを吐いてくるあたりが戦闘種族の誇り（プライド）。\nボタモンに限らず、幼年期Ⅰのパラメータサイクルは非常に早くピーピーとやかましい。\nしかし幼年期Ⅱへ進化するまでの間ずっと放っておいても別に死にはしないので、ありがたく放置してやろう。耐えろ、これも強くなるための試練なのだ。"
+    },
+    {
+      "speciesId": 2,
+      "name": "Koromon",
+      "jpName": "コロモン",
+      "anchor": "1-2",
+      "header": "Baby II",
+      "activity": "8:00 AM - 7:00 PM",
+      "lifespan": "About 44 hours",
+      "weight": "10g",
+      "fullness": "16",
+      "cycle": "About 57 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "About 1 hour after Botamon",
+      "evolvesToText": [
+        "Agumon, Betamon"
+      ],
+      "flavor": "産毛が抜けた途端に白くなる極端な奴。頭から伸びる2本の長い耳のような触角がドットだと別に長くないので特徴になってないのが特徴。\nこのページのドットだと普通に底についているが、実際のギアでは画面の中央あたりに位置するあたりにたまごっちの名残がある。\n幼年期はバトルはできないしドットは地味だしで育てていても面白みが薄いが、Ver.1は特に進化が遅いためこのコロモンとは長いお付き合いになる。"
+    },
+    {
+      "speciesId": 3,
+      "name": "Agumon",
+      "jpName": "アグモン",
+      "anchor": "1-3-1",
+      "header": "Rookie Power Rank F",
+      "activity": "8:00 AM - 7:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 73 min",
+      "stamina": "20",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Koromon: low-mistake route",
+      "evolvesToText": [
+        "Greymon, Tyranomon",
+        "Devimon, Meramon, Numemon"
+      ],
+      "flavor": "2足歩行に進化した黄色いトカゲデジモン。今でこそ主役成長期のイメージが定着しているが、\n昔はどっちかというと気弱な印象だったり、チンピラの子分やってたりと下積み時代もあった。\nデジモンは規則的なデジモンほど育てやすい傾向にあるので、このアグモン（およびアグモン系）は育てやすい。寝る時には布団を使うあたりからも育ちの良さが表れている。\nようやく赤ちゃんから子供に成長したものの、必殺技はまだ「ベビーフレイム」。"
+    },
+    {
+      "speciesId": 4,
+      "name": "Betamon",
+      "jpName": "ベタモン",
+      "anchor": "1-3-2",
+      "header": "Rookie Power Rank F",
+      "activity": "9:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 57 min",
+      "stamina": "20",
+      "injury": "4/16 (2 heals)",
+      "conditionText": "From Koromon: high-mistake route",
+      "evolvesToText": [
+        "Devimon, Meramon",
+        "Airdramon, Seadramon, Numemon"
+      ],
+      "flavor": "4足歩行に進化した緑の両生類デジモン。ハッキリとしたモチーフは明言されていないが、恐らくはカエル。\n名前通りにベタッとしていて、いかにもダレた不真面目キャラだと体で表してくれている。\n驚異的な100万ボルトの電流を放つ必殺技「電撃ビリリン」は、肝心の電圧が分からないため具体的な強さは未知数。\nそして何故マリオRPGに出てきた「でんげきビリリ」のモロパクリなのかも不明。"
+    },
+    {
+      "speciesId": 5,
+      "name": "Greymon",
+      "jpName": "グレイモン",
+      "anchor": "1-4-1",
+      "header": "Champion Power Rank C (Rock)",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 124 hours",
+      "weight": "30g",
+      "fullness": "28",
+      "cycle": "About 89 min",
+      "stamina": "30",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Agumon: low-mistake route; Training 32+",
+      "evolvesToText": [
+        "MetalGreymon"
+      ],
+      "flavor": "硬い甲殻を被った恐竜デジモンで、口から強力な火炎「メガフレイム」を放つ。それにしてもこのドットは本当に犬面だ。公式デザインの方でも、メットを脱げばこんな感じなのだろうか。\nVer.1は進化条件が特殊で、後続のバージョンと違い同じグレイモン系でもこいつのトレーニングは「48回以上」でなく「32回以上」とお手軽。\nVer.1はトレーニングを何度もやろうと思うとかなり面倒なので、これはありがたい。しかしそのせいか、後続のグレイモン系より体力が劣る。"
+    },
+    {
+      "speciesId": 6,
+      "name": "Tyranomon",
+      "jpName": "ティラノモン",
+      "anchor": "1-4-2",
+      "header": "Champion Power Rank D (Rock)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "28",
+      "cycle": "About 73 min",
+      "stamina": "20",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Agumon: high-mistake route; Training 5-15; Overfeeds 3+; Sleep disturbances 4 or less",
+      "evolvesToText": [
+        "Mamemon"
+      ],
+      "flavor": "Ver.1の看板デジモン。「グレイモンはエリートだから、普通のアグモンの進化はこっちね」という位置づけのはずだが、\n進化条件が特殊なためグレイモンよりよほどレア。このトレーニング回数のなさは初代の中でも異色だが、「そんなグータラキャラとして注目されても…」と\nティラノモン本人もあまり嬉しくはないだろう。デジモンワールドのおかげで「ティラノモン＝大食い」イメージのあるテイマーも多いだろうが、初代の時点ではそこまででもない。\n必殺技「ファイアーブレス」も\nなんだか普通の火炎攻撃すぎて、しかも実際バトルで弱いのだからいたたまれない。のっけからここまで「劣化グレイモン」みたいな扱いにしておいて、\nよくもまぁ「最初はティラノモンを推す予定だった（サイバースルゥース発売前特番より）」なんて言えたモンだと思うが、\nそんなティラノモンも、ドットのビジュアル面では確実にグレイモンに勝っていると言えるだろう。"
+    },
+    {
+      "speciesId": 7,
+      "name": "Devimon",
+      "jpName": "デビモン",
+      "anchor": "1-4-3",
+      "header": "Champion Power Rank C (Scissors)",
+      "activity": "9:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "40g",
+      "fullness": "32",
+      "cycle": "About 73 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Agumon: low-mistake route; Training 31 or less\nFrom Betamon: low-mistake route; Training 48+",
+      "evolvesToText": [
+        "MetalGreymon"
+      ],
+      "flavor": "堕天使といいつつトカゲとカエルから堕ちて進化するデビタルモンスター。心臓を抉り取る凶悪な必殺技「デスクロー」\nは握り拳で放ち、爪を使わない優しさ溢れる堕天使。ていうか、デジモンの心臓って何だよ（後付設定の弊害）。\nデビモン系は「ぼちぼちマジメに、トレーニングはサボり気味」というマジメ系屑みたいな進化条件なので、本来ハズレに位置するヌメモン系よりもよほど進化しやすい。\nベタモンからの進化は条件がグレイモン系にシフトするのでかなり厳しくなるが、折角ベタモンになった所からデビモンを狙う必要もないだろう。"
+    },
+    {
+      "speciesId": 8,
+      "name": "Meramon",
+      "jpName": "メラモン",
+      "anchor": "1-4-4",
+      "header": "Champion Power Rank D (Scissors)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "30g",
+      "fullness": "32",
+      "cycle": "About 57 min",
+      "stamina": "30",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Agumon: high-mistake route; Training 16+; Overfeeds 3+; Sleep disturbances 6 or less\nFrom Betamon: low-mistake route; Training 47 or less",
+      "evolvesToText": [
+        "Mamemon"
+      ],
+      "flavor": "初期メンバーにして、「炎上してしまった人」というデジタルな先見性のあるデザインのデジモン。イヤイヤアクションが面白いので、度々ネタになる。\n「C'monデジモン」で必殺技を放った希少なデジモンで、その頃は必殺技は「バーニングフィスト」でなく「ファイヤーフィスト」だった。\n必殺技がパンチなため、ティラノとシードラに比べるとマメモンへの進化が自然な気がする。"
+    },
+    {
+      "speciesId": 9,
+      "name": "Airdramon",
+      "jpName": "エアドラモン",
+      "anchor": "1-4-5",
+      "header": "Champion Power Rank C (Paper)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "30g",
+      "fullness": "24",
+      "cycle": "About 57 min",
+      "stamina": "30",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Betamon: high-mistake route; Training 8-31; Overfeeds 3 or less; Sleep disturbances 9+",
+      "evolvesToText": [
+        "MetalGreymon"
+      ],
+      "flavor": "Ver.1の成熟期の中で未だに直系進化も派生種もいないため、高いレアリティを誇る幻獣の鑑。レアリティが高すぎて出番自体がない機会も増えてきた。\n進化条件が後のバージョンとは違うVer.1の中でも一番特殊なデジモンで、他バージョンのエアドラモン枠は規則的タイプなのに、エアドラモンは不規則。\nしかも進化条件に睡眠妨害が9回以上も必要になる。そんなだからお前公式絵で目のくまヤベぇんだよ。 必殺技の「スピニングニードル」は設定がふわふわしていて、\nドットや当時のイラスト的には「翼から実体のトゲを飛ばす技」として描かれているが、文献によっては竜巻攻撃だったりもする。"
+    },
+    {
+      "speciesId": 10,
+      "name": "Seadramon",
+      "jpName": "シードラモン",
+      "anchor": "1-4-6",
+      "header": "Champion Power Rank D (Paper)",
+      "activity": "8:00 AM - 10:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "28",
+      "cycle": "About 57 min",
+      "stamina": "20",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Betamon: high-mistake route; Training 8-31; Overfeeds 4+; Sleep disturbances 8 or less",
+      "evolvesToText": [
+        "Mamemon"
+      ],
+      "flavor": "エアドラモンを出しぬき、現在ではベタモンの正統進化に落ち着いた海蛇デジモン。こいつの黄色い頭を見るといかにもアグモンから進化しそうなモンだが、繋がっていない。\nドットはエアドラモンとよく似ていて、ニョロニョロボディのくせに布団で寝る所も共通している。 \n1日の活動時間が14時間もあり、初代シリーズではメタルティラノモンと共に「最も長く起きている」特徴を持つ。 必殺技の「アイスアロー」はVer.1時点どころか現在でも貴重な氷水属性の技。"
+    },
+    {
+      "speciesId": 11,
+      "name": "Numemon",
+      "jpName": "ヌメモン",
+      "anchor": "1-4-7",
+      "header": "Champion Power Rank E",
+      "activity": "10:00 AM - 8:00 PM",
+      "lifespan": "About 44 hours",
+      "weight": "10g",
+      "fullness": "16",
+      "cycle": "About 42 min",
+      "stamina": "10",
+      "injury": "4/16 (3 heals)",
+      "conditionText": "From Agumon: high-mistake route; Training 4 or less or Overfeeds 2 or less or Sleep disturbances 7+\nFrom Betamon: high-mistake route; Training 7 or less or Training 32+",
+      "evolvesToText": [
+        "Monzaemon"
+      ],
+      "flavor": "竜と人型モンスターに混ざるナメクジという、いかにもなハズレキャラ。\nこれといった特技がないため、必殺技として自らの「ウンチ」を投げつける、まさにヤケクソなダーティファイター。\n見た目は中々愛嬌があるが、バトルでの弱さ、体力のなさ、寿命の短さと3拍子揃ったダメっぷりのおかげで、完全体への進化は難易度が高い。\nただのぬいぐるみに入るだけのように見える進化も、裏ではかなりの努力が求められるのだ。"
+    },
+    {
+      "speciesId": 12,
+      "name": "MetalGreymon",
+      "jpName": "メタルグレイモン",
+      "anchor": "1-5-1",
+      "header": "Ultimate Power Rank B",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "40g",
+      "fullness": "40",
+      "cycle": "About 89 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Greymon, Devimon, Airdramon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "戦闘で傷ついた全身をサイボーグ化した完全体デジモン。\n名前的にもグレイモンの進化系なのは言うまでもないが、翼やクロー攻撃、頭部の髪など、同じく進化前であるデビモンやエアドラモンの要素も受け継いでいるのが特徴。\n（当時は翼がデビモンやエアドラモン風になっていた絵もあった）\n胸のハッチから放つ有機体系ミサイル「ギガデストロイヤー」の威力は\n核弾頭1発分に匹敵すると凄まじい設定だが、その割に完全体としての強さは最低ランク。最強とは一体。\n「ファイル島の技術は未発達で、改造手術に耐えきれず全身が腐ってしまった」という悲惨な設定も後付されたが、\n生活面ではかなりの優等生。メタルボディの戦闘マシーンと化しても、布団で寝るのが微笑ましい。"
+    },
+    {
+      "speciesId": 13,
+      "name": "Mamemon",
+      "jpName": "マメモン",
+      "anchor": "1-5-2",
+      "header": "Ultimate Power Rank A",
+      "activity": "7:00 AM - 7:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "5g",
+      "fullness": "24",
+      "cycle": "About 89 min",
+      "stamina": "45",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Tyranomon, Meramon, Seadramon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "最終形態にして幼年期同然の見た目になってしまう突然変異型デジモン。\n進化前3体の面影のなさも正に突然変異で、しかも強い。おかげでマメモンのインパクトはバッチリだが、踏み台にされた鉄クズはお気の毒。\n腕のグローブ型爆弾を投げつける必殺技「スマイリーボム」にならって「スマイリーボマー」の愛称をファンにいただいているそうだが、\n一歩間違えればネット犯罪者とかコンピュータウィルス的なネーミングにも見える。"
+    },
+    {
+      "speciesId": 14,
+      "name": "Monzaemon",
+      "jpName": "もんざえモン",
+      "anchor": "1-5-3",
+      "header": "Ultimate Power Rank S",
+      "activity": "9:00 AM - 7:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "40g",
+      "fullness": "32",
+      "cycle": "About 73 min",
+      "stamina": "50",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Numemon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "ぬいぐるみに何者かが入り込んだ、Ver.1最強のデジモン。謎に包まれた中身…一体何メモンなんだ…。\n公式絵ではいやらしい顔をしているが、ドットは完全にただのかわいいクマちゃん。\nドットと公式絵とでは、戦意を喪失させる必殺技「ラブリーアタック」の雰囲気は随分と違って見える。\n最初のバージョンの最強キャラだけあって、大会での優勝回数も多かったようだ。"
+    }
+  ],
+  "V2": [
+    {
+      "speciesId": 1,
+      "name": "Punimon",
+      "jpName": "プニモン",
+      "anchor": "2-1",
+      "header": "Baby I Botamon line",
+      "activity": "Irregular",
+      "lifespan": "About 1 hour",
+      "weight": "5g",
+      "fullness": "4",
+      "cycle": "3 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "Hatches from DigiEgg",
+      "evolvesToText": [
+        "Tsunomon"
+      ],
+      "flavor": "どうでもいいが、昔たまごっちブームの頃に母が買ってきたパチモンに出てきたドットがプニモンとよく似ていた。\nボタモンたちと同じく、「酸性のアワ」を吐いて敵を威嚇する。"
+    },
+    {
+      "speciesId": 2,
+      "name": "Tsunomon",
+      "jpName": "ツノモン",
+      "anchor": "2-2",
+      "header": "Baby II Koromon line",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 36 hours",
+      "weight": "10g",
+      "fullness": "12",
+      "cycle": "About 57 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "About 1 hour after Punimon",
+      "evolvesToText": [
+        "Gabumon, Elecmon"
+      ],
+      "flavor": "プニモンの頭の触手が発達して大きなツノになった。このツノが、ガブ、カブテリ、スカルグレイと進化していく上でのルーツになったりする。\nせっかく生えているツノは戦闘には活かされず、例によって「酸性のアワ」を吐く。"
+    },
+    {
+      "speciesId": 3,
+      "name": "Gabumon",
+      "jpName": "ガブモン",
+      "anchor": "2-3-1",
+      "header": "Rookie Agumon line Power Rank F",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 73 min",
+      "stamina": "20",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Tsunomon: low-mistake route",
+      "evolvesToText": [
+        "Kabuterimon, Garurumon",
+        "Angemon, Yukidarumon, Vegiemon"
+      ],
+      "flavor": "進化した瞬間からガルルモンの毛皮を着こんでいる不思議な爬虫類型デジモン。進化先にやたらとデジモンアドベンチャーの主役デジモンが揃っていて贅沢。\n必殺技は「プチファイアー」で、この頃からフォックスファイアーを持つガルルモンに対して異常な執着を持っていたのが窺える。"
+    },
+    {
+      "speciesId": 4,
+      "name": "Elecmon",
+      "jpName": "エレキモン",
+      "anchor": "2-3-2",
+      "header": "Rookie Betamon line Power Rank F",
+      "activity": "9:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "20",
+      "cycle": "About 57 min",
+      "stamina": "20",
+      "injury": "4/16 (2 heals)",
+      "conditionText": "From Tsunomon: high-mistake route",
+      "evolvesToText": [
+        "Angemon, Yukidarumon",
+        "Birdramon, Whamon, Vegiemon"
+      ],
+      "flavor": "ドットだとウミウシか何かに見えるが、9つの尻尾を持つキツネ的な哺乳類型デジモン。尻尾からの放電「スパークリングサンダー」が必殺技なので、電気ネズミかもしれない。 \n哺乳類だし、全身にお揃いのトラ模様があるのにガルルモンへは進化できない。"
+    },
+    {
+      "speciesId": 5,
+      "name": "Kabuterimon",
+      "jpName": "カブテリモン",
+      "anchor": "2-4-1",
+      "header": "Champion Greymon line Power Rank C (Rock)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 116 hours",
+      "weight": "30g",
+      "fullness": "28",
+      "cycle": "About 89 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Gabumon: low-mistake route; Training 48+",
+      "evolvesToText": [
+        "SkullGreymon"
+      ],
+      "flavor": "ドットがゾウか何かにしか見えないカブトムシデジモン。そんなコトよりも公募ハガキのデザインがロックマンのボスのモロパクリな方がアレなのだが、\nこの時点で名前がカブテリモンなのは、名前もビーファイターカブトの「大甲神カブテリオス」から来ているのかも気になる。いや、語呂いいし同じバンダイだし良いと思いますけどね、カブテリモン。\n必殺技は「メガブラスター」。さすがに「グラビティ・ビートブラスター」とかにはならなかった。"
+    },
+    {
+      "speciesId": 6,
+      "name": "Garurumon",
+      "jpName": "ガルルモン",
+      "anchor": "2-4-2",
+      "header": "Champion Tyranomon line Power Rank D (Rock)",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 73 min",
+      "stamina": "28",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Gabumon: high-mistake route; Training 5-31; Overfeeds 3+; Sleep disturbances 4 or less",
+      "evolvesToText": [
+        "MetalMamemon"
+      ],
+      "flavor": "Ver.2の看板デジモン。狼のような体躯、虎のような模様、そして必殺技は「フォックスファイアー」な犬。\n今や「ガブモンの正統進化！」として定着しているが、この頃は不規則でダレた生活の末に行きつく進化だった。 でもいいんだ、喜びモーションがカワイイから。"
+    },
+    {
+      "speciesId": 7,
+      "name": "Angemon",
+      "jpName": "エンジェモン",
+      "anchor": "2-4-3",
+      "header": "Champion Devimon line Power Rank C (Scissors)",
+      "activity": "7:00 AM - 8:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "20",
+      "cycle": "About 73 min",
+      "stamina": "38",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Gabumon: low-mistake route; Training 47 or less\nFrom Elecmon: low-mistake route; Training 48+",
+      "evolvesToText": [
+        "SkullGreymon"
+      ],
+      "flavor": "Ver.2の荒野に降り立った天使型デジモン。アニメなどのおかげで大分見慣れたモンだが、冷静に見ると「ただの天使」と呼ぶには大分スゴいデザインをしている。\n一方ドットはえらく太ましくマッチョで、四次元殺法コンビか何かに見えてくる。 デビモン以上に人間に近い姿をしたデジモンなので、\nエンジェウーモンのような女性型デジモンもいなかったごく初期の頃は「女性的なキャラ」を務めるコトもあった。\nペンデュラム以降は雲に乗ってゆったりと睡眠をとるが、布団文化はVer.1の時点で失われてしまったため、この時点では地べたに座って眠るのもなんだかワイルド。\n必殺技の聖拳「ヘブンズナックル」は、天使らしからぬ歯を剥き出した表情で捻り出してくれる。う～んワイルド（適当）。"
+    },
+    {
+      "speciesId": 8,
+      "name": "Frigimon",
+      "jpName": "ユキダルモン",
+      "anchor": "2-4-4",
+      "header": "Champion Meramon line Power Rank D (Scissors)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "30g",
+      "fullness": "32",
+      "cycle": "About 57 min",
+      "stamina": "30",
+      "injury": "2/16 (2 heals)",
+      "conditionText": "From Gabumon: high-mistake route; Training 32+; Overfeeds 3+; Sleep disturbances 6 or less\nFrom Elecmon: high-mistake route; Training 8-31; Overfeeds 5 or less; Sleep disturbances 5+",
+      "evolvesToText": [
+        "MetalMamemon"
+      ],
+      "flavor": "本当に雪だるまそのものなドットで描かれる氷雪型デジモン。動くと必要に応じて腕や足は生えてくるが、公式絵の特徴であるクマ耳は出てこない。\nメラモンとはお互いを苦手とするライバル関係にあたり、バーニングフィストに対抗して必殺の「絶対零度パンチ」を放つ。\nその後メラモンはデスメラモンに進化するコトで寒さへの耐性を得たが、ユキダルモンは未だに強化アップデートの類が何もないため、このままでは温暖化がヤバい。"
+    },
+    {
+      "speciesId": 9,
+      "name": "Birdramon",
+      "jpName": "バードラモン",
+      "anchor": "2-4-5",
+      "header": "Champion Airdramon line Power Rank C (Paper)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "30g",
+      "fullness": "24",
+      "cycle": "About 57 min",
+      "stamina": "36",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Elecmon: low-mistake route; Training 47 or less",
+      "evolvesToText": [
+        "SkullGreymon"
+      ],
+      "flavor": "デジモン初の鳥系デジモンだが、この時点で「火の鳥」をモチーフに使っている贅沢なヤツ。\nしかしドットはメラモンほど「燃えてる感」がなく、ただの白い鳥に見えてしまうのは否めない。\n制空権を争うエアドラモンとはライバル関係にあたる…的な公式絵がチラホラあったりはしたが、特にそういう設定はないらしい。\nエアドラモンが「airdramon」なのに対し、バードラモンは「birdramon」とa・b一文字違いなだけで名前の意味合いが大きく変わるのが面白いところ。\n必殺技は高空からのもえるはねぼきん「メテオウィング」。"
+    },
+    {
+      "speciesId": 10,
+      "name": "Whamon",
+      "jpName": "ホエーモン",
+      "anchor": "2-4-6",
+      "header": "Champion Seadramon line Power Rank D (Paper)",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "40g",
+      "fullness": "32",
+      "cycle": "About 57 min",
+      "stamina": "28",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Elecmon: high-mistake route; Training 32+; Overfeeds 6+; Sleep disturbances 4 or less",
+      "evolvesToText": [
+        "MetalMamemon"
+      ],
+      "flavor": "バードラモンと似たような感じで、「クジラ」モチーフを成熟期に使ってしまった贅沢なデジモン。\n（そのせいか、ペンデュラム以降のホエーモンは同じデザインのままサイズだけ大きくなって完全体になった）\n公式絵だと目はないっぽいのだが、ドットだとなかなか表情豊か。ケガをした時のションボリっぷりも見逃せない。\n必殺技は頭部から放つ圧縮潮吹き「ジェットアロー」と、巨体で起こす「大津波」。\n大津波のドットは で、ウンチを流すトイレのドットと同じ。そう思うと、きたない。"
+    },
+    {
+      "speciesId": 11,
+      "name": "Vegiemon",
+      "jpName": "ベジーモン",
+      "anchor": "2-4-7",
+      "header": "Champion Numemon line Power Rank E",
+      "activity": "10:00 AM - 11:00 PM",
+      "lifespan": "About 44 hours",
+      "weight": "10g",
+      "fullness": "16",
+      "cycle": "About 42 min",
+      "stamina": "20",
+      "injury": "4/16 (3 heals)",
+      "conditionText": "From Gabumon: high-mistake route; Training 4 or less or Overfeeds 2 or less or Sleep disturbances 7+\nFrom Elecmon: high-mistake route; Training 7 or less",
+      "evolvesToText": [
+        "Vademon"
+      ],
+      "flavor": "他のハズレ系に比べるとハズレ感が弱い食虫植物デジモン。ハズレ系なので「ウンチ」を投げつけるが、「なんでこいつがウンチを？」と説得力に欠ける。\n他のゲームで必殺技が「甘い吐息」や「超悪臭噴射」に変更されるのも仕方ない。\nヌメモンと同じく寿命はとても短いが、体力は倍増したので進化を狙うのはラクになった。"
+    },
+    {
+      "speciesId": 12,
+      "name": "SkullGreymon",
+      "jpName": "スカルグレイモン",
+      "anchor": "2-5-1",
+      "header": "Ultimate MetalGreymon line Power Rank B",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "36",
+      "cycle": "About 89 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Kabuterimon, Angemon, Birdramon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "メタルグレイモンとは対照的に、戦いに明け暮れる内に体が朽ち果てたアンデッドデジモン。最強データブックの解説のカッコよさをもっと世間に広めたい。\n戦闘狂な割に完全体の中では一番弱い部類なのはメタルグレイモンと同じ。こんなホネホネボディなくせにめっちゃメシを食う。\n必殺技は、背中の有機体系ミサイル「グラウンド・ゼロ」と、より大きい強化ミサイル「グラウンド・ゼロ改」を使い分ける。"
+    },
+    {
+      "speciesId": 13,
+      "name": "MetalMamemon",
+      "jpName": "メタルマメモン",
+      "anchor": "2-5-2",
+      "header": "Ultimate Mamemon line Power Rank A",
+      "activity": "7:00 AM - 7:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "5g",
+      "fullness": "12",
+      "cycle": "About 89 min",
+      "stamina": "45",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Garurumon, Yukidarumon, Whamon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "なんか知らんがマメモンが改造された姿。マメモンを改造する必要がよく分からないし、ギア的に実際にこの姿になるのは無関係な成熟期たちなのでさらによく分からない。\n改造された割にマメモンより強くなっているワケでもなく、ドットの白黒が反転した都合でえらいヒラメ顔になってしまった。\n右腕のメタルクローや必殺技「エネルギーボム」を放つ左腕のサイコブラスターがメカニカルでカッコイイのだが、ドットでは丸腰。"
+    },
+    {
+      "speciesId": 14,
+      "name": "Vademon",
+      "jpName": "ベーダモン",
+      "anchor": "2-5-3",
+      "header": "Ultimate Monzaemon line Power Rank S",
+      "activity": "9:00 AM - 7:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "16",
+      "cycle": "About 73 min",
+      "stamina": "50",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Vegiemon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "植物のタネから生まれたとウワサされる謎の宇宙人デジモン。そもそもデジタルワールドにおいて「宇宙」とは何なのか。\n「光線銃を構えた宇宙人」と一発で分かるドットは素晴らしい出来だが、感情表現に乏しく、全てのアクションを合わせてもドットが4枚ぐらいしかない。\n必殺技は、戦意を喪失させる「悪魔の投げキッス」と「アブダクション光線」による銃撃の2パターン。\n強さは最高ランクな上に一日に50回も戦えるタフガイだが、活動時間はたったの10時間とかなり短い。"
+    }
+  ],
+  "V3": [
+    {
+      "speciesId": 1,
+      "name": "Poyomon",
+      "jpName": "ポヨモン",
+      "anchor": "3-1",
+      "header": "Baby I Botamon line",
+      "activity": "Irregular",
+      "lifespan": "About 1 hour",
+      "weight": "5g",
+      "fullness": "4",
+      "cycle": "3 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "Hatches from DigiEgg",
+      "evolvesToText": [
+        "Tokomon"
+      ],
+      "flavor": "パックマンの敵。 動けばそうでもないのだが、やはりこの基本ドットはどうも不気味だ。"
+    },
+    {
+      "speciesId": 2,
+      "name": "Tokomon",
+      "jpName": "トコモン",
+      "anchor": "3-2",
+      "header": "Baby II Koromon line",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 36 hours",
+      "weight": "10g",
+      "fullness": "12",
+      "cycle": "About 57 min",
+      "stamina": "-",
+      "injury": "-",
+      "conditionText": "About 1 hour after Poyomon",
+      "evolvesToText": [
+        "Patamon, Kunemon"
+      ],
+      "flavor": "幼年期にしては珍しく足が生えていて、これでトコトコ歩くのでトコモンらしい。しかし次のVer.4でタネモンが出てくるせいで、早々と珍しくもなんともなくなってしまう。\nカワイイ顔をしているくせに、口の中にはビッシリと凶悪な牙を隠し持つデジタルモンスターの鑑。\nこの牙で咬みつけば成長期ぐらい倒せそうなモンだが、必殺技は例によって「酸性のアワ」のまま。"
+    },
+    {
+      "speciesId": 3,
+      "name": "Patamon",
+      "jpName": "パタモン",
+      "anchor": "3-3-1",
+      "header": "Rookie Agumon line Power Rank F",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 73 min",
+      "stamina": "20",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Tokomon: low-mistake route",
+      "evolvesToText": [
+        "Unimon, Centarumon",
+        "Ogremon, Bakemon, Sukamon"
+      ],
+      "flavor": "大きな耳で空中を時速1㎞で駆け抜ける哺乳類型デジモン。マジに考えるコトでもないが、ここまで遅いと逆に揚力とかはハンパないのではないだろうか。\n今や「実は聖なる力を秘めている」だの「古代種のデータを受け継いでいる」だのと経歴詐称に磨きがかかったデジモンの1体だが、\nこの頃のパタモンはただの獣デジモンで、そのせいか知らないが表情に全くやる気がない。\nエサを食う時も喜ぶ時も怒る時も必殺技を撃つ時も同じ顔というのはいかがなものか。\nそんなやる気のない顔から繰り出される必殺技は、空気弾の「エアショット」。表情からすると、ただのゲップの恐れすらある。"
+    },
+    {
+      "speciesId": 4,
+      "name": "Kunemon",
+      "jpName": "クネモン",
+      "anchor": "3-3-2",
+      "header": "Rookie Betamon line Power Rank F",
+      "activity": "9:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "20",
+      "cycle": "About 57 min",
+      "stamina": "20",
+      "injury": "4/16 (2 heals)",
+      "conditionText": "From Tokomon: high-mistake route",
+      "evolvesToText": [
+        "Ogremon, Bakemon",
+        "Shellmon, Drimogemon, Sukamon"
+      ],
+      "flavor": "誤植のせいで幼虫ポケモンの風評被害に巻き込まれた哀れな幼虫ポ…デジモン。\n初代において虫デジモンは珍しく、Ver.2のカブテリモン、Ver.3のクネモン、Ver.4のクワガーモン、Ver.5のフライモン……お前ら当時から設定的には進化繋がってるんだから一緒に出てこいよ！\n必殺技は電気を帯びた糸「エレクトリックスレッド」。電気系の必殺技は安定して名前がカッコイイと思う。"
+    },
+    {
+      "speciesId": 5,
+      "name": "Unimon",
+      "jpName": "ユニモン",
+      "anchor": "3-4-1",
+      "header": "Champion Greymon line Power Rank C (Rock)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 116 hours",
+      "weight": "30g",
+      "fullness": "28",
+      "cycle": "About 89 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Patamon: low-mistake route; Training 48+",
+      "evolvesToText": [
+        "Andromon"
+      ],
+      "flavor": "パタモンの正統進化になり損ねた哀れな聖獣デジモン。まさかデジモンワールドでアイテムショップをやっていた頃がこいつのピークだなんて、あの時は誰も…。\nユニコーンのくせにちゃっかりとペガサス要素の羽を持ち合わせているのが特徴だが、\n個人的にはそれ以上に「なんでこうも全身が傷だらけなのか」が気になる。いや、歴戦の勇士ってコトだろうけどなんかこう…ユニモンに傷って、必要だったのかなって。\n必殺技は、パタモンからの進化を意識していたのが分かって悲しすぎる気功弾「ホーリーショット」。"
+    },
+    {
+      "speciesId": 6,
+      "name": "Centarumon",
+      "jpName": "ケンタルモン",
+      "anchor": "3-4-2",
+      "header": "Champion Tyranomon line Power Rank D (Rock)",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "20g",
+      "fullness": "24",
+      "cycle": "About 73 min",
+      "stamina": "28",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Patamon: high-mistake route; Training 5-31; Overfeeds 3+; Sleep disturbances 4 or less",
+      "evolvesToText": [
+        "Giromon"
+      ],
+      "flavor": "半獣半人のケンタウロス体型が特徴の獣人型デジモン。 生身に分類されるデジモンでありながら、\n頭部や肩に装備された鎧、背中の加速用ダクト、そして全身には浮かび上がる硬化物質などで物々しい雰囲気。\n必殺技は、銃と一体化した右腕から放つ「ハンティングキャノン」。初代はまだドット表現が黎明期なため、攻撃時にも「ガーッ！」と吠えるだけのデジモンが多い中、\nケンタルモンは腕の砲身が表現されている上、攻撃時にしっかりとその武器を構えて撃つのが絶品。 そんな感じで公式絵もドットも滅茶苦茶カッコイイのに、成熟期では弱い部類に入るのが残念。"
+    },
+    {
+      "speciesId": 7,
+      "name": "Ogremon",
+      "jpName": "オーガモン",
+      "anchor": "3-4-3",
+      "header": "Champion Devimon line Power Rank C (Scissors)",
+      "activity": "7:00 AM - 8:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "20",
+      "cycle": "About 73 min",
+      "stamina": "38",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Patamon: low-mistake route; Training 47 or less\nFrom Kunemon: low-mistake route; Training 48+",
+      "evolvesToText": [
+        "Andromon"
+      ],
+      "flavor": "Ver.3の看板デジモン。悪魔、天使と来て今度は鬼。後に続くレオモンやデビドラモンも踏まえると、デビモン系は「人型」で統一感がある。\n大きく開かれたアゴが特徴的で、ドットはそれをさらに大きく映してくる。自慢の拳による必殺技「覇王拳」は、\n攻撃時にも思いっきり口を開いて威嚇しているので、本当にパンチで攻撃しているのか疑わしい。\nスカルグレイモンを倒した時の戦利品という骨を武器にしているが、ドットでは丸腰。律儀に対戦でスカルグレイモンを倒しても無意味だ。\nていうか、なんでオーガモンじゃなくてドリモゲモンが特殊技で骨攻撃するのだろう。"
+    },
+    {
+      "speciesId": 8,
+      "name": "Bakemon",
+      "jpName": "バケモン",
+      "anchor": "3-4-4",
+      "header": "Champion Meramon line Power Rank D (Scissors)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "30g",
+      "fullness": "32",
+      "cycle": "About 57 min",
+      "stamina": "30",
+      "injury": "2/16 (2 heals)",
+      "conditionText": "From Patamon: high-mistake route; Training 32+; Overfeeds 3+; Sleep disturbances 6 or less\nFrom Kunemon: high-mistake route; Training 8-31; Overfeeds 5 or less; Sleep disturbances 5+",
+      "evolvesToText": [
+        "Giromon"
+      ],
+      "flavor": "白い布を被った安普請なお化けがモチーフのデジモン。化け物なのでバケモン。恐らく、デジモンを知らない人に最もよく名前を呼ばれるデジモンだろう。\n元のデザインがシンプルなのを考慮しても、公式絵とドットにここまで差がないデジモンも珍しい。なんだか得した気分だ。\n幽霊のくせにやたらメシを食うし、ほっておけば死んでしまう困ったちゃん。現世にとどまり続けるためにはエネルギーが必要なパターンだろうか。\n「寝る」「イヤイヤ」「怒る」にそれぞれ違う表情が用意されているのに、ケガをしたり瀕死の時には何故か「喜び」と同じモーションになるのがなんとも意味深。\n必殺技は、布の中からデビモンと似た腕を伸ばし地獄に引き摺り込む「ヘルズハンド」。恐ろしい能力だが、ドットは例によってパンチなので表情も相まってほのぼのとしている。"
+    },
+    {
+      "speciesId": 9,
+      "name": "Shellmon",
+      "jpName": "シェルモン",
+      "anchor": "3-4-5",
+      "header": "Champion Airdramon line Power Rank C (Paper)",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "30g",
+      "fullness": "24",
+      "cycle": "About 57 min",
+      "stamina": "36",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Kunemon: low-mistake route; Training 47 or less",
+      "evolvesToText": [
+        "Andromon"
+      ],
+      "flavor": "ヤドカリとイソギンチャクが混ざったような軟体型デジモン。水棲系のくせにエアドラモン系に属し、後のシーラモン共々空気が読めていない。\nティラノモンとそっくりな顔をしているが、特に関連性はない。 ドットは頭のモサモサ部分がないし、シェルモンと言うよりカラツキギザモンな感じで似てないのだが、笑顔がカワイイ。\n必殺技は、頭部から液体を高圧で放つ「ハイドロプレッシャー」。後に、スプラッシュモンに技名をパクられた。"
+    },
+    {
+      "speciesId": 10,
+      "name": "Drimogemon",
+      "jpName": "ドリモゲモン",
+      "anchor": "3-4-6",
+      "header": "Champion Seadramon line Power Rank D (Paper)",
+      "activity": "8:00 AM - 8:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "40g",
+      "fullness": "32",
+      "cycle": "About 57 min",
+      "stamina": "28",
+      "injury": "3/16 (2 heals)",
+      "conditionText": "From Kunemon: high-mistake route; Training 32+; Overfeeds 6+; Sleep disturbances 4 or less",
+      "evolvesToText": [
+        "Giromon"
+      ],
+      "flavor": "モグラと言えば地中。地中と言えばドリル。モグラとドリルは切っても切れない関係にあるのが窺える獣型デジモン。\nまず鼻先に巨大ドリル、そして手足の爪が全てドリルと中々ドリライズが進んでいるドリラーっぷり。\nドットはやけに背が低く小ぢんまりとしているが、動くと画面を覆い尽くす勢いで顔がでかくなる。そして何故か異様にベロの自己主張が激しい。\n必殺技は、お前のドリルで天を突く「ドリルスピン」と、ガルルモンが隠していたのをかっぱらってきた骨をブン投げる「クラッシャーボーン」。\nそんなテキトーな骨技するんなら、マジでオーガモンにその技ドット 譲ったげてよ。"
+    },
+    {
+      "speciesId": 11,
+      "name": "Scumon",
+      "jpName": "スカモン",
+      "anchor": "3-4-7",
+      "header": "Champion Numemon line Power Rank E",
+      "activity": "10:00 AM - 11:00 PM",
+      "lifespan": "About 44 hours",
+      "weight": "10g",
+      "fullness": "16",
+      "cycle": "About 42 min",
+      "stamina": "20",
+      "injury": "4/16 (3 heals)",
+      "conditionText": "From Patamon: high-mistake route; Training 4 or less or Overfeeds 2 or less or Sleep disturbances 7+\nFrom Kunemon: high-mistake route; Training 7 or less",
+      "evolvesToText": [
+        "Etemon"
+      ],
+      "flavor": "デジモンとは切っても切れない関係の「ウンチ」そのものをモチーフにした、ハズレデジモンの金字塔。\n必殺技は当然のように「ウンチ」。へへっ、そうこなくっちゃ！ 名前の由来はハズレを指す「スカ」からとされているが、\n糞尿を表す「スカトロジー」の意味も含んでいるのでは、と考える深読み変態糞テイマーたちもいる。僕は違います。\n見ての通りドットでは、相棒であり頭脳でもあるチューモンは省略されているが、腕は状況に応じて生えてくる。"
+    },
+    {
+      "speciesId": 12,
+      "name": "Andromon",
+      "jpName": "アンドロモン",
+      "anchor": "3-5-1",
+      "header": "Ultimate MetalGreymon line Power Rank B",
+      "activity": "8:00 AM - 9:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "36",
+      "cycle": "About 89 min",
+      "stamina": "40",
+      "injury": "2/16 (1 heal)",
+      "conditionText": "From Unimon, Ogremon, Shellmon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "改造技術の試作機として生み出されたサイボーグデジモン。アンドロモン試作の経験を活かし、メタルグレイモンやメタルマメモンの段階で改造技術は完成された…\nらしいのだが、改造の弊害で体がゾンビ化したメタルグレイモンや、マメモンから大してパワーアップしていないメタルマメモンを見せられても、何がどう成功なのかはよく分からない。\n公式絵こそスマートでメカニカルなデザインがクールなアンドロモンだが、ドットはどう見てもサティスファクションゴリラゴリラゴリラ。\n基本ドットだけではそこまででもないが、イヤイヤの時には両腕を口に当てるし、食事や攻撃の時には口が大きく開かれて足にまで届くし、寝る時には頭をポリポリ掻いてるっぽいしマジで\nノー!!ユーダメ!!ゴリラパワーキンジラレタチカラ!! 必殺技は、胸のハッチからガトリングを搭載した有機体系ミサイルを放つ「ガトリングミサイル」と、\n回転する腕からエネルギー状のブレードを放つ「スパイラルソード」。しかしドットがサルゴリラチンパンジーなせいで、やはりただゴリラが暴れているようにしか…。"
+    },
+    {
+      "speciesId": 13,
+      "name": "Giromon",
+      "jpName": "ギロモン",
+      "anchor": "3-5-2",
+      "header": "Ultimate Mamemon line Power Rank A",
+      "activity": "7:00 AM - 7:00 PM",
+      "lifespan": "About 76 hours",
+      "weight": "5g",
+      "fullness": "12",
+      "cycle": "About 89 min",
+      "stamina": "45",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Centarumon, Bakemon, Drimogemon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "ギロッとした目つきが特徴だが、それが名前の由来かは定かではない機雷デジモン。\n小さな体に対して大きく伸びた2本のツノが特徴で、腕に武器としてチェーンソーを持つ点も合わせてオーガモンから進化しそうに見える。まぁ繋がってないんですが。\n必殺技は、強力な爆弾を投げつける「デッドリーボム」。 \n言っちゃナンだけど、この時点で既にマメモン系のドットパターンに限界を感じる。"
+    },
+    {
+      "speciesId": 14,
+      "name": "Etemon",
+      "jpName": "エテモン",
+      "anchor": "3-5-3",
+      "header": "Ultimate Monzaemon line Power Rank S",
+      "activity": "9:00 AM - 7:00 PM",
+      "lifespan": "About 108 hours",
+      "weight": "20g",
+      "fullness": "16",
+      "cycle": "About 73 min",
+      "stamina": "50",
+      "injury": "1/16 (1 heal)",
+      "conditionText": "From Sukamon: meets Ultimate battle requirement",
+      "evolvesToText": [],
+      "flavor": "既にゴリラがいるのに、もんざえモン枠までサルとは。\n当時Vジャンプのデジモンコーナーを担当していた「デジモンキー」がデジモン化した姿であり、「エテモンのコスプレをしているのがデジモンキー」ではないので注意しよう。\n（ちなみにVテイマーに登場したエテモンは「エテモンキー」）\n親友もんざえモンと同じパターンなら、この「強化サルスーツ」に身を潜めているのは進化前のスカモンのはずだが、\nエテモン誕生の経緯を踏まえると、中には普通にオッサンが入っている気もしてくる。\n公式絵はなんとも胡散臭い雰囲気で股間の膨らみもきたない所を、ドットだと良い感じにおさるのモンきちにデフォルメされている。\n親友同様に最強キャラらしからぬカワイイ路線に徹するのかと思いきや、膝をついて眠る姿は中々カッコイイ。\n必殺技は、例によって戦意を喪失させる熱唱「ラブ・セレナーデ」と、急にガチな雰囲気の暗黒球体を放つ「ダークスピリッツ」。"
+    }
+  ]
+}

@@ -94,14 +94,14 @@ class DigimonWidgetProvider : AppWidgetProvider() {
         val skin = WidgetPrefs.getSkin(context, widgetId)
 
         // Generic overlay zones (left/center/right).
-        views.setOnClickPendingIntent(R.id.btn_a, makePendingIntent(context, ACTION_BUTTON_A, 0))
-        views.setOnClickPendingIntent(R.id.btn_b, makePendingIntent(context, ACTION_BUTTON_B, 1))
-        views.setOnClickPendingIntent(R.id.btn_c, makePendingIntent(context, ACTION_BUTTON_C, 2))
+        views.setOnClickPendingIntent(R.id.btn_a, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_A, 0))
+        views.setOnClickPendingIntent(R.id.btn_b, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_B, 1))
+        views.setOnClickPendingIntent(R.id.btn_c, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_C, 2))
 
         // Digivice-specific right-side vertical buttons.
-        views.setOnClickPendingIntent(R.id.btn_dv_a, makePendingIntent(context, ACTION_BUTTON_A, 10))
-        views.setOnClickPendingIntent(R.id.btn_dv_b, makePendingIntent(context, ACTION_BUTTON_B, 11))
-        views.setOnClickPendingIntent(R.id.btn_dv_c, makePendingIntent(context, ACTION_BUTTON_C, 12))
+        views.setOnClickPendingIntent(R.id.btn_dv_a, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_A, 10))
+        views.setOnClickPendingIntent(R.id.btn_dv_b, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_B, 11))
+        views.setOnClickPendingIntent(R.id.btn_dv_c, makeButtonPendingIntent(context, EmulatorCommandBus.BUTTON_C, 12))
 
         val isDigivice = skin == WidgetPrefs.Skin.DIGIVICE_V1 || skin == WidgetPrefs.Skin.DIGIVICE_V2
                       || skin == WidgetPrefs.Skin.DIGIVICE_V3 || skin == WidgetPrefs.Skin.DIGIVICE_WHITE
@@ -111,9 +111,11 @@ class DigimonWidgetProvider : AppWidgetProvider() {
         return views
     }
 
-    private fun makePendingIntent(context: Context, action: String, requestCode: Int): PendingIntent {
-        val intent = Intent(context, DigimonWidgetProvider::class.java).setAction(action)
-        return PendingIntent.getBroadcast(
+    private fun makeButtonPendingIntent(context: Context, button: Int, requestCode: Int): PendingIntent {
+        val intent = Intent(context, DigimonGlyphToyService::class.java)
+            .setAction(DigimonGlyphToyService.ACTION_WIDGET_BUTTON)
+            .putExtra(DigimonGlyphToyService.EXTRA_WIDGET_BUTTON, button)
+        return PendingIntent.getService(
             context, requestCode, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

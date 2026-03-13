@@ -16,6 +16,15 @@ sdk_extracted/
 __pycache__/
 *.pyc
 relay*.log
+.android/
+.android-*/
+.gradle-home/
+.gradle-local/
+.gradle-user/
+.kotlin/
+build_err*.txt
+build_output*.txt
+hs_err_pid*.log
 
 # Diagnostics & Scripts
 /*.txt
@@ -27,4 +36,18 @@ relay*.log
 /.state_migration/
 /tools/digimon_state.xml
 /tools/battle_transport_settings.xml
+/tools/digimon.ab
+/tools/digimon.tar
+/tools/digital_monster_reference.html
+/tools/emu_screen.png
+/tools/latest_logcat.txt
+/tools/phone_digimon_state.xml
+/tools/phone_digimon_state_latest.xml
+/tools/window_dump.xml
+/tools/guide_img_tmp/
+/tools/phone_slots/
+/tools/telegram_bundle_20260305_232834/
+/tools/telegram_bundle_20260305_232834_slots/
+/tools/telegram_bundle_20260313_093248/
+/tools/telegram_bundle_20260313_093248_slots/
 CLAUDE.md

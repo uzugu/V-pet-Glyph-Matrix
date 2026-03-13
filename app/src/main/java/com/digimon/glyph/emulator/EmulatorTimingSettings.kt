@@ -8,7 +8,7 @@ import android.content.Context
 object EmulatorTimingSettings {
 
     private const val PREFS_NAME = "emulator_timing_settings"
-    private const val KEY_EXACT_TIMING_ENABLED = "exact_timing_enabled"
+    private const val KEY_FULL_ACCURACY_ENABLED = "full_accuracy_enabled"
     private const val KEY_CLOCK_CORRECTION_ENABLED = "clock_correction_enabled"
     private const val KEY_CLOCK_CORRECTION_FACTOR = "clock_correction_factor"
     private const val KEY_BATTLE_STEP_MODE_ENABLED = "battle_step_mode_enabled"
@@ -24,7 +24,7 @@ object EmulatorTimingSettings {
     const val DEFAULT_BATTLE_STEP_SLICE_MS = 10
 
     @Volatile
-    private var exactTimingEnabled: Boolean = true
+    private var fullAccuracyEnabled: Boolean = false
 
     @Volatile
     private var clockCorrectionEnabled: Boolean = false
@@ -41,7 +41,7 @@ object EmulatorTimingSettings {
     @Synchronized
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        exactTimingEnabled = prefs.getBoolean(KEY_EXACT_TIMING_ENABLED, true)
+        fullAccuracyEnabled = prefs.getBoolean(KEY_FULL_ACCURACY_ENABLED, false)
         clockCorrectionEnabled = prefs.getBoolean(KEY_CLOCK_CORRECTION_ENABLED, false)
         clockCorrectionFactor = prefs.getFloat(KEY_CLOCK_CORRECTION_FACTOR, DEFAULT_CLOCK_CORRECTION_FACTOR)
         battleStepModeEnabled = prefs.getBoolean(KEY_BATTLE_STEP_MODE_ENABLED, false)
@@ -49,13 +49,13 @@ object EmulatorTimingSettings {
             .coerceIn(4, 250)
     }
 
-    fun isExactTimingEnabled(): Boolean = exactTimingEnabled
+    fun isFullAccuracyEnabled(): Boolean = fullAccuracyEnabled
 
-    fun setExactTimingEnabled(context: Context, enabled: Boolean) {
-        exactTimingEnabled = enabled
+    fun setFullAccuracyEnabled(context: Context, enabled: Boolean) {
+        fullAccuracyEnabled = enabled
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
-            .putBoolean(KEY_EXACT_TIMING_ENABLED, enabled)
+            .putBoolean(KEY_FULL_ACCURACY_ENABLED, enabled)
             .apply()
     }
 

@@ -20,7 +20,7 @@
                 android:id="@+id/title_shadow_cyan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EMULATOR\n.::. MANUAL"
+                android:text="DIGIMON\n.::. FIELD GUIDE"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#7700e5ff"
                 android:gravity="center"
@@ -31,7 +31,7 @@
                 android:id="@+id/title_shadow_pink"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EMULATOR\n.::. MANUAL"
+                android:text="DIGIMON\n.::. FIELD GUIDE"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#77ff0055"
                 android:gravity="center"
@@ -42,7 +42,7 @@
                 android:id="@+id/main_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EMULATOR\n.::. MANUAL"
+                android:text="DIGIMON\n.::. FIELD GUIDE"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:gravity="center" />
         </FrameLayout>
@@ -50,7 +50,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="USER GUIDE &amp; DATA"
+            android:text="BEGINNER GUIDE / SPOILERS LOCKED BY DEFAULT"
             android:textAppearance="@style/TextAppearance.Cyber.Subtitle"
             android:gravity="center"
             android:layout_marginTop="6dp"
@@ -67,7 +67,6 @@
                 android:background="@drawable/cyber_panel_bg"
                 android:padding="20dp">
 
-                <!-- ── MODULE 1: CONTROLS ── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -85,7 +84,37 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="EMULATOR CONTROLS"
+                        android:text="START HERE"
+                        android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_start_here"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1. Set the clock first. The device expects a valid time before normal life-cycle timing begins.\n\n2. After the clock is set, wait about 5 to 10 minutes for the egg to hatch.\n\n3. Baby stages are short and mostly automatic. Real route control starts once the rookie is active.\n\n4. In the first day, learn the loop: feed, restore strength, clean poop, heal injuries, and turn lights off at bedtime.\n\n5. Watch the call icon. That means the Digimon needs attention now.\n\n6. If you are new, do not chase secret routes immediately. Stable daily care matters more than optimization."
+                    android:textAppearance="@style/TextAppearance.Cyber.Body"
+                    android:lineSpacingExtra="4dp"
+                    android:layout_marginBottom="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@color/cyber_yellow"
+                        android:rotation="45"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="APP CONTROLS"
                         android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
                 </LinearLayout>
 
@@ -93,12 +122,11 @@
                     android:id="@+id/text_controls"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="[A] - SELECT / CYCLE\nUsed to move through menus and options.\n\n[B] - CONFIRM / EXECUTE\nUsed to select the highlighted action, feed, train, etc.\n\n[C] - CANCEL / MENU\nUsed to cancel an action or unselect a menu icon.\n\nHIDDEN COMBOS:\n[A] + [B] = Mute Sound Toggle\n[A] + [C] = Reset Device Time\n[B] + [C] = Call Screen Off (Sometimes Wake)"
+                    android:text="A = move through icons or cycle options.\n\nB = confirm, feed, train, heal, battle, or open a highlighted icon.\n\nC = back out of a screen or cancel a selection.\n\nLauncher combos:\nA+B = combo tap\nA+C = combo tap\nB+C = combo tap\n\nUse the launcher first if you are learning the device. It is easier than trying to discover every original handheld timing rule blind."
                     android:textAppearance="@style/TextAppearance.Cyber.Body"
                     android:lineSpacingExtra="4dp"
                     android:layout_marginBottom="24dp" />
 
-                <!-- ── MODULE 2: EVOLUTION ── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -116,18 +144,184 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="V-PET MECHANICS (V1-V3)"
+                        android:text="BASIC NEEDS"
                         android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
                 </LinearLayout>
 
                 <TextView
-                    android:id="@+id/text_mechanics"
+                    android:id="@+id/text_needs"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="CARE MISTAKES (CM):\nA CM is counted ONLY if you wait 20 minutes (or 60 mins for sleep) after a call AND THEN take care of it. If you completely ignore the call without ever addressing it, it does NOT count as a CM. Ignoring Poop or Injuries also does NOT count as a CM.\n\nTRAINING:\nTraining counts when you successfully play the mini-game and restore Strength (except V1, which counts on start). Overfeeding (feeding until refusal) does not cause CMs but is a specific requirement for some forms.\n\nSLEEP DISTURBANCE:\nWaking the Digimon up by feeding, training, or battling while the lights remain on during its sleep schedule counts as 1 Sleep Disturbance.\n\nPERFECT EVOLUTION (完全体):\nRequires at least 15 battles as a Child and 15 as an Adult. The evolution chance is based ONLY on the Win Rate of your LAST 15 battles in each stage, not your total win rate. E.g., 100% win rate in the last 15 Child battles (+50% chance) and 100% in the last 15 Adult battles (+50% chance) guarantees a Perfect evolution."
+                    android:text="Hunger hearts are restored with meat.\n\nStrength hearts are restored with protein and supported by training. Protein is powerful, but overusing it can push hidden overfeed counters and increase risk.\n\nWeight rises when you feed and falls when you train or battle.\n\nThe displayed win percentage is useful, but it is not the whole battle check. Higher forms care more about recent battle history than the simple lifetime percentage on screen.\n\nIf the Digimon looks weak, do not just spam food. Check hunger, strength, sleep, poop, and injuries separately."
                     android:textAppearance="@style/TextAppearance.Cyber.Body"
                     android:lineSpacingExtra="4dp"
                     android:layout_marginBottom="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@color/cyber_yellow"
+                        android:rotation="45"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DAILY CARE LOOP"
+                        android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_daily_care"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Poop appears regularly. Clean it. Leaving too much poop on screen can lead to injury.\n\nWhen bedtime comes, turn the lights off. Leaving lights on while the pet sleeps can count against it.\n\nIf the skull or injury state appears, heal it quickly. Injuries are dangerous, but they are tracked separately from care mistakes.\n\nTraining helps more than evolution. It also manages strength, weight, and some hidden route checks.\n\nBattles matter for many higher routes, but do not force battles when the Digimon is weak, sleepy, or already in bad condition."
+                    android:textAppearance="@style/TextAppearance.Cyber.Body"
+                    android:lineSpacingExtra="4dp"
+                    android:layout_marginBottom="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@color/cyber_yellow"
+                        android:rotation="45"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CALLS / CARE MISTAKES"
+                        android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_mistakes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="The call icon means the Digimon needs attention now. Common reasons are hunger, low strength, or bedtime.\n\nA care mistake is not every missed need. It usually counts only when you answer after the attention window has already expired.\n\nPractical beginner rule:\n- answer hunger or strength calls within about 20 minutes\n- answer bedtime or lights calls within about 60 minutes\n\nIgnoring poop or injuries is still bad care, but it is tracked differently from formal care mistakes.\n\nEvolution can reset or re-evaluate hidden values, so a fresh stage may not show the same internal state as the one before it."
+                    android:textAppearance="@style/TextAppearance.Cyber.Body"
+                    android:lineSpacingExtra="4dp"
+                    android:layout_marginBottom="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@color/cyber_yellow"
+                        android:rotation="45"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="EVOLUTION / LIFE CYCLE"
+                        android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/text_life_cycle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="A stage usually lasts about a day, then the device checks care, weight, training, battle history, and version-specific route rules.\n\nHigher forms are not guaranteed. On the original Digital Monster line, top-stage evolutions have a chance component even when your run is strong.\n\nThe battle record that matters is usually the recent stage-sized battle window, not just the simple lifetime percentage shown on screen.\n\nA Digimon can still die from old age, severe neglect, repeated injury problems, or major care failure. Some versions leave an egg. Others leave a grave first."
+                    android:textAppearance="@style/TextAppearance.Cyber.Body"
+                    android:lineSpacingExtra="4dp"
+                    android:layout_marginBottom="24dp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+
+                    <View
+                        android:layout_width="12dp"
+                        android:layout_height="12dp"
+                        android:background="@color/cyber_yellow"
+                        android:rotation="45"
+                        android:layout_marginEnd="10dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="SPOILERS / MONSTER INDEX"
+                        android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_toggle_spoilers"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="SHOW EVOLUTION SPOILERS"
+                    android:textColor="@color/cyber_blue"
+                    android:textAppearance="@style/TextAppearance.Cyber.Button"
+                    android:background="@drawable/cyber_button_bg" />
+
+                <LinearLayout
+                    android:id="@+id/layout_evolution_spoilers"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone"
+                    android:orientation="vertical"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="24dp">
+
+                    <TextView
+                        android:id="@+id/text_spoiler_intro"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Spoilers ahead. This block unlocks the full V1, V2, and V3 monster roster we currently ship art for, plus version notes about how those lines usually behave."
+                        android:textAppearance="@style/TextAppearance.Cyber.Body"
+                        android:lineSpacingExtra="4dp" />
+
+                    <TextView
+                        android:id="@+id/text_spoiler_rules"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Route reminder: use this as a field guide, not as a promise. Higher evolutions still depend on hidden checks, recent battle performance, and chance. Ultimate / Perfect outcomes are not guaranteed."
+                        android:textAppearance="@style/TextAppearance.Cyber.Body"
+                        android:lineSpacingExtra="4dp"
+                        android:layout_marginTop="12dp" />
+
+                    <Button
+                        android:id="@+id/btn_open_evolution_guide"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:layout_marginTop="16dp"
+                        android:text="OPEN INTERACTIVE EVOLUTION GUIDE"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg" />
+
+                    <TextView
+                        android:id="@+id/text_sources"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Sources and art reference: nhoko.xxxxxxxx.jp/digital-monster.html and humulos.com/digimon/dm/ . Credits remain visible here because this index is adapted from those guides."
+                        android:textAppearance="@style/TextAppearance.Cyber.Muted"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginTop="16dp" />
+                </LinearLayout>
 
                 <Button
                     android:id="@+id/btn_back"
@@ -140,7 +334,6 @@
                     android:layout_marginTop="10dp" />
             </LinearLayout>
 
-            <!-- ── Corner brackets (yellow) ── -->
             <View
                 android:layout_width="24dp"
                 android:layout_height="3dp"

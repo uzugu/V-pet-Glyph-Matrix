@@ -27,7 +27,7 @@ class EmulatorLoop(
     private val onFrame: (Bitmap, IntArray) -> Unit
 ) {
     var onVirtualTick: ((Double) -> Unit)? = null
-    enum class TimingMode { EXACT, POWER_SAVE }
+    enum class TimingMode { EXACT, FULL_ACCURATE, POWER_SAVE }
 
     private data class LoopProfile(
         val frameTimeNs: Double,
@@ -36,7 +36,10 @@ class EmulatorLoop(
         val maxSleepMs: Long,
         val fallbackSleepMs: Long,
         val timeCheckBatch: Int,
-        val isExact: Boolean
+        val preciseAheadWait: Boolean,
+        val sleepFraction: Double,
+        val minPreciseSleepNs: Long,
+        val preciseWakeGuardNs: Long
     )
 
     companion object {
@@ -44,6 +47,8 @@ class EmulatorLoop(
 
         private const val EXACT_TARGET_FPS = 15
         private const val EXACT_FRAME_TIME_NS = 1_000_000_000.0 / EXACT_TARGET_FPS
+        private const val FULL_ACCURATE_TARGET_FPS = 30
+        private const val FULL_ACCURATE_FRAME_TIME_NS = 1_000_000_000.0 / FULL_ACCURATE_TARGET_FPS
         private const val POWER_SAVE_TARGET_FPS = 4
         private const val POWER_SAVE_FRAME_TIME_NS = 1_000_000_000.0 / POWER_SAVE_TARGET_FPS
 
@@ -59,15 +64,18 @@ class EmulatorLoop(
 
         // After catch-up, leave this much margin to allow smooth normal execution
         private const val EXACT_RESYNC_MARGIN_NS = 5_000_000.0       // 5ms
+        private const val FULL_ACCURATE_RESYNC_MARGIN_NS = 1_000_000.0 // 1ms
         private const val POWER_SAVE_RESYNC_MARGIN_NS = 5_000_000.0  // 5ms
 
         private const val EXACT_MAX_SLEEP_MS = 2L
+        private const val FULL_ACCURATE_MAX_SLEEP_MS = 1L
         private const val POWER_SAVE_MAX_SLEEP_MS = 40L
 
         private const val POWER_SAVE_FALLBACK_SLEEP_MS = 8L
 
         // Check wall clock every N instructions (balances precision vs nanoTime() overhead)
         private const val EXACT_TIME_CHECK_BATCH = 64
+        private const val FULL_ACCURATE_TIME_CHECK_BATCH = 16
         private const val POWER_SAVE_TIME_CHECK_BATCH = 16
 
         // Timing instrumentation interval
@@ -94,7 +102,23 @@ class EmulatorLoop(
         maxSleepMs = EXACT_MAX_SLEEP_MS,
         fallbackSleepMs = 0L,
         timeCheckBatch = EXACT_TIME_CHECK_BATCH,
-        isExact = true
+        preciseAheadWait = true,
+        sleepFraction = 0.7,
+        minPreciseSleepNs = 100_000L,
+        preciseWakeGuardNs = 100_000L
+    )
+
+    private val fullAccurateProfile = LoopProfile(
+        frameTimeNs = FULL_ACCURATE_FRAME_TIME_NS,
+        cycleTimeNs = EXACT_CYCLE_TIME_NS,
+        resyncMarginNs = FULL_ACCURATE_RESYNC_MARGIN_NS,
+        maxSleepMs = FULL_ACCURATE_MAX_SLEEP_MS,
+        fallbackSleepMs = 0L,
+        timeCheckBatch = FULL_ACCURATE_TIME_CHECK_BATCH,
+        preciseAheadWait = true,
+        sleepFraction = 1.0,
+        minPreciseSleepNs = 5_000L,
+        preciseWakeGuardNs = 5_000L
     )
 
     private val powerSaveProfile = LoopProfile(
@@ -104,7 +128,10 @@ class EmulatorLoop(
         maxSleepMs = POWER_SAVE_MAX_SLEEP_MS,
         fallbackSleepMs = POWER_SAVE_FALLBACK_SLEEP_MS,
         timeCheckBatch = POWER_SAVE_TIME_CHECK_BATCH,
-        isExact = false
+        preciseAheadWait = false,
+        sleepFraction = 1.0,
+        minPreciseSleepNs = 0L,
+        preciseWakeGuardNs = 0L
     )
 
     fun setTimingMode(mode: TimingMode) {
@@ -203,7 +230,11 @@ class EmulatorLoop(
         var frameRenderCount = 0L
 
         while (running) {
-            val profile = if (timingMode == TimingMode.EXACT) exactProfile else powerSaveProfile
+            val profile = when (timingMode) {
+                TimingMode.EXACT -> exactProfile
+                TimingMode.FULL_ACCURATE -> fullAccurateProfile
+                TimingMode.POWER_SAVE -> powerSaveProfile
+            }
             val stepGateActive = stepGateEnabled
             if (consumeStepGateResetAnchor()) {
                 val anchor = System.nanoTime().toDouble()
@@ -373,14 +404,17 @@ class EmulatorLoop(
 
             if (aheadNs > 1_000.0) {
                 // Emulator is AHEAD of wall clock — sleep to wait.
-                if (profile.isExact) {
-                    // EXACT mode: use LockSupport.parkNanos for sub-ms precision.
-                    // Sleep ~70% of the gap, spin-wait the remainder for accuracy.
-                    val sleepNs = (aheadNs * 0.7).toLong()
-                    if (sleepNs > 100_000L) {
+                if (profile.preciseAheadWait) {
+                    // Precise modes: park until a small guard margin remains, then spin.
+                    val sleepNs = if (profile.sleepFraction >= 1.0) {
+                        (aheadNs - profile.preciseWakeGuardNs).toLong()
+                    } else {
+                        (aheadNs * profile.sleepFraction).toLong()
+                    }
+                    if (sleepNs > profile.minPreciseSleepNs) {
                         LockSupport.parkNanos(sleepNs)
                     }
-                    // If <100μs ahead: just loop back (spin-wait)
+                    // If the lead is tiny, loop back and spin the remainder.
                 } else {
                     // POWER_SAVE mode: coarser sleep
                     val sleepMs = (aheadNs / 1_000_000.0).toLong().coerceAtMost(profile.maxSleepMs)
@@ -390,7 +424,7 @@ class EmulatorLoop(
                         Thread.yield()
                     }
                 }
-            } else if (!profile.isExact && profile.fallbackSleepMs > 0L) {
+            } else if (!profile.preciseAheadWait && profile.fallbackSleepMs > 0L) {
                 // POWER_SAVE mode when behind: yield to save battery
                 SystemClock.sleep(profile.fallbackSleepMs)
             }

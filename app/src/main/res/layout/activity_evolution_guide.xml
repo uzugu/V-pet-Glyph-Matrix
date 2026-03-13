@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp">
+
+            <TextView
+                android:id="@+id/title_shadow_cyan"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EVOLUTION\nGUIDE"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:textColor="#7700e5ff"
+                android:gravity="center"
+                android:translationX="2dp"
+                android:translationY="2dp" />
+
+            <TextView
+                android:id="@+id/title_shadow_pink"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EVOLUTION\nGUIDE"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:textColor="#77ff0055"
+                android:gravity="center"
+                android:translationX="-2dp"
+                android:translationY="-2dp" />
+
+            <TextView
+                android:id="@+id/main_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="EVOLUTION\nGUIDE"
+                android:textAppearance="@style/TextAppearance.Cyber.Title"
+                android:gravity="center" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/text_guide_subtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="DIGITAL MONSTER V1"
+            android:textAppearance="@style/TextAppearance.Cyber.Subtitle"
+            android:gravity="center"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/text_guide_rules"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="@style/TextAppearance.Cyber.Body"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="8dp">
+
+            <Button
+                android:id="@+id/btn_v1"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:text="V1"
+                android:textAppearance="@style/TextAppearance.Cyber.Button"
+                android:textColor="@color/cyber_blue"
+                android:background="@drawable/cyber_button_bg" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="1dp" />
+
+            <Button
+                android:id="@+id/btn_v2"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:text="V2"
+                android:textAppearance="@style/TextAppearance.Cyber.Button"
+                android:textColor="@color/cyber_blue"
+                android:background="@drawable/cyber_button_bg" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="1dp" />
+
+            <Button
+                android:id="@+id/btn_v3"
+                android:layout_width="0dp"
+                android:layout_height="46dp"
+                android:layout_weight="1"
+                android:text="V3"
+                android:textAppearance="@style/TextAppearance.Cyber.Button"
+                android:textColor="@color/cyber_blue"
+                android:background="@drawable/cyber_button_bg" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_stage_sections"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <Button
+            android:id="@+id/btn_back"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="18dp"
+            android:text="CLOSE GUIDE"
+            android:textColor="@color/cyber_blue"
+            android:textAppearance="@style/TextAppearance.Cyber.Button"
+            android:background="@drawable/cyber_button_bg" />
+
+    </LinearLayout>
+</ScrollView>

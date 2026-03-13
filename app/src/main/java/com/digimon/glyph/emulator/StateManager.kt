@@ -60,13 +60,14 @@ class StateManager(context: Context) {
         romHash: String?,
         sync: Boolean = false
     ): Long {
+        val scoped = scopedAutosaveKeys(romName, romHash)
         return saveToKeys(
             emulator = emulator,
-            stateKey = KEY_AUTOSAVE_STATE_JSON,
-            romNameKey = KEY_AUTOSAVE_ROM_NAME,
-            romHashKey = KEY_AUTOSAVE_ROM_HASH,
-            timeKey = KEY_AUTOSAVE_SAVE_TIME,
-            seqKey = KEY_AUTOSAVE_SEQ,
+            stateKey = scoped.stateKey,
+            romNameKey = scoped.romNameKey,
+            romHashKey = scoped.romHashKey,
+            timeKey = scoped.timeKey,
+            seqKey = scoped.seqKey,
             romName = romName,
             romHash = romHash,
             sync = sync
@@ -78,6 +79,17 @@ class StateManager(context: Context) {
         expectedRomName: String?,
         expectedRomHash: String?
     ): Boolean {
+        val scoped = scopedAutosaveKeys(expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
+            return restoreFromKeys(
+                emulator = emulator,
+                stateKey = scoped.stateKey,
+                romNameKey = scoped.romNameKey,
+                romHashKey = scoped.romHashKey,
+                expectedRomName = expectedRomName,
+                expectedRomHash = expectedRomHash
+            )
+        }
         val hasNew = prefs.contains(KEY_AUTOSAVE_STATE_JSON)
         if (hasNew) {
             return restoreFromKeys(
@@ -108,13 +120,14 @@ class StateManager(context: Context) {
         sync: Boolean = false
     ): Long {
         val s = normalizeSlot(slot)
+        val scoped = scopedSlotKeys(s, romName, romHash)
         return saveToKeys(
             emulator = emulator,
-            stateKey = "$KEY_SLOT_STATE_PREFIX$s",
-            romNameKey = "$KEY_SLOT_ROM_NAME_PREFIX$s",
-            romHashKey = "$KEY_SLOT_ROM_HASH_PREFIX$s",
-            timeKey = "$KEY_SLOT_SAVE_TIME_PREFIX$s",
-            seqKey = "$KEY_SLOT_SEQ_PREFIX$s",
+            stateKey = scoped.stateKey,
+            romNameKey = scoped.romNameKey,
+            romHashKey = scoped.romHashKey,
+            timeKey = scoped.timeKey,
+            seqKey = scoped.seqKey,
             romName = romName,
             romHash = romHash,
             sync = sync
@@ -128,6 +141,17 @@ class StateManager(context: Context) {
         expectedRomHash: String?
     ): Boolean {
         val s = normalizeSlot(slot)
+        val scoped = scopedSlotKeys(s, expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
+            return restoreFromKeys(
+                emulator = emulator,
+                stateKey = scoped.stateKey,
+                romNameKey = scoped.romNameKey,
+                romHashKey = scoped.romHashKey,
+                expectedRomName = expectedRomName,
+                expectedRomHash = expectedRomHash
+            )
+        }
         return restoreFromKeys(
             emulator = emulator,
             stateKey = "$KEY_SLOT_STATE_PREFIX$s",
@@ -138,20 +162,37 @@ class StateManager(context: Context) {
         )
     }
 
-    fun getAutosaveInfo(): SaveInfo {
-        if (prefs.contains(KEY_AUTOSAVE_STATE_JSON)) {
+    fun getAutosaveInfo(expectedRomName: String?, expectedRomHash: String?): SaveInfo {
+        val scoped = scopedAutosaveKeys(expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
             return SaveInfo(
                 exists = true,
-                romName = prefs.getString(KEY_AUTOSAVE_ROM_NAME, null),
-                romHash = prefs.getString(KEY_AUTOSAVE_ROM_HASH, null),
-                timestampMs = prefs.getLong(KEY_AUTOSAVE_SAVE_TIME, 0L)
+                romName = prefs.getString(scoped.romNameKey, null),
+                romHash = prefs.getString(scoped.romHashKey, null),
+                timestampMs = prefs.getLong(scoped.timeKey, 0L)
             )
+        }
+        if (prefs.contains(KEY_AUTOSAVE_STATE_JSON)) {
+            val legacyRomName = prefs.getString(KEY_AUTOSAVE_ROM_NAME, null)
+            val legacyRomHash = prefs.getString(KEY_AUTOSAVE_ROM_HASH, null)
+            if (romMatches(legacyRomName, legacyRomHash, expectedRomName, expectedRomHash)) {
+                return SaveInfo(
+                    exists = true,
+                    romName = legacyRomName,
+                    romHash = legacyRomHash,
+                    timestampMs = prefs.getLong(KEY_AUTOSAVE_SAVE_TIME, 0L)
+                )
+            }
         }
         // Legacy fallback
         if (prefs.contains(KEY_STATE_JSON)) {
+            val legacyRomName = prefs.getString(KEY_ROM_NAME, null)
+            if (!romMatches(legacyRomName, null, expectedRomName, expectedRomHash)) {
+                return SaveInfo(false, null, null, 0L)
+            }
             return SaveInfo(
                 exists = true,
-                romName = prefs.getString(KEY_ROM_NAME, null),
+                romName = legacyRomName,
                 romHash = null,
                 timestampMs = prefs.getLong(KEY_SAVE_TIME, 0L)
             )
@@ -159,17 +200,44 @@ class StateManager(context: Context) {
         return SaveInfo(false, null, null, 0L)
     }
 
-    fun getAutosaveSeq(): Long = prefs.getLong(KEY_AUTOSAVE_SEQ, 0L)
-
-    fun getSlotSeq(slot: Int): Long {
-        val s = normalizeSlot(slot)
-        return prefs.getLong("$KEY_SLOT_SEQ_PREFIX$s", 0L)
+    fun getAutosaveSeq(expectedRomName: String?, expectedRomHash: String?): Long {
+        val scoped = scopedAutosaveKeys(expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
+            return prefs.getLong(scoped.seqKey, 0L)
+        }
+        val info = getAutosaveInfo(expectedRomName, expectedRomHash)
+        return if (info.exists && prefs.contains(KEY_AUTOSAVE_STATE_JSON)) {
+            prefs.getLong(KEY_AUTOSAVE_SEQ, 0L)
+        } else {
+            0L
+        }
     }
 
-    fun getSlotInfo(slot: Int): SaveInfo {
+    fun getSlotSeq(slot: Int, expectedRomName: String?, expectedRomHash: String?): Long {
         val s = normalizeSlot(slot)
-        val stateKey = "$KEY_SLOT_STATE_PREFIX$s"
-        if (!prefs.contains(stateKey)) {
+        val scoped = scopedSlotKeys(s, expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
+            return prefs.getLong(scoped.seqKey, 0L)
+        }
+        return if (legacySlotMatches(s, expectedRomName, expectedRomHash)) {
+            prefs.getLong("$KEY_SLOT_SEQ_PREFIX$s", 0L)
+        } else {
+            0L
+        }
+    }
+
+    fun getSlotInfo(slot: Int, expectedRomName: String?, expectedRomHash: String?): SaveInfo {
+        val s = normalizeSlot(slot)
+        val scoped = scopedSlotKeys(s, expectedRomName, expectedRomHash)
+        if (prefs.contains(scoped.stateKey)) {
+            return SaveInfo(
+                exists = true,
+                romName = prefs.getString(scoped.romNameKey, null),
+                romHash = prefs.getString(scoped.romHashKey, null),
+                timestampMs = prefs.getLong(scoped.timeKey, 0L)
+            )
+        }
+        if (!legacySlotMatches(s, expectedRomName, expectedRomHash)) {
             return SaveInfo(false, null, null, 0L)
         }
         return SaveInfo(
@@ -180,43 +248,45 @@ class StateManager(context: Context) {
         )
     }
 
-    fun getAllSlotInfo(): List<SaveInfo> {
+    fun getAllSlotInfo(expectedRomName: String?, expectedRomHash: String?): List<SaveInfo> {
         val list = ArrayList<SaveInfo>(SLOT_COUNT)
         for (slot in 1..SLOT_COUNT) {
-            list.add(getSlotInfo(slot))
+            list.add(getSlotInfo(slot, expectedRomName, expectedRomHash))
         }
         return list
     }
 
-    fun clearAutosave() {
+    fun clearAutosave(expectedRomName: String?, expectedRomHash: String?) {
+        val scoped = scopedAutosaveKeys(expectedRomName, expectedRomHash)
         prefs.edit()
-            .remove(KEY_AUTOSAVE_STATE_JSON)
-            .remove(KEY_AUTOSAVE_ROM_NAME)
-            .remove(KEY_AUTOSAVE_ROM_HASH)
-            .remove(KEY_AUTOSAVE_SAVE_TIME)
-            .remove(KEY_STATE_JSON)
-            .remove(KEY_ROM_NAME)
-            .remove(KEY_SAVE_TIME)
+            .remove(scoped.stateKey)
+            .remove(scoped.romNameKey)
+            .remove(scoped.romHashKey)
+            .remove(scoped.timeKey)
+            .remove(scoped.seqKey)
             .apply()
     }
 
-    fun clearSlot(slot: Int) {
+    fun clearSlot(slot: Int, expectedRomName: String?, expectedRomHash: String?) {
         val s = normalizeSlot(slot)
+        val scoped = scopedSlotKeys(s, expectedRomName, expectedRomHash)
         prefs.edit()
-            .remove("$KEY_SLOT_STATE_PREFIX$s")
-            .remove("$KEY_SLOT_ROM_NAME_PREFIX$s")
-            .remove("$KEY_SLOT_ROM_HASH_PREFIX$s")
-            .remove("$KEY_SLOT_SAVE_TIME_PREFIX$s")
+            .remove(scoped.stateKey)
+            .remove(scoped.romNameKey)
+            .remove(scoped.romHashKey)
+            .remove(scoped.timeKey)
+            .remove(scoped.seqKey)
             .apply()
     }
 
-    fun getSavedRomName(): String? {
-        val autosave = getAutosaveInfo()
+    fun getSavedRomName(expectedRomName: String?, expectedRomHash: String?): String? {
+        val autosave = getAutosaveInfo(expectedRomName, expectedRomHash)
         if (autosave.exists) return autosave.romName
         return null
     }
 
-    fun hasSavedState(): Boolean = getAutosaveInfo().exists
+    fun hasSavedState(expectedRomName: String?, expectedRomHash: String?): Boolean =
+        getAutosaveInfo(expectedRomName, expectedRomHash).exists
 
     fun clear() {
         prefs.edit().clear().apply()
@@ -311,6 +381,57 @@ class StateManager(context: Context) {
             return savedRomName == expectedRomName
         }
         return true
+    }
+
+    private data class SlotKeys(
+        val stateKey: String,
+        val romNameKey: String,
+        val romHashKey: String,
+        val timeKey: String,
+        val seqKey: String
+    )
+
+    private fun scopedAutosaveKeys(romName: String?, romHash: String?): SlotKeys {
+        val token = romScopeToken(romName, romHash)
+        return SlotKeys(
+            stateKey = "${KEY_AUTOSAVE_STATE_JSON}_$token",
+            romNameKey = "${KEY_AUTOSAVE_ROM_NAME}_$token",
+            romHashKey = "${KEY_AUTOSAVE_ROM_HASH}_$token",
+            timeKey = "${KEY_AUTOSAVE_SAVE_TIME}_$token",
+            seqKey = "${KEY_AUTOSAVE_SEQ}_$token"
+        )
+    }
+
+    private fun scopedSlotKeys(slot: Int, romName: String?, romHash: String?): SlotKeys {
+        val token = romScopeToken(romName, romHash)
+        return SlotKeys(
+            stateKey = "${KEY_SLOT_STATE_PREFIX}${token}_$slot",
+            romNameKey = "${KEY_SLOT_ROM_NAME_PREFIX}${token}_$slot",
+            romHashKey = "${KEY_SLOT_ROM_HASH_PREFIX}${token}_$slot",
+            timeKey = "${KEY_SLOT_SAVE_TIME_PREFIX}${token}_$slot",
+            seqKey = "${KEY_SLOT_SEQ_PREFIX}${token}_$slot"
+        )
+    }
+
+    private fun romScopeToken(romName: String?, romHash: String?): String {
+        if (!romHash.isNullOrBlank()) return "h_${romHash.lowercase()}"
+        if (!romName.isNullOrBlank()) {
+            val sanitized = romName
+                .lowercase()
+                .replace(Regex("[^a-z0-9]+"), "_")
+                .trim('_')
+            if (sanitized.isNotEmpty()) return "n_$sanitized"
+        }
+        return "global"
+    }
+
+    private fun legacySlotMatches(slot: Int, expectedRomName: String?, expectedRomHash: String?): Boolean {
+        val s = normalizeSlot(slot)
+        val stateKey = "$KEY_SLOT_STATE_PREFIX$s"
+        if (!prefs.contains(stateKey)) return false
+        val savedRomName = prefs.getString("$KEY_SLOT_ROM_NAME_PREFIX$s", null)
+        val savedRomHash = prefs.getString("$KEY_SLOT_ROM_HASH_PREFIX$s", null)
+        return romMatches(savedRomName, savedRomHash, expectedRomName, expectedRomHash)
     }
 
     private fun normalizeSlot(slot: Int): Int = slot.coerceIn(1, SLOT_COUNT)

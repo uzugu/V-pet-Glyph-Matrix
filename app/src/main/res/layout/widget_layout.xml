@@ -13,6 +13,24 @@
         android:scaleType="fitXY"
         android:src="@drawable/ic_digimon_preview" />
 
+    <TextView
+        android:id="@+id/widget_dnd_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="#AA000000"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:text="DND"
+        android:textColor="#F2FF00"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
     <!-- Generic click zones for A / B / C (left / center / right thirds).
          background=selector fills the full zone on press; src removed so no centered icon. -->
     <LinearLayout

@@ -1,5 +1,6 @@
 package com.digimon.glyph
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.ComponentName
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.IBinder
@@ -16,6 +18,7 @@ import android.os.Messenger
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.digimon.glyph.audio.BuzzerAudioEngine
 import com.digimon.glyph.audio.BuzzerHapticEngine
 import com.digimon.glyph.battle.BattleLinkManager
@@ -25,6 +28,9 @@ import com.digimon.glyph.battle.BattleTransportSettings
 import com.digimon.glyph.battle.BattleTransportType
 import com.digimon.glyph.battle.InternetBattleTransport
 import com.digimon.glyph.battle.SimulationBattleTransport
+import com.digimon.glyph.emulator.DigimonAttentionSettings
+import com.digimon.glyph.emulator.DigimonDndScheduler
+import com.digimon.glyph.emulator.DigimonDndSettings
 import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.E0C6200
@@ -90,9 +96,15 @@ class DigimonGlyphToyService : Service() {
         private const val DEFAULT_BUTTON_HOLD_MS = 85L
 
         const val ACTION_START_WIDGET = "com.digimon.glyph.START_WIDGET"
+        const val ACTION_WIDGET_BUTTON = "com.digimon.glyph.WIDGET_BUTTON"
         const val ACTION_STOP = "com.digimon.glyph.STOP"
+        const val ACTION_DND_START = DigimonDndReceiver.ACTION_DND_START
+        const val ACTION_DND_END = DigimonDndReceiver.ACTION_DND_END
+        const val EXTRA_WIDGET_BUTTON = "widget_button"
         private const val NOTIF_CHANNEL_ID = "digimon_service"
         private const val NOTIF_ID = 1
+        private const val ATTENTION_NOTIF_CHANNEL_ID = "digimon_attention"
+        private const val ATTENTION_NOTIF_ID = 2
     }
 
     private var glyphManager: Any? = null  // GlyphMatrixManager, typed as Any to avoid class-load on non-Nothing
@@ -112,7 +124,7 @@ class DigimonGlyphToyService : Service() {
     private var hapticEngine: BuzzerHapticEngine? = null
     private var lastAudioEnabled = false
     private var lastHapticEnabled = false
-    private var lastExactTimingEnabled = true
+    private var lastFullAccuracyEnabled = false
     private var lastAppliedTimingMode: EmulatorLoop.TimingMode? = null
     private var lastAppliedClockCorrectionOverride: Double? = null
     private var lastAppliedStepGateEnabled = false
@@ -145,6 +157,8 @@ class DigimonGlyphToyService : Service() {
     private var battleRdWriteValue = 0
     private var battleRdBridgeLastTxByte = -1
     private var battleRdBridgeLastTxAtMs = 0L
+    private var lastNeedsAttention: Boolean? = null
+    private val widgetButtonReleaseTokens = IntArray(3)
 
     private var virtualDCom: com.digimon.glyph.battle.VirtualDCom? = null
 
@@ -199,7 +213,11 @@ class DigimonGlyphToyService : Service() {
         super.onCreate()
         BattleStateStore.init(this)
         BattleTransportSettings.init(this)
+        DigimonAttentionSettings.init(this)
+        DigimonDndSettings.init(this)
+        DigimonDndScheduler.reschedule(this)
         battleTransport = createBattleTransport()
+        ensureNotificationChannels()
     }
 
     override fun onBind(intent: Intent?): IBinder? {
@@ -212,8 +230,11 @@ class DigimonGlyphToyService : Service() {
         EmulatorAudioSettings.init(this)
         EmulatorDebugSettings.init(this)
         EmulatorTimingSettings.init(this)
+        DigimonAttentionSettings.init(this)
+        DigimonDndSettings.init(this)
         applyDebugSettingIfChanged(force = true)
         applyTimingSettingIfChanged(force = true)
+        syncDndStateWithClock("bind")
         mainHandler.post(commandPollRunnable)
         if (GlyphAvailability.isAvailable) {
             initGlyphManager()
@@ -242,25 +263,14 @@ class DigimonGlyphToyService : Service() {
         when (intent?.action) {
             ACTION_START_WIDGET -> {
                 Log.d(TAG, "Starting in standalone widget mode")
-                standaloneMode = true
-                // Only call startForeground if this was a startForegroundService call.
-                // When started via plain startService (widget path), we skip it — the service
-                // runs as a background service, which is fine since we're on Nothing Phone
-                // where the Glyph binding keeps the process alive, or the emulator runs briefly.
-                tryStartForeground()
-                stateManager = StateManager(this)
-                DisplayRenderSettings.init(this)
-                EmulatorAudioSettings.init(this)
-                EmulatorDebugSettings.init(this)
-                EmulatorTimingSettings.init(this)
-                applyDebugSettingIfChanged(force = true)
-                applyTimingSettingIfChanged(force = true)
-                mainHandler.removeCallbacks(commandPollRunnable)
-                mainHandler.post(commandPollRunnable)
-                // Start the emulator immediately so the UI works on Nothing Phones as well.
-                // If the Glyph Toy SDK connects later, we will late-bind the GlyphRenderer.
-                startEmulator()
-                // On Nothing Phone, WidgetFramePusher is wired inside startEmulator().
+                ensureWidgetRuntimeStarted()
+            }
+            ACTION_WIDGET_BUTTON -> {
+                ensureWidgetRuntimeStarted()
+                val button = intent.getIntExtra(EXTRA_WIDGET_BUTTON, -1)
+                if (button != -1) {
+                    pressWidgetButton(button)
+                }
             }
             ACTION_STOP -> {
                 Log.d(TAG, "Stop requested")
@@ -269,8 +279,100 @@ class DigimonGlyphToyService : Service() {
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
+            ACTION_DND_START -> {
+                tryStartForeground()
+                enterDoNotDisturb("alarm")
+            }
+            ACTION_DND_END -> {
+                tryStartForeground()
+                exitDoNotDisturb("alarm")
+            }
         }
         return START_NOT_STICKY
+    }
+
+    private fun ensureWidgetRuntimeStarted() {
+        standaloneMode = true
+        mainHandler.removeCallbacks(delayedShutdownRunnable)
+        // Only call startForeground if this was a startForegroundService call.
+        // When started via plain startService (widget path), we skip it — the service
+        // runs as a background service, which is fine since we're on Nothing Phone
+        // where the Glyph binding keeps the process alive, or the emulator runs briefly.
+        tryStartForeground()
+        stateManager = StateManager(this)
+        DisplayRenderSettings.init(this)
+        EmulatorAudioSettings.init(this)
+        EmulatorDebugSettings.init(this)
+        EmulatorTimingSettings.init(this)
+        DigimonAttentionSettings.init(this)
+        DigimonDndSettings.init(this)
+        applyDebugSettingIfChanged(force = true)
+        applyTimingSettingIfChanged(force = true)
+        syncDndStateWithClock("widget_start")
+        mainHandler.removeCallbacks(commandPollRunnable)
+        mainHandler.post(commandPollRunnable)
+        // Start the emulator immediately so the widget path works without opening the app.
+        startEmulator()
+    }
+
+    private fun syncDndStateWithClock(reason: String) {
+        DigimonDndSettings.init(this)
+        if (!DigimonDndSettings.isEnabled() || !DigimonDndSettings.isFreezeMode()) {
+            if (DigimonDndSettings.isFrozenNow()) {
+                exitDoNotDisturb("$reason:disable")
+            }
+            return
+        }
+        if (DigimonDndSettings.isDndActiveNow()) {
+            if (!DigimonDndSettings.isFrozenNow()) {
+                enterDoNotDisturb("$reason:active")
+            }
+        } else if (DigimonDndSettings.isFrozenNow()) {
+            exitDoNotDisturb("$reason:expired")
+        }
+    }
+
+    private fun enterDoNotDisturb(trigger: String) {
+        DigimonDndSettings.init(this)
+        if (!DigimonDndSettings.isEnabled()) return
+        if (!DigimonDndSettings.isFreezeMode()) {
+            DigimonDndScheduler.reschedule(this)
+            return
+        }
+        if (battleConnected) {
+            stopBattleLink()
+        }
+        val shouldResume = emulatorLoop != null
+        DigimonDndSettings.setFrozenState(
+            this,
+            frozen = true,
+            resumeAfterDnd = shouldResume || DigimonDndSettings.isResumePending()
+        )
+        DigimonDndScheduler.reschedule(this)
+        lastNeedsAttention = null
+        if (shouldResume) {
+            saveState(sync = true, reason = "dnd_start_$trigger")
+            stopEmulator(clearFrameState = false, preserveWidgetPreview = true)
+        } else {
+            WidgetFramePusher.ensureRunning(this)
+            WidgetFramePusher.refreshNow(this)
+        }
+        Log.d(TAG, "DND entered trigger=$trigger resumePending=${DigimonDndSettings.isResumePending()}")
+    }
+
+    private fun exitDoNotDisturb(trigger: String) {
+        DigimonDndSettings.init(this)
+        val shouldResume = DigimonDndSettings.isResumePending() && DigimonDndSettings.isAutoResumeEnabled()
+        DigimonDndSettings.clearFrozenState(this)
+        DigimonDndScheduler.reschedule(this)
+        lastNeedsAttention = null
+        if (shouldResume && emulatorLoop == null) {
+            startEmulator(forceDuringDnd = true)
+        } else {
+            WidgetFramePusher.ensureRunning(this)
+            WidgetFramePusher.refreshNow(this)
+        }
+        Log.d(TAG, "DND exited trigger=$trigger resumed=$shouldResume")
     }
 
     override fun onDestroy() {
@@ -572,8 +674,20 @@ class DigimonGlyphToyService : Service() {
         }
     }
 
-    private fun startEmulator() {
+    private fun startEmulator(forceDuringDnd: Boolean = false) {
         if (emulatorLoop != null) return // Already running
+        DigimonDndSettings.init(this)
+        if (!forceDuringDnd &&
+            DigimonDndSettings.isEnabled() &&
+            DigimonDndSettings.isFreezeMode() &&
+            DigimonDndSettings.isDndActiveNow()
+        ) {
+            DigimonDndSettings.setFrozenState(this, frozen = true, resumeAfterDnd = true)
+            WidgetFramePusher.ensureRunning(this)
+            WidgetFramePusher.refreshNow(this)
+            Log.d(TAG, "startEmulator blocked by active DND window")
+            return
+        }
 
         stateManager = StateManager(this)
         val romData = loadRom()
@@ -601,8 +715,8 @@ class DigimonGlyphToyService : Service() {
         virtualDCom = dcom
 
         // Restore saved state if same ROM/hash.
-        val autosaveInfo = stateManager.getAutosaveInfo()
-        val autosaveSeq = stateManager.getAutosaveSeq()
+        val autosaveInfo = stateManager.getAutosaveInfo(romName, romHash)
+        val autosaveSeq = stateManager.getAutosaveSeq(romName, romHash)
         Log.d(
             TAG,
             "Restore attempt rom=$romName hash=$romHash " +
@@ -757,14 +871,22 @@ class DigimonGlyphToyService : Service() {
                 inputOverlayAnimator?.applyOverlay(bitmap)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
                 val now = SystemClock.uptimeMillis()
+                val state = emu.getCurrentDigimonState(romName)
+                maybeNotifyNeedsAttention(state)
                 val shouldPublishFramePreview =
                     debugTelemetryEnabled || standaloneMode ||
                     FrameDebugState.isObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now) ||
                     WidgetFramePusher.isRunning
                 if (shouldPublishFramePreview && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
                     val fullDebug = bridge.renderFullDebugFrame(vram)
-                    val state = emu.getCurrentDigimonState(romName)
-                    FrameDebugState.update(bitmap, fullDebug, now, state)
+                    FrameDebugState.update(
+                        glyph = bitmap,
+                        full = fullDebug,
+                        atMs = now,
+                        state = state,
+                        ramData = emu.getRAM(),
+                        vramData = emu.getRawVRAM()
+                    )
                     lastDebugFramePublishMs = now
                 }
                 if (debugTelemetryEnabled) {
@@ -780,10 +902,10 @@ class DigimonGlyphToyService : Service() {
                 }
             },
         )
-        lastExactTimingEnabled = EmulatorTimingSettings.isExactTimingEnabled()
+        lastFullAccuracyEnabled = EmulatorTimingSettings.isFullAccuracyEnabled()
         val initialMode =
-            if (lastExactTimingEnabled) EmulatorLoop.TimingMode.EXACT
-            else EmulatorLoop.TimingMode.POWER_SAVE
+            if (lastFullAccuracyEnabled) EmulatorLoop.TimingMode.FULL_ACCURATE
+            else EmulatorLoop.TimingMode.EXACT
         loop.setTimingMode(initialMode)
         loop.setStepGateEnabled(false)
         lastAppliedTimingMode = initialMode
@@ -838,8 +960,10 @@ class DigimonGlyphToyService : Service() {
         Log.d(TAG, "Emulator started with ROM: $romName standaloneMode=$standaloneMode")
     }
 
-    private fun stopEmulator() {
-        WidgetFramePusher.stop()
+    private fun stopEmulator(clearFrameState: Boolean = true, preserveWidgetPreview: Boolean = false) {
+        if (!preserveWidgetPreview) {
+            WidgetFramePusher.stop()
+        }
         mainHandler.removeCallbacks(autosaveRunnable)
         emulatorLoop?.stop()
         emulatorLoop = null
@@ -862,7 +986,9 @@ class DigimonGlyphToyService : Service() {
         lastDebugFramePublishMs = 0L
         frameHeartbeatCount = 0L
         lastFrameHeartbeatLogMs = 0L
-        FrameDebugState.clear()
+        if (clearFrameState) {
+            FrameDebugState.clear()
+        }
         interactionBoostUntilMs = 0L
         lastAppliedTimingMode = null
         lastAppliedClockCorrectionOverride = null
@@ -890,6 +1016,10 @@ class DigimonGlyphToyService : Service() {
         ioTraceWindowStartMs = 0L
         ioTraceLastValues.clear()
         releaseCpuWakeLock()
+        if (preserveWidgetPreview) {
+            WidgetFramePusher.ensureRunning(this)
+            WidgetFramePusher.refreshNow(this)
+        }
     }
 
     private fun pushStaticFrame() {
@@ -908,7 +1038,7 @@ class DigimonGlyphToyService : Service() {
             val seq = stateManager.saveAutosave(core, name, romHash, sync = sync)
             Pair(seq, pc)
         } ?: return
-        val ts = stateManager.getAutosaveInfo().timestampMs
+        val ts = stateManager.getAutosaveInfo(name, romHash).timestampMs
         val seq = result.first
         val pc = result.second
         Log.d(TAG, "State saved reason=$reason sync=$sync seq=$seq pc=$pc ts=$ts")
@@ -970,6 +1100,9 @@ class DigimonGlyphToyService : Service() {
                 EmulatorDebugSettings.init(this)
                 EmulatorTimingSettings.init(this)
                 BattleTransportSettings.init(this)
+                DigimonDndSettings.init(this)
+                DigimonDndScheduler.reschedule(this)
+                syncDndStateWithClock("refresh_settings")
                 refreshBattleTransportIfNeeded()
                 applyAudioHapticSettingsIfChanged(force = true)
                 applyDebugSettingIfChanged(force = true)
@@ -1053,7 +1186,7 @@ class DigimonGlyphToyService : Service() {
                 true
             } ?: return "reset failed: emulator not running"
             if (!ok) return "reset failed: emulator not running"
-            stateManager.clearAutosave()
+            stateManager.clearAutosave(romName, romHash)
         }
         return "full reset complete"
     }
@@ -1179,24 +1312,24 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun applyTimingSettingIfChanged(force: Boolean = false) {
-        val exactEnabled = EmulatorTimingSettings.isExactTimingEnabled()
+        val fullAccuracyEnabled = EmulatorTimingSettings.isFullAccuracyEnabled()
         val stepModeEnabled = EmulatorTimingSettings.isBattleStepModeEnabled()
         val stepSliceMs = EmulatorTimingSettings.getBattleStepSliceMs()
         val now = SystemClock.uptimeMillis()
-        val boostActive = !exactEnabled && now < interactionBoostUntilMs
+        val boostActive = now < interactionBoostUntilMs
         val battleTimingLock = battleConnected
         val battleStepGateActive = battleConnected && stepModeEnabled
         val desiredMode =
-            if (battleTimingLock || exactEnabled || boostActive) EmulatorLoop.TimingMode.EXACT
-            else EmulatorLoop.TimingMode.POWER_SAVE
+            if (battleTimingLock || fullAccuracyEnabled || boostActive) EmulatorLoop.TimingMode.FULL_ACCURATE
+            else EmulatorLoop.TimingMode.EXACT
         val correctionOverride = if (battleTimingLock) BATTLE_FORCED_CORRECTION_FACTOR else null
         if (!force &&
-            exactEnabled == lastExactTimingEnabled &&
+            fullAccuracyEnabled == lastFullAccuracyEnabled &&
             desiredMode == lastAppliedTimingMode &&
             correctionOverride == lastAppliedClockCorrectionOverride &&
             battleStepGateActive == lastAppliedStepGateEnabled
         ) return
-        lastExactTimingEnabled = exactEnabled
+        lastFullAccuracyEnabled = fullAccuracyEnabled
         if (force || desiredMode != lastAppliedTimingMode) {
             emulatorLoop?.setTimingMode(desiredMode)
         }
@@ -1211,7 +1344,7 @@ class DigimonGlyphToyService : Service() {
             emulatorLoop?.setClockCorrectionOverride(correctionOverride)
             lastAppliedClockCorrectionOverride = correctionOverride
         }
-        if (desiredMode == EmulatorLoop.TimingMode.EXACT) {
+        if (desiredMode == EmulatorLoop.TimingMode.EXACT || desiredMode == EmulatorLoop.TimingMode.FULL_ACCURATE) {
             acquireCpuWakeLock()
         } else {
             releaseCpuWakeLock()
@@ -1220,32 +1353,22 @@ class DigimonGlyphToyService : Service() {
         Log.d(
             TAG,
             "Timing mode set to $desiredMode " +
-                "(userExact=$exactEnabled boostActive=$boostActive battleLock=$battleTimingLock " +
+                "(fullAccuracy=$fullAccuracyEnabled boostActive=$boostActive battleLock=$battleTimingLock " +
                 "stepGate=$battleStepGateActive stepSliceMs=$stepSliceMs " +
                 "correctionOverride=${correctionOverride ?: "none"})"
         )
     }
 
     private fun handleUserInteractionForTimingBoost() {
-        if (EmulatorTimingSettings.isExactTimingEnabled()) return
+        if (EmulatorTimingSettings.isFullAccuracyEnabled()) return
         interactionBoostUntilMs = SystemClock.uptimeMillis() + INTERACTION_TIMING_BOOST_MS
-        if (lastAppliedTimingMode != EmulatorLoop.TimingMode.EXACT) {
+        if (lastAppliedTimingMode != EmulatorLoop.TimingMode.FULL_ACCURATE) {
             applyTimingSettingIfChanged(force = true)
         }
     }
 
     private fun tryStartForeground() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                NOTIF_CHANNEL_ID, "Digimon V3 Emulator",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Running the Digimon V3 virtual pet"
-                setShowBadge(false)
-            }
-            nm.createNotificationChannel(channel)
-        }
+        ensureNotificationChannels()
         val openIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
             PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
         }
@@ -1261,7 +1384,7 @@ class DigimonGlyphToyService : Service() {
             Notification.Builder(this)
         }
             .setSmallIcon(R.drawable.ic_digimon_preview)
-            .setContentTitle("Digimon V3")
+            .setContentTitle("Digimon Emulator")
             .setContentText("Virtual pet is running")
             .setContentIntent(openIntent)
             .addAction(Notification.Action.Builder(
@@ -1278,7 +1401,76 @@ class DigimonGlyphToyService : Service() {
         }
     }
 
+    private fun maybeNotifyNeedsAttention(state: com.digimon.glyph.emulator.DigimonState?) {
+        val current = state?.needsAttention == true
+        val previous = lastNeedsAttention
+        lastNeedsAttention = current
+
+        if (previous == null || previous || !current) return
+        if (!DigimonAttentionSettings.isAttentionNotificationsEnabled()) return
+        if (DigimonDndSettings.shouldSuppressAttentionNotifications()) return
+        if (!hasNotificationPermission()) return
+
+        ensureNotificationChannels()
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val openIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
+            PendingIntent.getActivity(this, 2, it, PendingIntent.FLAG_IMMUTABLE)
+        }
+        val digimonName = state?.info?.name ?: "Your Digimon"
+        val timerSuffix = state?.careTimerMinutesLeft?.let { " ${it}m left." } ?: ""
+        val contentText = "$digimonName needs attention.$timerSuffix"
+        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Notification.Builder(this, ATTENTION_NOTIF_CHANNEL_ID)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(this)
+        }
+            .setSmallIcon(R.drawable.ic_digimon_preview)
+            .setContentTitle("Needs Attention")
+            .setContentText(contentText)
+            .setContentIntent(openIntent)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(ATTENTION_NOTIF_ID, notification)
+    }
+
+    private fun ensureNotificationChannels() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val serviceChannel = NotificationChannel(
+            NOTIF_CHANNEL_ID,
+            "Digimon Emulator",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Running the Digimon virtual pet"
+            setShowBadge(false)
+        }
+        val attentionChannel = NotificationChannel(
+            ATTENTION_NOTIF_CHANNEL_ID,
+            "Digimon Needs Attention",
+            NotificationManager.IMPORTANCE_DEFAULT
+        ).apply {
+            description = "Alerts when your Digimon needs attention"
+            setShowBadge(true)
+        }
+        nm.createNotificationChannel(serviceChannel)
+        nm.createNotificationChannel(attentionChannel)
+    }
+
+    private fun hasNotificationPermission(): Boolean {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+
     private fun pressWidgetButton(button: Int) {
+        if (DigimonDndSettings.isFrozenNow()) {
+            WidgetFramePusher.ensureRunning(this)
+            WidgetFramePusher.refreshNow(this)
+            return
+        }
         // K0 port pins: A=2, B=1, C=0 (matches InputController)
         val pin = when (button) {
             EmulatorCommandBus.BUTTON_A -> 2
@@ -1286,14 +1478,17 @@ class DigimonGlyphToyService : Service() {
             EmulatorCommandBus.BUTTON_C -> 0
             else -> return
         }
+        handleUserInteractionForTimingBoost()
         val holdMs = if (battleConnected && button == EmulatorCommandBus.BUTTON_B) {
             BATTLE_LINK_B_HOLD_MS
         } else {
             DEFAULT_BUTTON_HOLD_MS
         }
+        val releaseToken = ++widgetButtonReleaseTokens[pin]
         onLocalBattleButtonDown(pin)
         runOnEmulatorAsync { core -> core.pinSet("K0", pin, 0) }
         mainHandler.postDelayed({
+            if (widgetButtonReleaseTokens[pin] != releaseToken) return@postDelayed
             onLocalBattleButtonUp(pin)
             runOnEmulatorAsync { core -> core.pinRelease("K0", pin) }
         }, holdMs)
