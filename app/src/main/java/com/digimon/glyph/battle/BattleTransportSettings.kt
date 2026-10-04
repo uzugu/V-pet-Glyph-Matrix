@@ -22,6 +22,7 @@ object BattleTransportSettings {
     private const val PREFS_NAME = "battle_transport_settings"
     private const val KEY_TRANSPORT_TYPE = "transport_type"
     private const val KEY_RELAY_URL = "relay_url"
+    private const val DEFAULT_RELAY_URL = "tcp://109.224.229.205:19792/auto"
     private const val KEY_SIMULATION_PRESET = "simulation_preset"
     private const val KEY_TAMER_NAME = "tamer_name"
     private const val KEY_LOBBY_NAME = "lobby_name"
@@ -30,7 +31,7 @@ object BattleTransportSettings {
     private var transportType: BattleTransportType = BattleTransportType.NEARBY
 
     @Volatile
-    private var relayUrl: String = "tcp://109.224.229.205:19792/auto"
+    private var relayUrl: String = DEFAULT_RELAY_URL
 
     @Volatile
     private var simulationPreset: SimulationPreset = SimulationPreset.PURE_ECHO
@@ -45,6 +46,7 @@ object BattleTransportSettings {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         transportType = parseType(prefs.getString(KEY_TRANSPORT_TYPE, null))
+        relayUrl = prefs.getString(KEY_RELAY_URL, DEFAULT_RELAY_URL) ?: DEFAULT_RELAY_URL
         simulationPreset = parsePreset(prefs.getString(KEY_SIMULATION_PRESET, null))
         tamerName = prefs.getString(KEY_TAMER_NAME, "") ?: ""
         lobbyName = prefs.getString(KEY_LOBBY_NAME, "") ?: ""
@@ -60,7 +62,7 @@ object BattleTransportSettings {
             .apply()
     }
 
-    fun getRelayUrl(): String = "tcp://109.224.229.205:19792/auto"
+    fun getRelayUrl(): String = relayUrl
 
     fun setRelayUrl(context: Context, url: String) {
         relayUrl = url.trim()
