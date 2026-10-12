@@ -1,6 +1,5 @@
 package com.digimon.glyph.emulator
 
-import android.graphics.Bitmap
 import android.os.Process
 import android.os.SystemClock
 import android.util.Log
@@ -17,30 +16,19 @@ import java.util.concurrent.locks.LockSupport
  * Timing model (matches BrickEmuPy brick.py):
  * - Execute one CPU instruction at a time via emulator.clock()
  * - clock() returns cycles already scaled by OSC1 clock divider
- * - Multiply by cycleTimeNs (1e9 / CPU_CLOCK) to get wall-clock nanoseconds
- * - When behind: tight-loop to catch up (no yield/sleep in EXACT mode)
+ * - Use the core's oscillator frequency to budget real elapsed time
+ * - When behind: execute every owed instruction, preserving firmware interrupts
  * - When ahead: sleep using LockSupport.parkNanos() for sub-ms precision
  */
 class EmulatorLoop(
     private val emulator: E0C6200,
-    private val displayBridge: DisplayBridge,
-    private val onFrame: (Bitmap, IntArray) -> Unit
+    private val onFrame: (IntArray) -> Unit,
+    private val elapsedNs: () -> Long = { SystemClock.elapsedRealtimeNanos() },
 ) {
     var onVirtualTick: ((Double) -> Unit)? = null
     enum class TimingMode { EXACT, FULL_ACCURATE, POWER_SAVE }
 
-    private data class LoopProfile(
-        val frameTimeNs: Double,
-        val cycleTimeNs: Double,
-        val resyncMarginNs: Double,
-        val maxSleepMs: Long,
-        val fallbackSleepMs: Long,
-        val timeCheckBatch: Int,
-        val preciseAheadWait: Boolean,
-        val sleepFraction: Double,
-        val minPreciseSleepNs: Long,
-        val preciseWakeGuardNs: Long
-    )
+    private data class LoopProfile(val frameTimeNs: Double, val timeCheckBatch: Int)
 
     companion object {
         private const val TAG = "E0C6200-Emulator"
@@ -52,32 +40,6 @@ class EmulatorLoop(
         private const val POWER_SAVE_TARGET_FPS = 4
         private const val POWER_SAVE_FRAME_TIME_NS = 1_000_000_000.0 / POWER_SAVE_TARGET_FPS
 
-        private const val CPU_CLOCK = 1_060_000.0
-        private const val EXACT_CYCLE_TIME_NS = 1_000_000_000.0 / CPU_CLOCK
-        private const val POWER_SAVE_SPEED_FACTOR = 0.25
-        private const val POWER_SAVE_CYCLE_TIME_NS = EXACT_CYCLE_TIME_NS / POWER_SAVE_SPEED_FACTOR
-
-        // Catch-up hysteresis: only fast-forward OSC1 if behind by more than this.
-        // 16ms avoids micro-corrections from scheduling jitter while catching
-        // any meaningful throttle event (Android doze bursts are typically 20-500ms+).
-        private const val CATCHUP_HYSTERESIS_NS = 16_000_000.0       // 16ms
-
-        // After catch-up, leave this much margin to allow smooth normal execution
-        private const val EXACT_RESYNC_MARGIN_NS = 5_000_000.0       // 5ms
-        private const val FULL_ACCURATE_RESYNC_MARGIN_NS = 1_000_000.0 // 1ms
-        private const val POWER_SAVE_RESYNC_MARGIN_NS = 5_000_000.0  // 5ms
-
-        private const val EXACT_MAX_SLEEP_MS = 2L
-        private const val FULL_ACCURATE_MAX_SLEEP_MS = 1L
-        private const val POWER_SAVE_MAX_SLEEP_MS = 40L
-
-        private const val POWER_SAVE_FALLBACK_SLEEP_MS = 8L
-
-        // Check wall clock every N instructions (balances precision vs nanoTime() overhead)
-        private const val EXACT_TIME_CHECK_BATCH = 64
-        private const val FULL_ACCURATE_TIME_CHECK_BATCH = 16
-        private const val POWER_SAVE_TIME_CHECK_BATCH = 16
-
         // Timing instrumentation interval
         private const val DRIFT_LOG_INTERVAL_NS = 10_000_000_000.0  // 10 seconds
         private const val STEP_GATE_IDLE_SLEEP_MS = 6L
@@ -86,7 +48,6 @@ class EmulatorLoop(
 
     @Volatile private var running = false
     @Volatile private var timingMode: TimingMode = TimingMode.EXACT
-    @Volatile private var clockCorrectionOverride: Double? = null
     @Volatile private var stepGateEnabled = false
     private var thread: Thread? = null
     private val commandQueue = ConcurrentLinkedQueue<(E0C6200) -> Unit>()
@@ -94,52 +55,13 @@ class EmulatorLoop(
     private var stepGateBudgetNs: Long = 0L
     private var stepGateResetAnchorRequested = false
 
-    // Cached profiles to avoid allocation in hot path
-    private val exactProfile = LoopProfile(
-        frameTimeNs = EXACT_FRAME_TIME_NS,
-        cycleTimeNs = EXACT_CYCLE_TIME_NS,
-        resyncMarginNs = EXACT_RESYNC_MARGIN_NS,
-        maxSleepMs = EXACT_MAX_SLEEP_MS,
-        fallbackSleepMs = 0L,
-        timeCheckBatch = EXACT_TIME_CHECK_BATCH,
-        preciseAheadWait = true,
-        sleepFraction = 0.7,
-        minPreciseSleepNs = 100_000L,
-        preciseWakeGuardNs = 100_000L
-    )
-
-    private val fullAccurateProfile = LoopProfile(
-        frameTimeNs = FULL_ACCURATE_FRAME_TIME_NS,
-        cycleTimeNs = EXACT_CYCLE_TIME_NS,
-        resyncMarginNs = FULL_ACCURATE_RESYNC_MARGIN_NS,
-        maxSleepMs = FULL_ACCURATE_MAX_SLEEP_MS,
-        fallbackSleepMs = 0L,
-        timeCheckBatch = FULL_ACCURATE_TIME_CHECK_BATCH,
-        preciseAheadWait = true,
-        sleepFraction = 1.0,
-        minPreciseSleepNs = 5_000L,
-        preciseWakeGuardNs = 5_000L
-    )
-
-    private val powerSaveProfile = LoopProfile(
-        frameTimeNs = POWER_SAVE_FRAME_TIME_NS,
-        cycleTimeNs = POWER_SAVE_CYCLE_TIME_NS,
-        resyncMarginNs = POWER_SAVE_RESYNC_MARGIN_NS,
-        maxSleepMs = POWER_SAVE_MAX_SLEEP_MS,
-        fallbackSleepMs = POWER_SAVE_FALLBACK_SLEEP_MS,
-        timeCheckBatch = POWER_SAVE_TIME_CHECK_BATCH,
-        preciseAheadWait = false,
-        sleepFraction = 1.0,
-        minPreciseSleepNs = 0L,
-        preciseWakeGuardNs = 0L
-    )
+    // Render modes change display cadence, never CPU/OSC1 speed.
+    private val exactProfile = LoopProfile(EXACT_FRAME_TIME_NS, 64)
+    private val fullAccurateProfile = LoopProfile(FULL_ACCURATE_FRAME_TIME_NS, 16)
+    private val powerSaveProfile = LoopProfile(POWER_SAVE_FRAME_TIME_NS, 64)
 
     fun setTimingMode(mode: TimingMode) {
         timingMode = mode
-    }
-
-    fun setClockCorrectionOverride(factor: Double?) {
-        clockCorrectionOverride = factor?.coerceIn(0.5, 3.0)
     }
 
     fun setStepGateEnabled(enabled: Boolean) {
@@ -171,8 +93,12 @@ class EmulatorLoop(
     }
 
     fun stop() {
+        val worker = thread
         running = false
-        thread?.interrupt()
+        worker?.interrupt()
+        if (worker != null && worker !== Thread.currentThread()) {
+            try { worker.join(1500) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
+        }
         commandQueue.clear()
         thread = null
     }
@@ -211,227 +137,82 @@ class EmulatorLoop(
 
 
     private fun runLoop() {
-        try {
-            Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_DISPLAY)
-        } catch (_: Exception) {
-            // Keep running with default priority if OEM policy rejects priority change.
-        }
-
-        var lastTickNs = System.nanoTime().toDouble()
-        var nextFrameNs = lastTickNs + EXACT_FRAME_TIME_NS
+        try { Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY) } catch (_: Exception) {}
+        // elapsedRealtime includes Android suspend; nanoTime does not.
+        val startNs = elapsedNs()
+        val pacer = RealtimePacer(emulator.clockFrequency, startNs)
+        val cycleNs = 1_000_000_000.0 / emulator.clockFrequency
+        var nextFrameNs = startNs
+        var lastDriftLogNs = startNs
         var lastDisplayGeneration = Long.MIN_VALUE
-
-        // Timing instrumentation
-        val startWallNs = lastTickNs
-        var totalEmulatedNs = 0.0
-        var lastDriftLogNs = lastTickNs
-        var resyncCount = 0L
-        var frameRenderTotalNs = 0.0
-        var frameRenderCount = 0L
+        var lastMode = timingMode
 
         while (running) {
-            val profile = when (timingMode) {
+            val mode = timingMode
+            val profile = when (mode) {
                 TimingMode.EXACT -> exactProfile
                 TimingMode.FULL_ACCURATE -> fullAccurateProfile
                 TimingMode.POWER_SAVE -> powerSaveProfile
             }
+            var nowNs = elapsedNs()
             val stepGateActive = stepGateEnabled
-            if (consumeStepGateResetAnchor()) {
-                val anchor = System.nanoTime().toDouble()
-                lastTickNs = anchor
-                nextFrameNs = anchor + profile.frameTimeNs
+            if (consumeStepGateResetAnchor()) pacer.rebase(nowNs)
+            if (mode != lastMode) {
+                nextFrameNs = nowNs
+                lastMode = mode
             }
-
-            // Clock speed correction: when enabled, divide cycleTimeNs by correction factor
-            // to make emulation run faster, compensating for ROM-inherent slow timekeeping.
-            val correctionFactor = clockCorrectionOverride ?: if (EmulatorTimingSettings.isClockCorrectionEnabled())
-                EmulatorTimingSettings.getClockCorrectionFactor().toDouble() else 1.0
-            val effectiveCycleTimeNs = profile.cycleTimeNs / correctionFactor
-
             drainCommands()
-
-            var nowNs = System.nanoTime().toDouble()
-
-            // Continuous catch-up: if emulated time is behind wall clock by more than
-            // the hysteresis threshold, fast-forward OSC1 to close the gap.
-            // This handles both large idle gaps AND accumulated small throttle delays.
-            // Always uses REAL-TIME rate (not POWER_SAVE's 0.25x) so timers advance
-            // at wall-clock speed regardless of emulation mode.
-            val behindNs = nowNs - lastTickNs
-            if (!stepGateActive && behindNs > CATCHUP_HYSTERESIS_NS) {
-                val catchupNs = behindNs - profile.resyncMarginNs
-                if (catchupNs > 0) {
-                    // Use REAL-TIME rate for fast-forward: OSC1 ticks at 32768 Hz in real time.
-                    // The correction factor speeds up real time to compensate for ROM slowness.
-                    // This is independent of POWER_SAVE speed factor, which only affects
-                    // live emulation pacing — not how fast real time passes during idle.
-                    val osc1ClockDiv = CPU_CLOCK / E0C6200.OSC1_CLOCK.toDouble()
-                    val realCycleTimeNs = EXACT_CYCLE_TIME_NS / correctionFactor
-                    val wallNsPerRealOsc1Tick = osc1ClockDiv * realCycleTimeNs
-                    val osc1TicksToFastForward = (catchupNs / wallNsPerRealOsc1Tick).toLong()
-
-                    if (osc1TicksToFastForward > 0) {
-                        val actualTicks = emulator.fastForwardOsc1(osc1TicksToFastForward)
-                        lastTickNs = nowNs - profile.resyncMarginNs
-                        
-                        // Feed VirtualDCom smoothly during fast-forwards so it doesn't skip
-                        // crucial millisecond bit states.
-                        var catchupRemainingNs = catchupNs
-                        while (catchupRemainingNs > 0.0) {
-                            val stepNs = catchupRemainingNs.coerceAtMost(1_000_000.0) // 1ms steps
-                            totalEmulatedNs += stepNs
-                            onVirtualTick?.invoke(totalEmulatedNs)
-                            catchupRemainingNs -= stepNs
-                        }
-                        
-                        resyncCount++
-                        if (catchupNs > 100_000_000.0) { // Only log if >100ms gap
-                            Log.w(TAG, "Catch-up #$resyncCount: ff $actualTicks OSC1 ticks for ${(catchupNs / 1e6).toLong()}ms gap")
-                        }
-                    }
-                }
-            }
-
-            // PHASE 1: Execute CPU instructions until caught up or frame deadline.
-            // One instruction at a time, matching BrickEmuPy's approach.
-            val frameDeadlineNs = nextFrameNs
-            var instructionCount = 0
-            val batchSize = profile.timeCheckBatch
-            val stepBudgetSnapshotNs = if (stepGateActive) snapshotStepGateBudgetNs() else Long.MAX_VALUE
-            var stepBudgetRemainingNs = stepBudgetSnapshotNs.toDouble()
-            var stepBudgetUsedNs = 0L
-
-            while (
-                running &&
-                (if (stepGateActive) stepBudgetRemainingNs > 0.0 else lastTickNs < nowNs) &&
-                lastTickNs < frameDeadlineNs
-            ) {
+            // Keep command/input/render latency bounded while repaying all CPU debt.
+            val batchDeadlineNs = nowNs + 2_000_000L
+            var instructions = 0
+            var stepRemainingNs = if (stepGateActive) snapshotStepGateBudgetNs().toDouble() else 0.0
+            var stepUsedNs = 0.0
+            while (running && if (stepGateActive) stepRemainingNs > 0 else pacer.debtCycles(nowNs) > 0) {
                 val cycles = emulator.clock()
-                if (cycles <= 0.0) break
-                val advanceNs = cycles * effectiveCycleTimeNs
-                lastTickNs += advanceNs
-                totalEmulatedNs += advanceNs
+                if (cycles <= 0) break
+                pacer.advance(cycles)
+                val advanceNs = cycles * cycleNs
                 if (stepGateActive) {
-                    val usedNs = advanceNs.toLong().coerceAtLeast(1L)
-                    stepBudgetRemainingNs -= usedNs.toDouble()
-                    stepBudgetUsedNs = (stepBudgetUsedNs + usedNs).coerceAtMost(STEP_GATE_MAX_BUDGET_NS)
+                    stepRemainingNs -= advanceNs
+                    stepUsedNs += advanceNs
                 }
-
-                instructionCount++
-                onVirtualTick?.invoke(totalEmulatedNs)
-                if (instructionCount % batchSize == 0) {
+                onVirtualTick?.invoke(pacer.virtualNs)
+                if (++instructions % profile.timeCheckBatch == 0) {
                     drainCommands()
-                    nowNs = System.nanoTime().toDouble()
-                    if (!stepGateActive && nowNs >= frameDeadlineNs) break
+                    nowNs = elapsedNs()
+                    if (nowNs >= batchDeadlineNs) break
                 }
             }
-            if (stepGateActive && stepBudgetUsedNs > 0L) {
-                consumeStepGateBudget(stepBudgetUsedNs)
-            }
+            if (stepGateActive && stepUsedNs > 0) consumeStepGateBudget(kotlin.math.ceil(stepUsedNs).toLong())
 
-            // PHASE 2: Render frame if due (check wall clock, not just emulated time).
-            nowNs = System.nanoTime().toDouble()
-            val forceRenderStepGate = stepGateActive && stepBudgetUsedNs > 0L
-            if (nowNs >= nextFrameNs || forceRenderStepGate) {
-                val preRenderNs = System.nanoTime().toDouble()
-
+            nowNs = elapsedNs()
+            if (nowNs >= nextFrameNs || (stepGateActive && stepUsedNs > 0)) {
                 val snapshot = emulator.getDisplaySnapshot(lastDisplayGeneration)
                 if (snapshot != null) {
                     lastDisplayGeneration = snapshot.generation
-                    val bitmap = displayBridge.renderFrame(snapshot.vramData)
-                    onFrame(bitmap, snapshot.vramData)
+                    onFrame(snapshot.vramData)
                 }
-
-                val postRenderNs = System.nanoTime().toDouble()
-                val renderCostNs = postRenderNs - preRenderNs
-                frameRenderTotalNs += renderCostNs
-                frameRenderCount++
-
-                if (forceRenderStepGate && postRenderNs < nextFrameNs) {
-                    nextFrameNs = postRenderNs + profile.frameTimeNs
-                } else {
-                    // Advance frame deadline past current wall time
-                    do {
-                        nextFrameNs += profile.frameTimeNs
-                    } while (nextFrameNs <= postRenderNs)
-                }
-
-                // After rendering, the emulator is likely behind wall clock.
-                // That's expected — Phase 1 on the next iteration will catch up
-                // because we don't yield/sleep when behind (in EXACT mode).
+                // Missed display frames are expendable. Firmware time and interrupts are not.
+                nextFrameNs = elapsedNs() + profile.frameTimeNs.toLong()
             }
-
             drainCommands()
-
-            // Timing instrumentation: log drift every 10 seconds
-            nowNs = System.nanoTime().toDouble()
+            nowNs = elapsedNs()
             if (nowNs - lastDriftLogNs >= DRIFT_LOG_INTERVAL_NS) {
-                val wallElapsedSec = (nowNs - startWallNs) / 1_000_000_000.0
-                val emuElapsedSec = totalEmulatedNs / 1_000_000_000.0
-                val driftSec = wallElapsedSec - emuElapsedSec
-                val driftPct = if (wallElapsedSec > 0) (driftSec / wallElapsedSec * 100.0) else 0.0
-                val avgRenderMs = if (frameRenderCount > 0) {
-                    frameRenderTotalNs / frameRenderCount / 1_000_000.0
-                } else 0.0
-                Log.d(TAG, "Timing: wall=%.1fs emu=%.1fs drift=%.2fs (%.2f%%) resyncs=%d avgRender=%.1fms frames=%d correction=%.2fx".format(
-                    wallElapsedSec, emuElapsedSec, driftSec, driftPct, resyncCount, avgRenderMs, frameRenderCount, correctionFactor
-                ))
-                // CPU-internal tick rate diagnostics
-                val diag = emulator.getDiagnostics()
-                val osc1Rate = (diag["osc1"] as Long).toDouble() / wallElapsedSec
-                val timerRate = (diag["timer"] as Long).toDouble() / wallElapsedSec
-                val swRate = (diag["sw"] as Long).toDouble() / wallElapsedSec
-                Log.d(TAG, "CPU: osc1=%.1f/s(32768) timer=%.1f/s(256) sw=%.1f/s(100) halt=%d TM=%d CTRL_OSC=%X CTRL_SW=%X SWL=%d SWH=%d".format(
-                    osc1Rate, timerRate, swRate,
-                    diag["halt"], diag["TM"], diag["CTRL_OSC"], diag["CTRL_SW"],
-                    diag["SWL"], diag["SWH"]
-                ))
+                val elapsedSeconds = (nowNs - startNs) / 1_000_000_000.0
+                Log.d(TAG, "Clock: phone=%.3fs firmware=%.3fs debt=%.3fms mode=%s".format(
+                    elapsedSeconds, pacer.virtualNs / 1_000_000_000.0, pacer.debtNs(nowNs) / 1_000_000.0, mode))
                 lastDriftLogNs = nowNs
             }
-
             if (stepGateActive) {
-                if (snapshotStepGateBudgetNs() <= 0L) {
-                    SystemClock.sleep(STEP_GATE_IDLE_SLEEP_MS)
-                } else {
-                    Thread.yield()
-                }
+                if (snapshotStepGateBudgetNs() <= 0) SystemClock.sleep(STEP_GATE_IDLE_SLEEP_MS)
                 continue
             }
-
-            // PHASE 3: Sleep management.
-            val postNs = System.nanoTime().toDouble()
-            val aheadNs = lastTickNs - postNs
-
-            if (aheadNs > 1_000.0) {
-                // Emulator is AHEAD of wall clock — sleep to wait.
-                if (profile.preciseAheadWait) {
-                    // Precise modes: park until a small guard margin remains, then spin.
-                    val sleepNs = if (profile.sleepFraction >= 1.0) {
-                        (aheadNs - profile.preciseWakeGuardNs).toLong()
-                    } else {
-                        (aheadNs * profile.sleepFraction).toLong()
-                    }
-                    if (sleepNs > profile.minPreciseSleepNs) {
-                        LockSupport.parkNanos(sleepNs)
-                    }
-                    // If the lead is tiny, loop back and spin the remainder.
-                } else {
-                    // POWER_SAVE mode: coarser sleep
-                    val sleepMs = (aheadNs / 1_000_000.0).toLong().coerceAtMost(profile.maxSleepMs)
-                    if (sleepMs >= 1L) {
-                        SystemClock.sleep(sleepMs)
-                    } else {
-                        Thread.yield()
-                    }
-                }
-            } else if (!profile.preciseAheadWait && profile.fallbackSleepMs > 0L) {
-                // POWER_SAVE mode when behind: yield to save battery
-                SystemClock.sleep(profile.fallbackSleepMs)
+            val aheadNs = -pacer.debtNs(elapsedNs())
+            if (aheadNs > 1_000) {
+                // All modes run firmware at 1x. Power saving changes rendering/waiting only.
+                val sleepNs = (aheadNs - 20_000).toLong()
+                if (sleepNs > 0) LockSupport.parkNanos(sleepNs)
             }
-            // EXACT mode when behind (aheadNs <= 0): NO yield, NO sleep.
-            // Loop immediately back to Phase 1 to catch up.
-            // This is the KEY FIX: the old code called Thread.yield() here,
-            // causing 1-15ms delays that prevented catch-up after frame rendering.
         }
     }
 

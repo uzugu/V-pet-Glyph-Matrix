@@ -1204,43 +1204,14 @@
                     android:visibility="gone"
                     android:layout_marginTop="4dp">
 
-                    <Switch
-                        android:id="@+id/switch_clock_correction"
+                    <TextView
+                        android:id="@+id/clock_sync_info"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="OSCILLATOR CORRECTION"
+                        android:text="CLOCK SYNCHRONIZED TO PHONE"
                         android:fontFamily="monospace"
-                        android:textColor="@color/text_main"
-                        android:thumb="@drawable/cyber_switch_thumb"
-                        android:track="@drawable/cyber_switch_track"
-                        android:thumbTint="@null"
-                        android:trackTint="@null" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="8dp"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="SPEED MULTIPLIER:"
-                            android:fontFamily="monospace"
-                            android:textColor="@color/text_muted"
-                            android:textSize="12sp"
-                            android:layout_marginEnd="8dp" />
-
-                        <EditText
-                            android:id="@+id/input_clock_factor"
-                            android:layout_width="60dp"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/cyber_yellow"
-                            android:backgroundTint="@color/border_tech"
-                            android:fontFamily="monospace"
-                            android:inputType="numberDecimal" />
-                    </LinearLayout>
+                        android:textColor="@color/cyber_blue"
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/commandStatusText"

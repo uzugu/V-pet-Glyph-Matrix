@@ -361,6 +361,7 @@ class StateManager(context: Context) {
         for ((key, value) in raw) {
             when {
                 key == "RAM" || key == "VRAM" -> state[key] = decodeIntArray(value as String)
+                value is Double && key.endsWith("_COUNTER") -> state[key] = value
                 value is Double -> state[key] = value.toInt()
                 else -> state[key] = value
             }

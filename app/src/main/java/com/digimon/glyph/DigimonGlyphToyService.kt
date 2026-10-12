@@ -91,7 +91,6 @@ class DigimonGlyphToyService : Service() {
         // Heuristic mirror path; keep disabled in strict edge transport mode.
         private const val BATTLE_MIRROR_P2_TO_K0_PIN3 = false
         private const val BATTLE_LINK_B_HOLD_MS = 120L
-        private const val BATTLE_FORCED_CORRECTION_FACTOR = 1.0
         private const val BATTLE_STEP_CONNECT_PRIME_MS = 180
         private const val BATTLE_STEP_LINK_EVENT_BONUS_MS = 8
         private const val BATTLE_STEP_BUTTON_BONUS_MS = 40
@@ -143,7 +142,6 @@ class DigimonGlyphToyService : Service() {
     private var lastHapticEnabled = false
     private var lastFullAccuracyEnabled = false
     private var lastAppliedTimingMode: EmulatorLoop.TimingMode? = null
-    private var lastAppliedClockCorrectionOverride: Double? = null
     private var lastAppliedStepGateEnabled = false
     private var interactionBoostUntilMs: Long = 0L
     private var debugTelemetryEnabled = false
@@ -898,8 +896,8 @@ class DigimonGlyphToyService : Service() {
 
         val loop = EmulatorLoop(
             emulator = emu,
-            displayBridge = bridge,
-            onFrame = { bitmap, vram ->
+            onFrame = { vram ->
+                val bitmap = bridge.renderFrame(vram)
                 inputOverlayAnimator?.applyOverlay(bitmap)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
                 if (owlBridge.observed) owlBridge.publish(bridge.renderFullDebugFrame(vram))
@@ -1024,7 +1022,6 @@ class DigimonGlyphToyService : Service() {
         }
         interactionBoostUntilMs = 0L
         lastAppliedTimingMode = null
-        lastAppliedClockCorrectionOverride = null
         lastAppliedStepGateEnabled = false
         battleAssistActiveButtons = 0
         battleAssistLowUntilMs = 0L
@@ -1355,11 +1352,9 @@ class DigimonGlyphToyService : Service() {
         val desiredMode =
             if (battleTimingLock || fullAccuracyEnabled || boostActive) EmulatorLoop.TimingMode.FULL_ACCURATE
             else EmulatorLoop.TimingMode.EXACT
-        val correctionOverride = if (battleTimingLock) BATTLE_FORCED_CORRECTION_FACTOR else null
         if (!force &&
             fullAccuracyEnabled == lastFullAccuracyEnabled &&
             desiredMode == lastAppliedTimingMode &&
-            correctionOverride == lastAppliedClockCorrectionOverride &&
             battleStepGateActive == lastAppliedStepGateEnabled
         ) return
         lastFullAccuracyEnabled = fullAccuracyEnabled
@@ -1373,10 +1368,6 @@ class DigimonGlyphToyService : Service() {
                 emulatorLoop?.pulseStepBudget((stepSliceMs + BATTLE_STEP_CONNECT_PRIME_MS).coerceAtMost(1_000))
             }
         }
-        if (force || correctionOverride != lastAppliedClockCorrectionOverride) {
-            emulatorLoop?.setClockCorrectionOverride(correctionOverride)
-            lastAppliedClockCorrectionOverride = correctionOverride
-        }
         if (desiredMode == EmulatorLoop.TimingMode.EXACT || desiredMode == EmulatorLoop.TimingMode.FULL_ACCURATE) {
             acquireCpuWakeLock()
         } else {
@@ -1387,8 +1378,7 @@ class DigimonGlyphToyService : Service() {
             TAG,
             "Timing mode set to $desiredMode " +
                 "(fullAccuracy=$fullAccuracyEnabled boostActive=$boostActive battleLock=$battleTimingLock " +
-                "stepGate=$battleStepGateActive stepSliceMs=$stepSliceMs " +
-                "correctionOverride=${correctionOverride ?: "none"})"
+                "stepGate=$battleStepGateActive stepSliceMs=$stepSliceMs clock=phone)"
         )
     }
 

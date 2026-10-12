@@ -14,13 +14,8 @@ object EmulatorTimingSettings {
     private const val KEY_BATTLE_STEP_MODE_ENABLED = "battle_step_mode_enabled"
     private const val KEY_BATTLE_STEP_SLICE_MS = "battle_step_slice_ms"
 
-    /**
-     * Default correction factor for Digimon V3 ROM.
-     * The ROM's in-game clock runs at ~83% of real time (30s behind per 3 min).
-     * Factor = realTime / inGameTime = 180 / 150 = 1.20
-     * This speeds up emulation so in-game time matches wall clock.
-     */
-    const val DEFAULT_CLOCK_CORRECTION_FACTOR = 1.20f
+    // Legacy telemetry API: the clock now always runs at the phone's real-time rate.
+    const val DEFAULT_CLOCK_CORRECTION_FACTOR = 1.0f
     const val DEFAULT_BATTLE_STEP_SLICE_MS = 10
 
     @Volatile
@@ -42,8 +37,14 @@ object EmulatorTimingSettings {
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         fullAccuracyEnabled = prefs.getBoolean(KEY_FULL_ACCURACY_ENABLED, false)
-        clockCorrectionEnabled = prefs.getBoolean(KEY_CLOCK_CORRECTION_ENABLED, false)
-        clockCorrectionFactor = prefs.getFloat(KEY_CLOCK_CORRECTION_FACTOR, DEFAULT_CLOCK_CORRECTION_FACTOR)
+        clockCorrectionEnabled = false
+        clockCorrectionFactor = 1.0f
+        // Retire stored workaround multipliers so upgrading cannot silently keep speeding up time.
+        if (prefs.getBoolean(KEY_CLOCK_CORRECTION_ENABLED, false) ||
+            prefs.getFloat(KEY_CLOCK_CORRECTION_FACTOR, 1.0f) != 1.0f) {
+            prefs.edit().putBoolean(KEY_CLOCK_CORRECTION_ENABLED, false)
+                .putFloat(KEY_CLOCK_CORRECTION_FACTOR, 1.0f).apply()
+        }
         battleStepModeEnabled = prefs.getBoolean(KEY_BATTLE_STEP_MODE_ENABLED, false)
         battleStepSliceMs = prefs.getInt(KEY_BATTLE_STEP_SLICE_MS, DEFAULT_BATTLE_STEP_SLICE_MS)
             .coerceIn(4, 250)
@@ -61,23 +62,7 @@ object EmulatorTimingSettings {
 
     fun isClockCorrectionEnabled(): Boolean = clockCorrectionEnabled
 
-    fun setClockCorrectionEnabled(context: Context, enabled: Boolean) {
-        clockCorrectionEnabled = enabled
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putBoolean(KEY_CLOCK_CORRECTION_ENABLED, enabled)
-            .apply()
-    }
-
     fun getClockCorrectionFactor(): Float = clockCorrectionFactor
-
-    fun setClockCorrectionFactor(context: Context, factor: Float) {
-        clockCorrectionFactor = factor.coerceIn(0.5f, 3.0f)
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putFloat(KEY_CLOCK_CORRECTION_FACTOR, clockCorrectionFactor)
-            .apply()
-    }
 
     fun isBattleStepModeEnabled(): Boolean = battleStepModeEnabled
 

@@ -87,7 +87,6 @@ class RomLoaderActivity : AppCompatActivity() {
     private lateinit var statRomValue: TextView
     private lateinit var statEmuValue: TextView
     private lateinit var statEmuLabel: TextView
-    private lateinit var inputClockFactor: EditText
     private var lastFrameUpdateMs: Long = -1L
     private var lastAckId: Long = 0L
     private var lastAckText: String = "-"
@@ -247,8 +246,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val statEmuCard = findViewById<android.widget.FrameLayout>(R.id.stat_emu_card)
         val btnToggleAdvanced = findViewById<Button>(R.id.btn_toggle_advanced)
         val layoutAdvanced = findViewById<LinearLayout>(R.id.layout_advanced)
-        val switchClockCorrection = findViewById<Switch>(R.id.switch_clock_correction)
-        val inputClockFactor = findViewById<EditText>(R.id.input_clock_factor)
+        val clockSyncInfo = findViewById<TextView>(R.id.clock_sync_info)
         commandStatusText = findViewById(R.id.commandStatusText)
         val btnShareDebug = findViewById<Button>(R.id.btn_share_debug)
         val btnExportStates = findViewById<Button>(R.id.btn_export_states)
@@ -310,7 +308,7 @@ class RomLoaderActivity : AppCompatActivity() {
             rbNearby, rbInternet, rbSim, rbPureEcho, rbXor, rbGlobal,
             btnBattleHost, btnBattleJoin, btnBattleStop, battleStatusText,
             battlePeerName, battleBadge, statEmuLabel,
-            switchClockCorrection, inputClockFactor, commandStatusText, btnShareDebug, btnExportStates,
+            clockSyncInfo, commandStatusText, btnShareDebug, btnExportStates,
             btnRamProfile, btnRamBaseline, btnRamClearBaseline, btnExportRawSnapshot, ramDebugText,
             switchAttentionNotifications, switchShowCareMistakes,
             switchDndEnabled, switchDndFreezeMode, switchDndAutoResume, switchDndSuppressNotifications, textDndStatus,
@@ -530,25 +528,6 @@ class RomLoaderActivity : AppCompatActivity() {
 
         btnBattleStop.setOnClickListener {
             sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
-        }
-
-        switchClockCorrection.isChecked = EmulatorTimingSettings.isClockCorrectionEnabled()
-        switchClockCorrection.setOnCheckedChangeListener { _, isChecked ->
-            EmulatorTimingSettings.setClockCorrectionEnabled(this@RomLoaderActivity, isChecked)
-        }
-
-        inputClockFactor.setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
-        inputClockFactor.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = inputClockFactor.text.toString().toFloatOrNull()
-                if (value != null && value in 0.5f..3.0f) {
-                    EmulatorTimingSettings.setClockCorrectionFactor(this@RomLoaderActivity, value)
-                    Toast.makeText(this@RomLoaderActivity, "Clock factor set to %.2f".format(value), Toast.LENGTH_SHORT).show()
-                } else {
-                    inputClockFactor.setText("%.2f".format(EmulatorTimingSettings.getClockCorrectionFactor()))
-                    Toast.makeText(this@RomLoaderActivity, "Value must be 0.50-3.00", Toast.LENGTH_SHORT).show()
-                }
-            }
         }
 
         btnShareDebug.setOnClickListener {

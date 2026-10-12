@@ -211,3 +211,11 @@ Bridge protocol 1: bind action `com.digimon.glyph.OWL_BIND` on
 and frame `ACK` messages use a reply Messenger. Frame payloads contain bounded
 ASCII pixel rows (`p` LCD, `i` active indicator, `d` inactive indicator), display
 size and ready/frozen state. ROM, RAM and saved-game data are not exposed.
+
+## Clock synchronization
+
+The emulator now follows the phone's elapsed time at 1x in every rendering mode.
+Scheduler delays are recovered by executing the owed firmware instructions,
+preserving each timer interrupt. The former speed correction is removed, and
+fractional timer state survives save/restores. See
+[the diagnosis and verification](docs/clock-synchronization.md).

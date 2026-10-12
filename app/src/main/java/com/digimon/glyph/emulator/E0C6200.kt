@@ -24,6 +24,7 @@ class E0C6200(
     private val portPullupK1: Int = 15,
     private val p3Dedicated: Boolean = false
 ) {
+    val clockFrequency: Int get() = clock
     data class DisplaySnapshot(
         val generation: Long,
         val vramData: IntArray
@@ -761,12 +762,13 @@ class E0C6200(
      * CPU instructions. Advances all timer/stopwatch/buzzer subsystems
      * correctly, as if the CPU had been HALTed for the equivalent time.
      *
-     * Used by EmulatorLoop to keep internal clocks in sync when wall-clock
-     * resync drops CPU execution time (e.g., Android throttling during idle).
+     * Does not execute firmware: multiple timer interrupts collapse to one
+     * pending bit. Never use this for realtime catch-up.
      *
      * @param ticks Number of OSC1 ticks (32768 Hz) to advance
      * @return The number of OSC1 ticks actually processed
      */
+    @Deprecated("Loses firmware timer events; execute CPU instructions to catch up")
     fun fastForwardOsc1(ticks: Long): Long {
         if (ticks <= 0) return 0
         // Safety cap: 10 minutes at 32768 Hz = 19,660,800 ticks
@@ -838,6 +840,8 @@ class E0C6200(
         "EIT" to EIT, "EISW" to EISW, "EIPT" to EIPT, "EISIO" to EISIO,
         "EIK0" to EIK0, "EIK1" to EIK1,
         "TM" to TM, "SWL" to SWL, "SWH" to SWH, "PT" to PT, "RD" to RD, "SD" to SD,
+        "OSC1_COUNTER" to osc1Counter, "TIMER_COUNTER" to timerCounter,
+        "STOPWATCH_COUNTER" to stopwatchCounter, "PTIMER_COUNTER" to ptimerCounter,
         "K0" to K0, "DFK0" to DFK0, "K1" to K1,
         "R0" to R0, "R1" to R1, "R2" to R2, "R3" to R3, "R4" to R4,
         "P0" to P0, "P1" to P1, "P2" to P2, "P3" to P3,
@@ -944,6 +948,12 @@ class E0C6200(
         LC = state["LC"] as? Int ?: 0; CTRL_BZ1 = state["CTRL_BZ1"] as? Int ?: 0
         CTRL_BZ2 = state["CTRL_BZ2"] as? Int ?: 0; CTRL_SW = state["CTRL_SW"] as? Int ?: 0
         CTRL_PT = state["CTRL_PT"] as? Int ?: 0; PTC = state["PTC"] as? Int ?: 0
+        fun phase(key: String, max: Double): Double = (state[key] as? Number)?.toDouble()
+            ?.takeIf { it.isFinite() && it >= 0.0 && it <= max } ?: 0.0
+        osc1Counter = phase("OSC1_COUNTER", osc1ClockDiv)
+        timerCounter = phase("TIMER_COUNTER", TIMER_CLOCK_DIV)
+        stopwatchCounter = phase("STOPWATCH_COUNTER", STOPWATCH_CLOCK_DIV)
+        ptimerCounter = phase("PTIMER_COUNTER", PTIMER_CLOCK_DIV.max())
         IOC = state["IOC"] as? Int ?: 0; PUP = state["PUP"] as? Int ?: 0
         sdWriteMask = 0
         lastDrivenPortValues.fill(-2)
