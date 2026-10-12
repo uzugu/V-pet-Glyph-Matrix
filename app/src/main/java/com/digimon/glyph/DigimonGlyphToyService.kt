@@ -45,6 +45,8 @@ import com.digimon.glyph.input.InputController
 import com.digimon.glyph.input.InputOverlayAnimator
 import com.digimon.glyph.widget.DigimonWidgetProvider
 import com.digimon.glyph.widget.WidgetFramePusher
+import com.digimon.glyph.owl.OwlBridge
+import com.digimon.glyph.owl.OwlProtocol
 import java.security.MessageDigest
 
 /**
@@ -110,6 +112,21 @@ class DigimonGlyphToyService : Service() {
     private var glyphManager: Any? = null  // GlyphMatrixManager, typed as Any to avoid class-load on non-Nothing
     private lateinit var stateManager: StateManager
     private var standaloneMode = false
+    private val owlBridge: OwlBridge by lazy {
+        OwlBridge(this,
+            start = {
+                ensureServiceStarted()
+                ensureWidgetRuntimeStarted()
+                FrameDebugState.snapshot().fullFrame?.let { owlBridge.publish(it) }
+            },
+            button = { key -> pressWidgetButton(when (key) {
+                "a" -> EmulatorCommandBus.BUTTON_A
+                "b" -> EmulatorCommandBus.BUTTON_B
+                else -> EmulatorCommandBus.BUTTON_C
+            }) },
+            status = { (emulatorLoop != null) to DigimonDndSettings.isFrozenNow() },
+        )
+    }
     private var emulator: E0C6200? = null
     private var emulatorLoop: EmulatorLoop? = null
     private var displayBridge: DisplayBridge? = null
@@ -221,6 +238,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onBind(intent: Intent?): IBinder? {
+        if (intent?.action == OwlProtocol.ACTION_BIND) return owlBridge.messenger.binder
         Log.d(TAG, "onBind glyphAvailable=${GlyphAvailability.isAvailable}")
         ensureServiceStarted()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -243,6 +261,10 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        if (intent?.action == OwlProtocol.ACTION_BIND) {
+            owlBridge.disconnect()
+            return false
+        }
         Log.d(TAG, "onUnbind")
         // Nothing OS may transiently unbind/rebind toy services.
         // Delay shutdown so brief binder churn does not freeze gameplay.
@@ -252,6 +274,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onRebind(intent: Intent?) {
+        if (intent?.action == OwlProtocol.ACTION_BIND) return
         Log.d(TAG, "onRebind")
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
@@ -376,6 +399,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onDestroy() {
+        owlBridge.disconnect()
         super.onDestroy()
         Log.d(TAG, "onDestroy")
         mainHandler.removeCallbacksAndMessages(null)
@@ -407,6 +431,14 @@ class DigimonGlyphToyService : Service() {
                     } else {
                         tamer
                     }
+                },
+                joinIdentityProvider = {
+                    val version = com.digimon.glyph.emulator.DigimonDatabase.resolveVersion(romName)
+                    val state = emulatorLoop?.getCurrentDigimonStateSync(romName)
+                    val fallback = (Build.MODEL ?: "android").replace(" ", "-").take(20)
+                    val tamer = BattleTransportSettings.getTamerName().ifBlank { "$fallback-${System.currentTimeMillis() % 10_000L}" }
+                    InternetBattleTransport.RelayIdentity(tamer, state?.info?.name, state?.info?.stage, version,
+                        com.digimon.glyph.emulator.DigimonDatabase.getGuideSpriteFileName(version, state?.info?.name))
                 }
             )
             BattleTransportType.SIMULATION -> {
@@ -870,6 +902,7 @@ class DigimonGlyphToyService : Service() {
             onFrame = { bitmap, vram ->
                 inputOverlayAnimator?.applyOverlay(bitmap)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
+                if (owlBridge.observed) owlBridge.publish(bridge.renderFullDebugFrame(vram))
                 val now = SystemClock.uptimeMillis()
                 val state = emu.getCurrentDigimonState(romName)
                 maybeNotifyNeedsAttention(state)

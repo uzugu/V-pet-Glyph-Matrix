@@ -6,6 +6,8 @@
     <uses-sdk tools:overrideLibrary="com.nothing.ketchum" />
 
     <queries>
+        <package android:name="dev.omalauncher.hermes" />
+        <package android:name="dev.omalauncher" />
         <package android:name="com.nothing.thirdparty" />
         <intent>
             <action android:name="com.nothing.thirdparty.bind_glyphservice" />
@@ -68,6 +70,7 @@
             android:foregroundServiceType="dataSync">
             <intent-filter>
                 <action android:name="com.nothing.glyph.TOY" />
+                <action android:name="com.digimon.glyph.OWL_BIND" />
             </intent-filter>
             <meta-data
                 android:name="com.nothing.glyph.toy.name"

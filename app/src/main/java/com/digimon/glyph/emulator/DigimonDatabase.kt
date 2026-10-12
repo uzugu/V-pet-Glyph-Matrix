@@ -19,6 +19,14 @@ data class DigimonState(
 )
 
 object DigimonDatabase {
+    /** Identity filename used by the released public battle lobby. */
+    fun getGuideSpriteFileName(version: String?, digimonName: String?): String? {
+        if (version == null || digimonName.isNullOrBlank()) return null
+        val name = digimonName.trim().lowercase(java.util.Locale.ROOT)
+        val slug = if (name == "vegimon") "vegiemon" else name.replace(Regex("[^a-z0-9]+"), "")
+        if (slug.isBlank() || slug in setOf("egg", "death")) return null
+        return "guide_${version.lowercase(java.util.Locale.ROOT)}_$slug.png"
+    }
 
     private val v1Map = mapOf(
         0 to DigimonInfo("Egg", "Egg"),

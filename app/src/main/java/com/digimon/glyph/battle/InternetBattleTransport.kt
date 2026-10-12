@@ -19,9 +19,15 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 
 /**
- * Internet relay transport over plain TCP line-delimited JSON.
+ * Internet relay over WebSocket JSON, preserving the legacy TCP transport for custom relays.
  *
  * Relay URL format examples:
  * - tcp://example.com:19792/room1
@@ -31,20 +37,28 @@ import java.util.concurrent.atomic.AtomicLong
 class InternetBattleTransport(
     context: Context,
     private val listener: BattleTransport.Listener? = null,
-    private val endpointNameProvider: (() -> String)? = null
+    private val endpointNameProvider: (() -> String)? = null,
+    private val joinIdentityProvider: (() -> RelayIdentity)? = null,
 ) : BattleTransport {
 
     private data class RelayConfig(
         val host: String,
         val port: Int,
-        val room: String
+        val room: String,
+        val websocketUrl: String? = null,
     )
+
+    data class RelayIdentity(val tamerName: String, val digimonName: String?, val digimonStage: String?, val digimonVersion: String?, val digimonSprite: String?)
 
     private data class RelayEnvelope(
         val op: String,
         val room: String? = null,
         val role: String? = null,
         val name: String? = null,
+        val digimon: String? = null,
+        val stage: String? = null,
+        val version: String? = null,
+        val sprite: String? = null,
         val type: String? = null,
         val body: String? = null,
         val timestampMs: Long? = null,
@@ -66,6 +80,8 @@ class InternetBattleTransport(
     private val ioExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val generation = AtomicLong(0L)
+    private val httpClient by lazy { OkHttpClient.Builder().connectTimeout(CONNECT_TIMEOUT_MS.toLong(), TimeUnit.MILLISECONDS).pingInterval(15, TimeUnit.SECONDS).build() }
+    @Volatile private var webSocket: WebSocket? = null
 
     @Volatile
     private var role: Role = Role.NONE
@@ -182,7 +198,7 @@ class InternetBattleTransport(
 
     private fun start(targetRole: Role): String {
         val config = parseRelayConfig(BattleTransportSettings.getRelayUrl())
-            ?: return "battle failed: invalid relay URL (expected tcp://host:port/room)"
+            ?: return "battle failed: invalid relay URL (expected wss://host/ws?room=name)"
         generation.incrementAndGet()
         cancelReconnect()
         stopKeepalive()
@@ -192,7 +208,7 @@ class InternetBattleTransport(
         role = targetRole
         relayConfig = config
         val gen = generation.get()
-        updateState(Status.CONNECTING, "Connecting relay ${config.host}:${config.port}/${config.room}")
+        updateState(Status.CONNECTING, "Connecting relay ${config.websocketUrl ?: "${config.host}:${config.port}/${config.room}"}")
         ioExecutor.execute {
             connect(gen, config, targetRole)
         }
@@ -201,6 +217,10 @@ class InternetBattleTransport(
 
     private fun connect(gen: Long, config: RelayConfig, targetRole: Role) {
         if (gen != generation.get() || role != targetRole) return
+        if (config.websocketUrl != null) {
+            connectWebSocket(gen, config, targetRole)
+            return
+        }
         try {
             val sock = Socket()
             sock.tcpNoDelay = true
@@ -245,6 +265,37 @@ class InternetBattleTransport(
             }.start()
         } catch (e: Exception) {
             onTransportDisconnected(gen, "Relay error: ${e.message ?: "unknown"}")
+        }
+    }
+
+    private fun connectWebSocket(gen: Long, config: RelayConfig, targetRole: Role) {
+        val request = runCatching { Request.Builder().url(config.websocketUrl!!).build() }.getOrElse {
+            onTransportDisconnected(gen, "Invalid relay URL: ${it.message}")
+            return
+        }
+        val socket = httpClient.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(socket: WebSocket, response: Response) {
+                if (gen != generation.get() || role != targetRole) { socket.close(1000, "stale connection"); return }
+                synchronized(this@InternetBattleTransport) { webSocket = socket; relayConnected = true }
+                updateWaitingState(config)
+                startKeepalive(gen)
+                val identity = joinIdentityProvider?.invoke()
+                sendEnvelope(RelayEnvelope(
+                    op = "join", room = config.room,
+                    role = if (targetRole == Role.HOST) "host" else "join",
+                    name = identity?.tamerName ?: endpointNameProvider?.invoke() ?: endpointName(),
+                    digimon = identity?.digimonName, stage = identity?.digimonStage,
+                    version = identity?.digimonVersion, sprite = identity?.digimonSprite,
+                    proto = "digimon-battle-v1", timestampMs = System.currentTimeMillis(),
+                ), requirePeer = false)
+            }
+            override fun onMessage(socket: WebSocket, text: String) = onRelayLine(gen, config, text)
+            override fun onClosing(socket: WebSocket, code: Int, reason: String) { socket.close(code, reason) }
+            override fun onClosed(socket: WebSocket, code: Int, reason: String) = onTransportDisconnected(gen, "Relay closed connection ($code)")
+            override fun onFailure(socket: WebSocket, t: Throwable, response: Response?) = onTransportDisconnected(gen, "Relay error: ${t.message}")
+        })
+        synchronized(this) {
+            if (gen == generation.get() && role == targetRole) webSocket = socket else socket.cancel()
         }
     }
 
@@ -339,6 +390,12 @@ class InternetBattleTransport(
 
     private fun sendEnvelope(envelope: RelayEnvelope, requirePeer: Boolean): Boolean {
         if (requirePeer && connectedPeerName == null) return false
+        if (relayConfig?.websocketUrl != null) {
+            val payload = runCatching { gson.toJson(envelope) }.getOrNull() ?: return false
+            val accepted = webSocket?.send(payload) ?: return false
+            if (!accepted) onTransportDisconnected(generation.get(), "Relay send queue rejected message")
+            return accepted
+        }
         
         ioExecutor.execute {
             val payload = runCatching { gson.toJson(envelope) }.getOrNull()
@@ -416,6 +473,9 @@ class InternetBattleTransport(
 
     @Synchronized
     private fun closeSocket() {
+        val ws = webSocket
+        webSocket = null
+        if (ws != null && !ws.close(1000, "client stopped")) ws.cancel()
         runCatching { writer?.close() }
         writer = null
         runCatching { socket?.close() }
@@ -433,6 +493,11 @@ class InternetBattleTransport(
         if (raw.isEmpty()) {
             updateState(Status.ERROR, "Internet relay URL is empty")
             return null
+        }
+        if (!raw.startsWith("tcp://")) {
+            val ws = RelayEndpoint.websocket(raw, BattleTransportSettings.getLobbyName(appContext))
+                ?: return null
+            return RelayConfig(host = "", port = 443, room = ws.room, websocketUrl = ws.url)
         }
         val prefixed =
             if (raw.contains("://")) raw

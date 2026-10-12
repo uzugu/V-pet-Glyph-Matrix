@@ -11,8 +11,8 @@ android {
         applicationId = "com.digimon.glyph"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 4
+        versionName = "1.3-owl.1"
     }
 
     buildTypes {
@@ -42,11 +42,13 @@ android {
 dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:4.11.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     implementation(files("libs/glyph-matrix-sdk-1.0.aar"))
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.google.android.gms:play-services-nearby:19.3.0")
     implementation("com.google.code.gson:gson:2.11.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.caverock:androidsvg-aar:1.4")
 }

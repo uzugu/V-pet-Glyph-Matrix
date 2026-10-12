@@ -22,7 +22,7 @@ object BattleTransportSettings {
     private const val PREFS_NAME = "battle_transport_settings"
     private const val KEY_TRANSPORT_TYPE = "transport_type"
     private const val KEY_RELAY_URL = "relay_url"
-    private const val DEFAULT_RELAY_URL = "tcp://109.224.229.205:19792/auto"
+    private const val DEFAULT_RELAY_URL = "wss://vpet.uzucloud.moe/ws?room=auto"
     private const val KEY_SIMULATION_PRESET = "simulation_preset"
     private const val KEY_TAMER_NAME = "tamer_name"
     private const val KEY_LOBBY_NAME = "lobby_name"

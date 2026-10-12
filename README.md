@@ -191,3 +191,23 @@ adb shell dumpsys batterystats com.digimon.glyph
 - Kotlin
 - Android SDK / Gradle
 - Nothing Glyph Matrix SDK (`app/libs/glyph-matrix-sdk-1.0.aar`)
+
+## Native OWL widget (preview)
+
+Install the matching Omalauncher Hermes OWL preview and this app's OWL preview,
+then load your existing ROM in V-pet. The launcher's bundled `digivice` widget
+is on home page 2. Tap its LCD to open the larger native OWL screen.
+
+The LCD pixels and indicators use the current launcher theme; A/B/C buttons
+control this app's existing emulator. Frames are pushed through an explicit
+Android Messenger service at the emulator's selected frame rate, without HTTP,
+Linux, a NAS, or a separate emulator. The phone app retains all ROMs and saves.
+DND freezes are respected. The launcher stops listening when no active V-pet
+widget needs frames, and slow receivers skip stale frames rather than queueing.
+
+Bridge protocol 1: bind action `com.digimon.glyph.OWL_BIND` on
+`com.digimon.glyph.DigimonGlyphToyService`. Only `dev.omalauncher.hermes` and
+`dev.omalauncher` are accepted. Versioned `SUBSCRIBE`, `UNSUBSCRIBE`, `BUTTON`
+and frame `ACK` messages use a reply Messenger. Frame payloads contain bounded
+ASCII pixel rows (`p` LCD, `i` active indicator, `d` inactive indicator), display
+size and ready/frozen state. ROM, RAM and saved-game data are not exposed.
