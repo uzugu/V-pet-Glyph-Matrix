@@ -60,6 +60,8 @@ Preview 5 replaces speaker-tone approximation with two-channel 48 kHz PCM, inclu
 
 For the follow-up functional audit and current verification, see [functional fixes](../ui/functional-fixes-2026-10-23.md).
 
-Optional [D-Arc-style Glyph clock](clock.md): enable the saved clock-header toggle in D-Power controls.
+Optional [D-Arc-style Glyph clock](clock.md): enable the saved Glyph clock toggle in D-Power controls.
 
 Preview 4 fixes D-Power display proportions. Switching fit modes refreshes static LCDs immediately and does not change emulation speed or firmware state.
+
+Preview 6 renders the exact NanoFont 3×4 digits at one LED per pixel below the LCD, avoiding the circular top edge.

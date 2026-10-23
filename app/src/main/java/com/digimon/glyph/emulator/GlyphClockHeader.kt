@@ -1,12 +1,12 @@
 package com.digimon.glyph.emulator
 
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
 import java.util.Calendar
 
-/** Same compact HHMM header as d-arc-glyph's DPowerRenderer, in LED-on polarity. */
+/** NanoFont 3x4 digits by Michaelangel007, one LED per font pixel.
+ * Source/provenance: docs/glyph/nanofont.md. Ink occupies 3 rows; fourth row is blank.
+ */
 object GlyphClockHeader {
     private val digits = arrayOf(
         arrayOf("010", "101", "010"), arrayOf("100", "010", "010"),
@@ -20,7 +20,7 @@ object GlyphClockHeader {
         return buildList {
             listOf(hour / 10, hour % 10, minute / 10, minute % 10).forEachIndexed { index, digit ->
                 digits[digit].forEachIndexed { y, row ->
-                    row.forEachIndexed { x, value -> if (value == '1') add((5 + index * 4 + x) to y) }
+                    row.forEachIndexed { x, value -> if (value == '1') add((5 + index * 4 + x) to (20 + y)) }
                 }
             }
         }
@@ -35,14 +35,9 @@ object GlyphClockHeader {
     }
     fun draw(bitmap: Bitmap) {
         val now = Calendar.getInstance()
-        val canvas = Canvas(bitmap)
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
-        // Clip to the four spare rows: the ROM's LCD starts at y=4.
-        canvas.save()
-        canvas.clipRect(0, 0, 25, 4)
+        // LCD occupies rows 4..19. Rows 20..22 fit the circular lower margin.
         for ((x, y) in points(now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))) {
-            canvas.drawCircle(x.toFloat(), y.toFloat(), 1.2f, paint)
+            bitmap.setPixel(x, y, Color.WHITE)
         }
-        canvas.restore()
     }
 }
