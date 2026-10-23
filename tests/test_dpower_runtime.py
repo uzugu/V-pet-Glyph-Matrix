@@ -20,7 +20,9 @@ class DPowerTests(unittest.TestCase):
             cycles += adapted.advance()
         ref_cycles = 0
         while ref_cycles < cycles:
-            ref_cycles += reference.core.clock()
+            elapsed = reference.core.clock()
+            reference.bus.advance_audio(elapsed)
+            ref_cycles += elapsed
         self.assertEqual(cycles, ref_cycles)
         self.assertEqual(adapted.snapshot(), reference.snapshot())
         self.assertEqual(512, len(adapted.display()))
@@ -45,6 +47,24 @@ class DPowerTests(unittest.TestCase):
             self.assertEqual(original.advance(), restored.advance())
         self.assertEqual(original.snapshot(), restored.snapshot())
         self.assertEqual(original.display(), restored.display())
+
+    def test_pcm_restore_and_legacy_snapshot(self):
+        original = Runtime(ROM)
+        for _ in range(300): original.advance()
+        original.drain_pcm()
+        saved = original.snapshot()
+        restored = Runtime(ROM); restored.restore(saved)
+        original.drain_pcm()
+        for _ in range(30):
+            original.advance(); restored.advance()
+            self.assertEqual(original.drain_pcm(), restored.drain_pcm())
+        legacy = json.loads(saved); legacy['schema'] = 1; del legacy['pcm']
+        restored.restore(json.dumps(legacy))
+        self.assertEqual(json.loads(saved)['fields'], json.loads(restored.snapshot())['fields'])
+        invalid = json.loads(saved); invalid['pcm']['phase'][0] = -1
+        before = restored.snapshot()
+        with self.assertRaises(ValueError): restored.restore(json.dumps(invalid))
+        self.assertEqual(before, restored.snapshot())
 
     def test_every_display_segment_uses_one_bit(self):
         runtime = Runtime(ROM)

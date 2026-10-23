@@ -148,6 +148,7 @@ class DigimonGlyphToyService : Service() {
     private var lastDebugFramePublishMs: Long = 0L
     private var lastHandledCommandId: Long = 0L
     private var audioEngine: BuzzerAudioEngine? = null
+    private var dpowerAudioEngine: com.digimon.glyph.audio.DPowerPcmEngine? = null
     private var hapticEngine: BuzzerHapticEngine? = null
     private var lastAudioEnabled = false
     private var lastHapticEnabled = false
@@ -900,15 +901,23 @@ class DigimonGlyphToyService : Service() {
             renderer = null
         }
 
-        val audio = BuzzerAudioEngine()
-        audio.start()
+        val audio = if (emu is com.digimon.glyph.emulator.DPowerCore) null else BuzzerAudioEngine()
+        audio?.start()
+        if (emu is com.digimon.glyph.emulator.DPowerCore) {
+            val pcm = com.digimon.glyph.audio.DPowerPcmEngine()
+            pcm.start()
+            pcm.setEnabled(EmulatorAudioSettings.isAudioEnabled())
+            emu.onPcm = pcm::submit
+            emu.onAudioReset = pcm::flush
+            dpowerAudioEngine = pcm
+        }
         lastAudioEnabled = EmulatorAudioSettings.isAudioEnabled()
-        audio.setEnabled(lastAudioEnabled)
+        audio?.setEnabled(lastAudioEnabled)
         val haptic = BuzzerHapticEngine(this)
         lastHapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
         haptic.setEnabled(lastHapticEnabled)
         emu.onBuzzerChange = { on, freqHz, gain ->
-            audio.onBuzzerChange(on, freqHz, gain)
+            audio?.onBuzzerChange(on, freqHz, gain)
             haptic.onBuzzerChange(on, freqHz, gain)
         }
         emu.onSerialTx = { value ->
@@ -1149,6 +1158,9 @@ class DigimonGlyphToyService : Service() {
         emulator?.onSerialTx = null
         emulator?.onPortDriveChange = null
         emulator?.onIoAccess = null
+        (emulator as? com.digimon.glyph.emulator.DPowerCore)?.let { it.onPcm = null; it.onAudioReset = null }
+        dpowerAudioEngine?.stop()
+        dpowerAudioEngine = null
         audioEngine?.stop()
         audioEngine = null
         hapticEngine?.stop()
@@ -1496,6 +1508,7 @@ class DigimonGlyphToyService : Service() {
         if (force || audioEnabled != lastAudioEnabled) {
             lastAudioEnabled = audioEnabled
             audioEngine?.setEnabled(audioEnabled)
+            dpowerAudioEngine?.setEnabled(audioEnabled)
         }
         if (force || hapticEnabled != lastHapticEnabled) {
             lastHapticEnabled = hapticEnabled

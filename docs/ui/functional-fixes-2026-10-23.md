@@ -28,5 +28,5 @@ Build `testDebugUnitTest assembleDebug lintDebug` with JDK 17. No ROM bytes are 
 - Synchronous service commands wait for the actual result once execution begins. Their deadline bounds queue wait, not disk/core execution. Slow storage can still block the service main thread; asynchronous command completion needs a separate lifecycle design. The loop's bounded shutdown join also needs stress testing against blocked work.
 - A failed autosave restore still starts a fresh core; recovery/quarantine before subsequent overwrite remains an unresolved data-recovery defect.
 - No offline clock replay after process death; Stop and DND Freeze pause simulation intentionally. Ten-minute CPU tests do not establish long-running Android wall-clock performance.
-- D-Power sound remains a tone approximation; link battles and decoded pet statistics are unavailable. Some advanced UI labels and section headings still need a visual/localisation pass.
+- Preview 5 replaces D-Power speaker approximation with two-channel PCM; physical audio fidelity still needs validation. Link battles and decoded pet statistics are unavailable. Some advanced UI labels and section headings still need a visual/localisation pass.
 - Lint warnings remain; passing lint means no fatal errors, not a warning-free or accessibility-certified app.

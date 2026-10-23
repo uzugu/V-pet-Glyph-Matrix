@@ -20,7 +20,7 @@ Import a BIN or ZIP. Multiple supported BINs in a ZIP are offered for explicit s
 
 Import stages the ROM and asks the running service to save the previous pet before replacing it. ROM bytes are written with AtomicFile. Known-device names are derived from the hash when loading, so stale display-name files cannot select the wrong core. Snapshots remain isolated by ROM hash.
 
-D-Power snapshots use schema 1, bind to the firmware hash, and preserve all scalar/dictionary machine state, mutable RAM/LCD RAM, fractional timer state, sound envelopes and audio output state. Restore validates into a fresh core before replacing the active instance. The JSON payload is stored as an opaque string by the existing save manager; fractional values therefore bypass its legacy scalar conversion. Classic snapshots now write schema 2 with full timer/control and buzzer runtime; legacy snapshots remain readable.
+D-Power snapshots use schema 2 (schema 1 remains readable), bind to the firmware hash, and preserve all scalar/dictionary machine state, mutable RAM/LCD RAM, fractional timer state, sound envelopes, channel output and PCM phase/partial-sample state. Restore validates into a fresh core before replacing the active instance. The JSON payload is stored as an opaque string by the existing save manager; fractional values therefore bypass its legacy scalar conversion. Classic snapshots now write schema 2 with full timer/control and buzzer runtime; legacy snapshots remain readable.
 
 ## Implementation
 
@@ -56,7 +56,7 @@ Local verification on 2026-10-23: debug APK and lint passed (lint retains warnin
 
 This is a build-tested preview, not a phone-validated release. No Nothing Phone was connected during implementation, and no Android emulator was installed. Kotlin/CPython interoperability, sustained phone speed, battery usage, gestures and Glyph output still need on-device validation.
 
-Audio currently forwards the strongest tone channel to the existing buzzer/haptic synthesizer at 10 ms intervals. Two-channel PCM mixing is not implemented; sound is not claimed hardware-accurate. D-Power link battles and decoded pet statistics/evolution metadata are unavailable. DND Freeze and explicit Stop pause simulation. An explicitly app-started pet can continue after a Glyph toy unbind; this does not add offline time recovery after process death.
+Preview 5 replaces speaker-tone approximation with two-channel 48 kHz PCM, including signed direct samples and upstream sine tones. Haptic feedback still uses a strongest-tone approximation. See [audio implementation and limits](audio.md); original-speaker accuracy is not claimed. D-Power link battles and decoded pet statistics/evolution metadata are unavailable. DND Freeze and explicit Stop pause simulation. An explicitly app-started pet can continue after a Glyph toy unbind; this does not add offline time recovery after process death.
 
 For the follow-up functional audit and current verification, see [functional fixes](../ui/functional-fixes-2026-10-23.md).
 

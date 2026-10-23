@@ -5,6 +5,7 @@ import json
 import math
 from pathlib import Path
 from brickemu.GPL191X import GPL191X
+from dpower_audio import Mixer
 
 ROM_SHA256 = 'f1f0a92bdcbd87514b7c981ca126713ee7e050ec262fcbfe90e75d2e1bc852ca'
 LCD = json.loads(Path(__file__).with_name('dpower_lcd.json').read_text())
@@ -12,12 +13,22 @@ LCD = json.loads(Path(__file__).with_name('dpower_lcd.json').read_text())
 class Bus:
     def __init__(self):
         self.audio = [None, None]
+        self.mixer = Mixer()
+        self.pending_cycles = 0.0
     def register_port_device(self, device):
         pass
     def emit_port(self, *args):
         pass  # Link support is deliberately unavailable for this device.
     def emit_audio(self, channel, value):
+        self.flush_audio()
         self.audio[channel] = value
+        self.mixer.change(channel, value)
+    def advance_audio(self, cycles):
+        self.pending_cycles += cycles
+    def flush_audio(self):
+        if self.pending_cycles:
+            self.mixer.advance(self.pending_cycles)
+            self.pending_cycles = 0.0
 
 class Runtime:
     def __init__(self, rom_path):
@@ -32,7 +43,9 @@ class Runtime:
         # At most roughly 1 ms of emulated time per JNI/Python boundary.
         cycles = 0.0
         while cycles < 2200:
-            cycles += self.core.clock()
+            elapsed = self.core.clock()
+            self.bus.advance_audio(elapsed)
+            cycles += elapsed
         return cycles
 
     def display(self):
@@ -54,8 +67,12 @@ class Runtime:
         replacement = Runtime(self.path)
         self.core, self.bus = replacement.core, replacement.bus
 
+    def drain_pcm(self):
+        self.bus.flush_audio()
+        return self.bus.mixer.drain()
+
     def audio(self):
-        # Existing Android buzzer is a tone synthesizer, not a two-channel PCM mixer.
+        # Approximate strongest tone for haptic feedback only; speaker audio uses drain_pcm.
         tones = [v for v in self.bus.audio if v and v[0] > 0]
         if not tones:
             return [0.0, 0.0]
@@ -67,7 +84,8 @@ class Runtime:
                 if isinstance(v, (int, float, dict, list)) and k != '_sfr_tbl'}
 
     def snapshot(self):
-        return json.dumps({'schema': 1, 'rom': ROM_SHA256,
+        self.bus.flush_audio()
+        return json.dumps({'schema': 2, 'pcm': self.bus.mixer.state(), 'rom': ROM_SHA256,
             'fields': self._fields(),
             'ram': base64.b64encode(self.core._mem[0x40:0x380]).decode('ascii'),
             'sound': {'envelope': self.core._sound._envelope,
@@ -78,7 +96,9 @@ class Runtime:
         if len(payload) > 32768:
             raise ValueError('Snapshot too large')
         state = json.loads(payload)
-        if set(state) != {'schema','rom','fields','ram','sound','audio'} or state['schema'] != 1 or state['rom'] != ROM_SHA256:
+        expected = {'schema','rom','fields','ram','sound','audio'}
+        if state.get('schema') == 2: expected.add('pcm')
+        if set(state) != expected or state['schema'] not in (1, 2) or state['rom'] != ROM_SHA256:
             raise ValueError('Incompatible snapshot')
         fresh = Runtime(self.path)
         # Validate the entire structure against this pinned core before mutation.
@@ -130,4 +150,6 @@ class Runtime:
         fresh.core._sound._envelope = state['sound']['envelope']
         fresh.core._sound._toggle_state = state['sound']['toggle']
         fresh.bus.audio = audio
+        fresh.bus.mixer.channels = audio[:]
+        if state['schema'] == 2: fresh.bus.mixer.restore(state['pcm'])
         self.core, self.bus = fresh.core, fresh.bus

@@ -17,6 +17,8 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     @Synchronized fun step(): Boolean = steps.enqueue()
     private var generation = 0L
     private var previous = IntArray(0)
+    var onPcm: ((ByteArray) -> Unit)? = null
+    var onAudioReset: (() -> Unit)? = null
     private var audioPoll = 0
     private var lastTone = Pair(0, 0f)
 
@@ -34,6 +36,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
         steps.advance(cycles.toInt()) { pressed -> runtime.callAttr("pin", "CD", 1, if (pressed) 1 else -1) }
         if (++audioPoll >= 10) {
             audioPoll = 0
+            onPcm?.invoke(runtime.callAttr("drain_pcm").toJava(ByteArray::class.java))
             val tone = runtime.callAttr("audio").asList()
             val next = Pair(tone[0].toDouble().toInt(), tone[1].toDouble().toFloat().coerceIn(0f, 1f))
             if (next != lastTone) {
@@ -61,13 +64,15 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
                 (state["STEP_REMAINING"] as? Number)?.toInt() ?: 0)
         }
         runtime.callAttr("restore", state["DPOWER_SNAPSHOT"] as? String ?: error("Missing D-Power snapshot"))
+        onAudioReset?.invoke()
+        audioPoll = 0
         steps.restore(checked.pending, checked.phase, checked.remaining)
         previous = IntArray(0)
         lastTone = Pair(-1, -1f)
     }
     override fun getDiagnostics(): Map<String, Any> = mapOf("core" to "SPL61X")
     override fun getCurrentDigimonState(romName: String?): DigimonState? = null
-    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
+    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); onAudioReset?.invoke(); audioPoll = 0; steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
     @Synchronized override fun pinSet(port: String, pin: Int, level: Int) {
         // Existing three-button Glyph surface: A=left, B=up, C=right.
         if (port == "K0") {
