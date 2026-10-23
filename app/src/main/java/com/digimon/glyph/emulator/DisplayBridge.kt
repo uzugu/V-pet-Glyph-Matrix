@@ -131,6 +131,7 @@ class DisplayBridge {
         if (vramData.size != 512) renderMenuDots(pixels, menuStates)
 
         bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
+        if (vramData.size == 512 && DisplayRenderSettings.isDPowerClockEnabled()) GlyphClockHeader.draw(bitmap)
         return bitmap
     }
 

@@ -25,6 +25,7 @@ class EmulatorLoop(
     private val emulator: EmulatorCore,
     private val onFrame: (IntArray) -> Unit,
     private val elapsedNs: () -> Long = { SystemClock.elapsedRealtimeNanos() },
+    private val displayRevision: () -> Long = { 0L },
 ) {
     var onFailure: ((Throwable) -> Unit)? = null
     var onVirtualTick: ((Double) -> Unit)? = null
@@ -169,6 +170,7 @@ class EmulatorLoop(
         var nextFrameNs = startNs
         var lastDriftLogNs = startNs
         var lastDisplayGeneration = Long.MIN_VALUE
+        var lastDisplayRevision = Long.MIN_VALUE
         var lastMode = timingMode
 
         while (running) {
@@ -211,6 +213,9 @@ class EmulatorLoop(
 
             nowNs = elapsedNs()
             if (nowNs >= nextFrameNs || (stepGateActive && stepUsedNs > 0)) {
+                val revision = displayRevision()
+                if (revision != lastDisplayRevision) lastDisplayGeneration = Long.MIN_VALUE
+                lastDisplayRevision = revision
                 val snapshot = emulator.getDisplaySnapshot(lastDisplayGeneration)
                 if (snapshot != null) {
                     lastDisplayGeneration = snapshot.generation

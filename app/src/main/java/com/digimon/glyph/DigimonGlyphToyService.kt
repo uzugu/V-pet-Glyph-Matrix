@@ -1022,6 +1022,9 @@ class DigimonGlyphToyService : Service() {
 
         val loop = EmulatorLoop(
             emulator = emu,
+            displayRevision = {
+                if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.GlyphClockHeader.currentRevision() else 0L
+            },
             onFrame = { vram ->
                 val bitmap = bridge.renderFrame(vram)
                 inputOverlayAnimator?.applyOverlay(bitmap)

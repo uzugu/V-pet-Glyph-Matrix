@@ -38,4 +38,6 @@ Step simulates one step; it is not an automatic pedometer. Sound is a simplified
     <string name="walking_help">Walking steps use your phone’s step detector to press the emulated Step input. Counts only while D-Power is running; Stop and DND Freeze pause it. Keep the pet started for screen-off walking. No past steps are imported.</string>
     <string name="walking_unavailable">No step detector is available. Use the manual Step button or Glyph hold-and-flick.</string>
     <string name="walking_permission_denied">Walking steps need Physical activity permission. Manual Step still works.</string>
+    <string name="dpower_clock">Glyph clock header</string>
+    <string name="dpower_clock_help">Show the phone’s local time in 24-hour format above the D-Power LCD, like the D-Arc app. Visible on every game screen while enabled; does not set the ROM’s clock.</string>
 </resources>

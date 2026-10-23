@@ -59,3 +59,5 @@ This is a build-tested preview, not a phone-validated release. No Nothing Phone 
 Audio currently forwards the strongest tone channel to the existing buzzer/haptic synthesizer at 10 ms intervals. Two-channel PCM mixing is not implemented; sound is not claimed hardware-accurate. D-Power link battles and decoded pet statistics/evolution metadata are unavailable. DND Freeze and explicit Stop pause simulation. An explicitly app-started pet can continue after a Glyph toy unbind; this does not add offline time recovery after process death.
 
 For the follow-up functional audit and current verification, see [functional fixes](../ui/functional-fixes-2026-10-23.md).
+
+Optional [D-Arc-style Glyph clock](clock.md): enable the saved clock-header toggle in D-Power controls.

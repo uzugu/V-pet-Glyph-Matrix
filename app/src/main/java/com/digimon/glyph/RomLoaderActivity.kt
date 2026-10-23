@@ -1721,6 +1721,12 @@ class RomLoaderActivity : AppCompatActivity() {
         if (!EmulatorStatus.snapshot().isDPower) return
         val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(12)) }
         panel.addView(TextView(this).apply { text = getString(R.string.dpower_gesture_help) })
+        panel.addView(androidx.appcompat.widget.SwitchCompat(this).apply {
+            text = getString(R.string.dpower_clock)
+            isChecked = DisplayRenderSettings.isDPowerClockEnabled()
+            setOnCheckedChangeListener { _, checked -> DisplayRenderSettings.setDPowerClockEnabled(this@RomLoaderActivity, checked) }
+        })
+        panel.addView(TextView(this).apply { text = getString(R.string.dpower_clock_help) })
         panel.addView(TextView(this).apply { text = getString(R.string.walking_help) })
         walkingButton = Button(this).apply {
             isEnabled = com.digimon.glyph.input.WalkingInput.available(this@RomLoaderActivity)
