@@ -70,6 +70,7 @@ import java.util.zip.ZipInputStream
  * After loading, the ROM is saved to internal storage for the Glyph Toy service to use.
  */
 class RomLoaderActivity : AppCompatActivity() {
+    private var updatingRenderSwitch = false
     private var walkingButton: Button? = null
     private val walkingPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
         com.digimon.glyph.input.WalkingInput.setEnabled(this, granted)
@@ -377,7 +378,9 @@ class RomLoaderActivity : AppCompatActivity() {
 
         switchZoom.isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
         switchZoom.setOnCheckedChangeListener { _, isChecked ->
-            DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
+            if (updatingRenderSwitch) return@setOnCheckedChangeListener
+            if (EmulatorStatus.snapshot().isDPower) DisplayRenderSettings.setDPowerFitEnabled(this@RomLoaderActivity, isChecked)
+            else DisplayRenderSettings.setTextZoomOutEnabled(this@RomLoaderActivity, isChecked)
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
@@ -736,7 +739,10 @@ class RomLoaderActivity : AppCompatActivity() {
             if (status.importing in listOf(EmulatorStatus.Import.SCANNING, EmulatorStatus.Import.CHOOSING)) View.VISIBLE else View.GONE
         findViewById<Button>(R.id.btn_dpower_controls).visibility = if (status.isDPower) View.VISIBLE else View.GONE
         findViewById<Switch>(R.id.switch_zoom).apply {
-            isEnabled = !status.isDPower
+            isEnabled = true
+            updatingRenderSwitch = true
+            isChecked = if (status.isDPower) DisplayRenderSettings.isDPowerFitEnabled() else DisplayRenderSettings.isTextZoomOutEnabled()
+            updatingRenderSwitch = false
             text = getString(if (status.isDPower) R.string.dpower_fit else R.string.auto_fit)
         }
         val classic = status.name != null && !status.isDPower

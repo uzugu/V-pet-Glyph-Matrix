@@ -12,7 +12,7 @@
     <string name="glyph_disconnected">Glyph disconnected — open this toy in Nothing Glyph Toys</string>
     <string name="glyph_output_error">Glyph output failed — reconnect the toy</string>
     <string name="auto_fit">Automatically fit wide screens</string>
-    <string name="dpower_fit">Full D-Power LCD fitted to Glyph</string>
+    <string name="dpower_fit">Fit full LCD (smaller, correct proportions)</string>
     <string name="classic_help">Classic V-pet guide</string>
     <string name="reset_pet">Reset this pet</string>
     <string name="reset_pet_message">Reset %1$s? This starts a new pet and replaces its autosave. Manual save slots are kept.</string>
@@ -20,6 +20,7 @@
     <string name="back_up_hint">Save to a manual slot below, then reset when you are ready.</string>
     <string name="controls_frozen">Paused by quiet hours. Controls resume when the pet resumes.</string>
     <string name="dpower_gesture_help">Play on the Glyph Matrix.
+Normal view keeps original pixels and crops the sides. Enable Fit full LCD to see the whole screen at a smaller size.
 
 Flick left or right: Left / Right.
 Move toward or away from you: Up / Down.

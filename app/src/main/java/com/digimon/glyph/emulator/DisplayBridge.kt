@@ -120,9 +120,10 @@ class DisplayBridge {
             zoomOutActive = false
             zoomOutHoldFrames = 0
         }
-        val useZoomOut = vramData.size == 512 || (autoZoomEnabled && shouldUseZoomOut())
+        val useZoomOut = if (vramData.size == 512) DisplayRenderSettings.isDPowerFitEnabled()
+            else autoZoomEnabled && shouldUseZoomOut()
         if (useZoomOut) {
-            renderZoomedOutGameArea(pixels)
+            if (vramData.size == 512) renderProportionalGameArea(pixels) else renderZoomedOutGameArea(pixels)
         } else {
             renderCroppedGameArea(pixels)
         }
@@ -182,6 +183,14 @@ class DisplayBridge {
                 if (lcdPixels[row][srcCol]) {
                     pixels[outY * GLYPH_SIZE + col] = PIXEL_ON
                 }
+            }
+        }
+    }
+
+    private fun renderProportionalGameArea(pixels: IntArray) {
+        for (y in 0 until 11) for (x in 0 until 22) {
+            if (lcdPixels[LcdFit.sourceY(y)][LcdFit.sourceX(x)]) {
+                pixels[(y + 7) * GLYPH_SIZE + x + 1] = PIXEL_ON
             }
         }
     }

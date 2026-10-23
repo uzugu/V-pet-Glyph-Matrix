@@ -2,7 +2,7 @@
 
 This preview adds the user-supplied 96 KiB D-Power EU 1.01 firmware to the original Android Glyph app. It is not a Japanese D-Ark profile. No ROM is bundled.
 
-The **Nothing Phone Glyph Matrix is the primary display**. The mapped 32×16 LCD runs through the existing 25×25 Glyph renderer, using full-width fit for D-Power so side columns are not cropped. The fit combines horizontal pixels, so it cannot retain the source LCD's full resolution. Phone previews and controls are optional setup/diagnostic tools.
+The **Nothing Phone Glyph Matrix is the primary display**. The 32×16 LCD uses a native-pixel centre crop by default, matching the earlier D-Arc app without squeezing sprites. Optional “Fit full LCD” scales both axes equally to 22×11 inside the circular Matrix; it shows both edges but loses fine detail. The previous 21×16 horizontal-only squeeze is removed for D-Power. Phone previews and controls are optional setup/diagnostic tools.
 
 ## Play using the Glyph surface
 
@@ -61,3 +61,5 @@ Audio currently forwards the strongest tone channel to the existing buzzer/hapti
 For the follow-up functional audit and current verification, see [functional fixes](../ui/functional-fixes-2026-10-23.md).
 
 Optional [D-Arc-style Glyph clock](clock.md): enable the saved clock-header toggle in D-Power controls.
+
+Preview 4 fixes D-Power display proportions. Switching fit modes refreshes static LCDs immediately and does not change emulation speed or firmware state.
