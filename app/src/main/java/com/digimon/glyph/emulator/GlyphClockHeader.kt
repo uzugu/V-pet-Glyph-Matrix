@@ -20,7 +20,7 @@ object GlyphClockHeader {
         return buildList {
             listOf(hour / 10, hour % 10, minute / 10, minute % 10).forEachIndexed { index, digit ->
                 digits[digit].forEachIndexed { y, row ->
-                    row.forEachIndexed { x, value -> if (value == '1') add((5 + index * 4 + x) to (20 + y)) }
+                    row.forEachIndexed { x, value -> if (value == '1') add((9 + (index % 2) * 4 + x) to ((if (index < 2) 0 else 21) + y)) }
                 }
             }
         }
@@ -35,7 +35,7 @@ object GlyphClockHeader {
     }
     fun draw(bitmap: Bitmap) {
         val now = Calendar.getInstance()
-        // LCD occupies rows 4..19. Rows 20..22 fit the circular lower margin.
+        // LCD occupies rows 4..19. Hours use rows 0..2; minutes use 21..23.
         for ((x, y) in points(now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))) {
             bitmap.setPixel(x, y, Color.WHITE)
         }

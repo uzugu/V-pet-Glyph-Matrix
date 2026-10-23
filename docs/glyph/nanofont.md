@@ -7,3 +7,5 @@ The digit patterns already present in the sibling D-Arc app and this app match t
 Preview 6 renders each lit font cell as exactly one white bitmap pixel, removing 1.2-pixel-radius antialiased circles. Four digits plus one-column gaps occupy 15 columns, x=5..19. Ink is placed at y=20..22, below the native LCD at y=4..19. The spare lower margin accommodates the clock inside the circular Matrix; a centred 15-wide font at y=0 would encounter the physical top-edge mask.
 
 Tests compare all ten digits with the canonical upstream hex patterns and check every HHMM combination stays below the LCD and inside the nominal 25×25 circular footprint. Physical LED readability remains subject to phone testing.
+
+Preview 7 splits the display: hours at x=9..15, y=0..2; minutes at x=9..15, y=21..23. Each pair spans seven columns and fits the circular edges. The LCD remains at y=4..19, with a blank row between it and each pair. All 1,440 times are checked for bounds, and tests verify changing minutes leaves the upper band unchanged. This build does not include the separate, unshipped thermal-investigation changes.
