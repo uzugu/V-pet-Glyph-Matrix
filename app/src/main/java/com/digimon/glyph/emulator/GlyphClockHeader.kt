@@ -1,7 +1,6 @@
 package com.digimon.glyph.emulator
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import java.util.Calendar
 
 /** NanoFont 3x4 digits by Michaelangel007, one LED per font pixel.
@@ -37,7 +36,7 @@ object GlyphClockHeader {
         val now = Calendar.getInstance()
         // LCD occupies rows 4..19. Hours use rows 0..2; minutes use 21..23.
         for ((x, y) in points(now.get(Calendar.HOUR_OF_DAY), now.get(Calendar.MINUTE))) {
-            bitmap.setPixel(x, y, Color.WHITE)
+            bitmap.setPixel(x, y, DPowerOptions.brightness.clockColor)
         }
     }
 }

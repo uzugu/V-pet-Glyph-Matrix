@@ -13,6 +13,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     override var onPortDriveChange: ((String, Int?) -> Unit)? = null
     override var onIoAccess: ((Boolean, Int, Int) -> Unit)? = null
     private val runtime: com.chaquo.python.PyObject
+    private val autoStepper = com.digimon.glyph.input.AutoStepper()
     private val steps = com.digimon.glyph.input.StepPulses()
     @Synchronized fun step(): Boolean = steps.enqueue()
     private var generation = 0L
@@ -24,6 +25,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
 
     init {
         require(RomCatalog.identify(rom).isDPower)
+        DPowerOptions.init(context)
         synchronized(Python::class.java) {
             if (!Python.isStarted()) Python.start(AndroidPlatform(context.applicationContext))
         }
@@ -33,6 +35,8 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     }
     @Synchronized override fun clock(): Double {
         val cycles = runtime.callAttr("advance").toDouble()
+        if (autoStepper.advance(cycles, DPowerOptions.autoStepEnabled, DPowerOptions.halfStepsPerSecond)
+            && steps.pending == 0 && steps.phase != 1) steps.enqueue()
         steps.advance(cycles.toInt()) { pressed -> runtime.callAttr("pin", "CD", 1, if (pressed) 1 else -1) }
         if (++audioPoll >= 10) {
             audioPoll = 0
@@ -64,6 +68,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
                 (state["STEP_REMAINING"] as? Number)?.toInt() ?: 0)
         }
         runtime.callAttr("restore", state["DPOWER_SNAPSHOT"] as? String ?: error("Missing D-Power snapshot"))
+        autoStepper.reset()
         onAudioReset?.invoke()
         audioPoll = 0
         steps.restore(checked.pending, checked.phase, checked.remaining)
@@ -72,7 +77,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     }
     override fun getDiagnostics(): Map<String, Any> = mapOf("core" to "SPL61X")
     override fun getCurrentDigimonState(romName: String?): DigimonState? = null
-    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); onAudioReset?.invoke(); audioPoll = 0; steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
+    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); autoStepper.reset(); onAudioReset?.invoke(); audioPoll = 0; steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
     @Synchronized override fun pinSet(port: String, pin: Int, level: Int) {
         // Existing three-button Glyph surface: A=left, B=up, C=right.
         if (port == "K0") {

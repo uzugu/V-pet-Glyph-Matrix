@@ -44,7 +44,13 @@ class InputOverlayAnimator {
      * Called from the emulator thread on every frame (~15 FPS).
      * No-op when not animating.
      */
-    fun applyOverlay(bitmap: Bitmap) {
+    private var renderColor = CIRCLE_COLOR
+    private var gameRowsOnly = false
+
+    fun applyOverlay(bitmap: Bitmap, color: Int? = null, protectClock: Boolean = false) {
+        // These drawing fields are used only on the emulator render thread.
+        renderColor = color ?: CIRCLE_COLOR
+        gameRowsOnly = protectClock
         val dir = animDirection.get() ?: return
         val startMs = animStartMs.get()
         if (startMs == 0L) return
@@ -104,8 +110,8 @@ class InputOverlayAnimator {
     }
 
     private fun setPixel(pixels: IntArray, x: Int, y: Int) {
-        if (x in 0 until GRID && y in 0 until GRID) {
-            pixels[y * GRID + x] = CIRCLE_COLOR
+        if (x in 0 until GRID && y in 0 until GRID && (!gameRowsOnly || y in 4..19)) {
+            pixels[y * GRID + x] = renderColor
         }
     }
 }

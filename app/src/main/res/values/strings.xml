@@ -7,7 +7,7 @@
     <string name="rom_not_found">No ROM file found. Please load a ROM.</string>
     <string name="pick_rom">Select ROM File</string>
     <string name="rom_invalid">Invalid ROM (expected a classic V-pet dump or verified D-Power EU 1.01)</string>
-    <string name="dpower_controls">D-Power controls and gestures</string>
+    <string name="dpower_controls">D-Power console</string>
     <string name="glyph_connected">Glyph connected</string>
     <string name="glyph_disconnected">Glyph disconnected — open this toy in Nothing Glyph Toys</string>
     <string name="glyph_output_error">Glyph output failed — reconnect the toy</string>
@@ -29,7 +29,7 @@ A short press switches Glyph toys.
 Hold the Glyph button and flick left: Step.
 Hold the Glyph button and flick right: Card.
 
-Step simulates one step; it is not an automatic pedometer. Sound is a simplified tone preview. Screen buttons below are optional.</string>
+Step sends one emulated step contact. Enable walking or automatic steps in Step Training. Screen buttons are optional.</string>
     <string-array name="dpower_buttons">
         <item>Left</item><item>Right</item><item>Down</item><item>Up</item><item>Step</item><item>Card</item>
     </string-array>
@@ -37,8 +37,37 @@ Step simulates one step; it is not an automatic pedometer. Sound is a simplified
     <string name="walking_enable">Enable walking steps</string>
     <string name="walking_disable">Disable walking steps</string>
     <string name="walking_help">Walking steps use your phone’s step detector to press the emulated Step input. Counts only while D-Power is running; Stop and DND Freeze pause it. Keep the pet started for screen-off walking. No past steps are imported.</string>
-    <string name="walking_unavailable">No step detector is available. Use the manual Step button or Glyph hold-and-flick.</string>
+    <string name="walking_unavailable">No step detector is available. Use automatic steps, the manual Step button or Glyph hold-and-flick.</string>
     <string name="walking_permission_denied">Walking steps need Physical activity permission. Manual Step still works.</string>
     <string name="dpower_clock">Glyph clock</string>
     <string name="dpower_clock_help">Show the phone’s local time in 24-hour format with hours above and minutes below the D-Power LCD, using tiny NanoFont 3×4 digits. Visible on every game screen while enabled; does not set the ROM’s clock.</string>
+    <string name="dp_console_kicker">DIGITAL MONSTER / D-POWER</string>
+    <string name="dp_console_title">TAMER CONSOLE</string>
+    <string name="dp_runtime">Pet status: %1$s</string>
+    <string name="dp_device_section">01 / DEVICE CONTROLS</string>
+    <string name="dp_steps_section">02 / STEP TRAINING</string>
+    <string name="dp_display_section">03 / GLYPH DISPLAY</string>
+    <string name="dp_sound_section">04 / SOUND &amp; FEEDBACK</string>
+    <string name="dp_start">Start pet</string>
+    <string name="dp_stop">Stop pet</string>
+    <string name="dp_gesture_toggle">Glyph gesture guide</string>
+    <string name="dp_auto_step">Automatic steps</string>
+    <string name="dp_step_rate">%1$.1f steps / second</string>
+    <string name="dp_rate_accessibility">Automatic step rate, 0.5 to 4 steps per second</string>
+    <string name="dp_auto_help">Sends the same Step input as walking. Runs only while the pet runs; Stop and DND Freeze pause it. Resumes when you start the pet. Walking and manual steps take priority; automatic steps do not build a backlog.</string>
+    <string name="dp_fit_help">Off: original-size pixels, cropped sides. On: the entire LCD, smaller with correct proportions.</string>
+    <string name="dp_brightness">Brightness balance</string>
+    <string name="dp_pet_preview">DIGIMON</string>
+    <string-array name="dp_brightness_presets">
+        <item>Balanced · same brightness</item>
+        <item>Both dim</item>
+        <item>Digimon brighter</item>
+        <item>Clock brighter</item>
+    </string-array>
+    <string name="dp_smooth_display">Smoother display</string>
+    <string name="dp_smooth_help">Up to 30 frames per second instead of 15. May use more power; the pet clock stays at normal speed.</string>
+    <string name="dp_audio">Game audio</string>
+    <string name="dp_haptics">Sound vibration</string>
+    <string name="dp_saved_help">Settings save automatically. ROM files, manual saves and DND scheduling remain on the main screen.</string>
+    <string name="dp_close">Done</string>
 </resources>

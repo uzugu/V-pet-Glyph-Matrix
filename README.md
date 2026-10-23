@@ -225,3 +225,9 @@ fractional timer state survives save/restores. See
 SDK 2.0 setup, official documentation and hardware limits: [Glyph integration review](docs/glyph/sdk.md).
 
 To produce a version-named preview APK, run `./gradlew :app:packageVersionedDebug`. The download is written to `app/build/outputs/distributions/V-Pet-Glyph-<version>-debug.apk`.
+
+## D-Power console (1.4-dpower.preview9)
+
+Open **D-Power console** after loading D-Power EU 1.01. The Digivice-themed menu groups device controls, step training, Glyph display, and sound/feedback. Automatic steps offer 0.5–4 steps/second through the emulated Step contact; walking and manual inputs take priority. Display options include the split NanoFont clock, proportional LCD fit, four pet/clock brightness presets, and smoother rendering. Settings persist automatically; ROM import, saves and DND remain on the main screen. See [step input](docs/dpower/pedometer.md) and [clock/brightness](docs/dpower/clock.md).
+
+Preview 9 validation: 64 JVM tests, debug APK build and Android lint. Phone menu layout, physical LED brightness and firmware step crediting still need on-device verification.

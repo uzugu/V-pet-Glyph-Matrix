@@ -1041,12 +1041,15 @@ class DigimonGlyphToyService : Service() {
         val loop = EmulatorLoop(
             emulator = emu,
             displayRevision = {
-                if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.GlyphClockHeader.currentRevision() * 2 +
+                if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.GlyphClockHeader.currentRevision() * 8 +
+                    com.digimon.glyph.emulator.DPowerOptions.brightness.ordinal * 2 +
                     (if (DisplayRenderSettings.isDPowerFitEnabled()) 1L else 0L) else 0L
             },
             onFrame = { vram ->
                 val bitmap = bridge.renderFrame(vram)
-                inputOverlayAnimator?.applyOverlay(bitmap)
+                inputOverlayAnimator?.applyOverlay(bitmap,
+                    if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.DPowerOptions.brightness.petColor else null,
+                    protectClock = emu is com.digimon.glyph.emulator.DPowerCore)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
                 if (owlBridge.observed) owlBridge.publish(bridge.renderFullDebugFrame(vram))
                 val now = SystemClock.uptimeMillis()

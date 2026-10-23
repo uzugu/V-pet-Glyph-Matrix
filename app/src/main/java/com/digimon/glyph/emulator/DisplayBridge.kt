@@ -131,6 +131,10 @@ class DisplayBridge {
         // Render all 8 indicator dots (4 top + 4 bottom).
         if (vramData.size != 512) renderMenuDots(pixels, menuStates)
 
+        if (vramData.size == 512) {
+            val level = DPowerOptions.brightness.petColor
+            for (i in pixels.indices) if (pixels[i] != PIXEL_OFF) pixels[i] = level
+        }
         bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
         if (vramData.size == 512 && DisplayRenderSettings.isDPowerClockEnabled()) GlyphClockHeader.draw(bitmap)
         return bitmap

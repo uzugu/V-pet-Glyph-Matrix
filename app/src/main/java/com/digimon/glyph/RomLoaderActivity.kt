@@ -72,6 +72,7 @@ import java.util.zip.ZipInputStream
 class RomLoaderActivity : AppCompatActivity() {
     private var updatingRenderSwitch = false
     private var walkingButton: Button? = null
+    private var dpowerMenu: com.digimon.glyph.ui.DPowerMenu? = null
     private val walkingPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
         com.digimon.glyph.input.WalkingInput.setEnabled(this, granted)
         updateWalkingButton()
@@ -659,6 +660,7 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        dpowerMenu?.dismiss()
         cancelImport()
         super.onDestroy()
     }
@@ -1725,57 +1727,37 @@ class RomLoaderActivity : AppCompatActivity() {
 
     private fun showDPowerControls() {
         if (!EmulatorStatus.snapshot().isDPower) return
-        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(12)) }
-        panel.addView(TextView(this).apply { text = getString(R.string.dpower_gesture_help) })
-        panel.addView(androidx.appcompat.widget.SwitchCompat(this).apply {
-            text = getString(R.string.dpower_clock)
-            isChecked = DisplayRenderSettings.isDPowerClockEnabled()
-            setOnCheckedChangeListener { _, checked -> DisplayRenderSettings.setDPowerClockEnabled(this@RomLoaderActivity, checked) }
-        })
-        panel.addView(TextView(this).apply { text = getString(R.string.dpower_clock_help) })
-        panel.addView(TextView(this).apply { text = getString(R.string.walking_help) })
-        walkingButton = Button(this).apply {
-            isEnabled = com.digimon.glyph.input.WalkingInput.available(this@RomLoaderActivity)
-            setOnClickListener {
-                val walking = com.digimon.glyph.input.WalkingInput
-                if (walking.enabled(this@RomLoaderActivity) && walking.permitted(this@RomLoaderActivity)) {
-                    walking.setEnabled(this@RomLoaderActivity, false)
-                } else if (walking.permitted(this@RomLoaderActivity)) {
-                    walking.setEnabled(this@RomLoaderActivity, true)
-                } else {
-                    walkingPermission.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
-                }
-                updateWalkingButton()
-            }
-        }
-        updateWalkingButton()
-        panel.addView(walkingButton)
-        if (!com.digimon.glyph.input.WalkingInput.available(this)) {
-            panel.addView(TextView(this).apply { text = getString(R.string.walking_unavailable) })
-        }
-        if (EmulatorStatus.snapshot().run == EmulatorStatus.Run.FROZEN) {
-            panel.addView(TextView(this).apply { text = getString(R.string.controls_frozen) })
-        }
-        resources.getStringArray(R.array.dpower_buttons).forEachIndexed { index, label ->
-            panel.addView(Button(this).apply {
-                text = label
-                isEnabled = EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN
-                setOnClickListener {
-                    if (!EmulatorStatus.snapshot().isDPower) return@setOnClickListener
-                    if (EmulatorStatus.snapshot().run == EmulatorStatus.Run.FROZEN) {
-                        Toast.makeText(this@RomLoaderActivity, R.string.controls_frozen, Toast.LENGTH_SHORT).show()
-                        return@setOnClickListener
-                    }
-                    val intent = Intent(this@RomLoaderActivity, DigimonGlyphToyService::class.java)
+        dpowerMenu?.dismiss()
+        val menu = com.digimon.glyph.ui.DPowerMenu(this,
+            startPet = { if (EmulatorStatus.snapshot().isDPower && !EmulatorStatus.snapshot().busy) startBackendService() },
+            stopPet = { if (EmulatorStatus.snapshot().isDPower && !EmulatorStatus.snapshot().busy) stopBackendService() },
+            press = { index ->
+                val state = EmulatorStatus.snapshot()
+                if (state.isDPower && !state.busy && state.run != EmulatorStatus.Run.FROZEN) {
+                    val intent = Intent(this, DigimonGlyphToyService::class.java)
                         .setAction(DigimonGlyphToyService.ACTION_WIDGET_BUTTON)
                         .putExtra(DigimonGlyphToyService.EXTRA_WIDGET_BUTTON, 20 + index)
-                    ContextCompat.startForegroundService(this@RomLoaderActivity, intent)
+                    ContextCompat.startForegroundService(this, intent)
                 }
+            },
+            walkingClick = {
+                val walking = com.digimon.glyph.input.WalkingInput
+                if (walking.enabled(this) && walking.permitted(this)) walking.setEnabled(this, false)
+                else if (walking.permitted(this)) walking.setEnabled(this, true)
+                else walkingPermission.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                updateWalkingButton()
             })
+        dpowerMenu = menu
+        walkingButton = menu.walkingButton
+        updateWalkingButton()
+        menu.show {
+            dpowerMenu = null
+            walkingButton = null
+            findViewById<Switch>(R.id.switch_audio).isChecked = EmulatorAudioSettings.isAudioEnabled()
+            findViewById<Switch>(R.id.switch_haptic).isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
+            findViewById<Switch>(R.id.switch_exact_timing).isChecked = EmulatorTimingSettings.isFullAccuracyEnabled()
+            updateStatus()
         }
-        val scroll = android.widget.ScrollView(this).apply { addView(panel) }
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.dpower_controls).setView(scroll)
-            .setPositiveButton("Close", null).setOnDismissListener { walkingButton = null }.show()
     }
 
     private fun getFileName(uri: Uri): String {

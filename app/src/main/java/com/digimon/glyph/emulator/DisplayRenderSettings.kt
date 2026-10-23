@@ -29,6 +29,7 @@ object DisplayRenderSettings {
 
     @Synchronized
     fun init(context: Context) {
+        DPowerOptions.init(context)
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         dpowerFitEnabled = prefs.getBoolean("dpower_fit", false)
         dpowerClockEnabled = prefs.getBoolean("dpower_clock", false)
