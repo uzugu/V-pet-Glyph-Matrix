@@ -13,8 +13,8 @@ android {
         minSdk = 26
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 6
-        versionName = "1.4-dpower.preview2"
+        versionCode = 7
+        versionName = "1.4-dpower.preview3"
     }
 
     buildTypes {
@@ -56,3 +56,11 @@ dependencies {
 }
 
 chaquopy { defaultConfig { version = "3.11" } }
+
+// Keep Android's standard build output and provide a versioned download artifact.
+tasks.register<Copy>("packageVersionedDebug") {
+    dependsOn("assembleDebug")
+    from(layout.buildDirectory.dir("outputs/apk/debug")) { include("app-debug.apk") }
+    into(layout.buildDirectory.dir("outputs/distributions"))
+    rename { "V-Pet-Glyph-${android.defaultConfig.versionName}-debug.apk" }
+}

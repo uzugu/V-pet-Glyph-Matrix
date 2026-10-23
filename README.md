@@ -223,3 +223,5 @@ fractional timer state survives save/restores. See
 [the diagnosis and verification](docs/clock-synchronization.md).
 
 SDK 2.0 setup, official documentation and hardware limits: [Glyph integration review](docs/glyph/sdk.md).
+
+To produce a version-named preview APK, run `./gradlew :app:packageVersionedDebug`. The download is written to `app/build/outputs/distributions/V-Pet-Glyph-<version>-debug.apk`.
