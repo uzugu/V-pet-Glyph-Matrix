@@ -20,3 +20,5 @@ Run `python3 tools/fetch_glyph_sdk.py` before building. The new SDK binary is do
 ## Verification boundary
 
 SDK compile, unit tests and lint can validate API compatibility, not LED ownership, touch behaviour, OEM service reconnects or battery cost. No Nothing Phone was attached during this review. Test toy carousel transitions, app Start/Stop, reconnect, DND, AOD and all physical controls on Phone (3).
+
+Preview 8 adds [AOD recovery after interactive end](always-on.md), while keeping display ownership revoked after actual unbind.

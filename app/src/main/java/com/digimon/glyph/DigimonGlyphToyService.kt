@@ -121,7 +121,8 @@ class DigimonGlyphToyService : Service() {
         }
     }
     private var standaloneMode = false
-    @Volatile private var toyDisplayActive = false
+    private val toySession = GlyphToySession()
+    private val toyDisplayActive get() = toySession.active
     private val owlBridge: OwlBridge by lazy {
         OwlBridge(this,
             start = {
@@ -253,7 +254,7 @@ class DigimonGlyphToyService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         if (intent?.action == OwlProtocol.ACTION_BIND) return owlBridge.messenger.binder
-        toyDisplayActive = true
+        toySession.bind()
         Log.d(TAG, "onBind glyphAvailable=${GlyphAvailability.isAvailable}")
         inputController?.start()
         ensureServiceStarted()
@@ -282,7 +283,7 @@ class DigimonGlyphToyService : Service() {
             return false
         }
         Log.d(TAG, "onUnbind")
-        toyDisplayActive = false
+        toySession.unbind()
         inputController?.stop()
         releaseGlyphManager()
         // Display binding is independent of an explicitly started pet's lifetime.
@@ -296,7 +297,7 @@ class DigimonGlyphToyService : Service() {
 
     override fun onRebind(intent: Intent?) {
         if (intent?.action == OwlProtocol.ACTION_BIND) return
-        toyDisplayActive = true
+        toySession.bind()
         Log.d(TAG, "onRebind")
         inputController?.start()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -688,14 +689,15 @@ class DigimonGlyphToyService : Service() {
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_START) -> {
                 Log.d(TAG, "Toy start")
-                toyDisplayActive = true
+                if (!toySession.start()) return
                 initGlyphManager()
                 startEmulator()
                 inputController?.start()
+                pushStaticFrame()
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_END) -> {
                 Log.d(TAG, "Toy end")
-                toyDisplayActive = false
+                toySession.end()
                 inputController?.stop()
                 releaseGlyphManager()
                 mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -710,12 +712,19 @@ class DigimonGlyphToyService : Service() {
                 stopSelf()
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_ACTION_DOWN -> {
-                inputController?.onGlyphButtonDown()
+                if (toySession.interactive) inputController?.onGlyphButtonDown()
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_ACTION_UP -> {
-                inputController?.onGlyphButtonUp()
+                if (toySession.interactive) inputController?.onGlyphButtonUp()
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_AOD -> {
+                if (!toySession.aod()) return
+                Log.d(TAG, "Toy AOD: restoring display session")
+                mainHandler.removeCallbacks(delayedShutdownRunnable)
+                inputController?.stop()
+                initGlyphManager()
+                startEmulator()
+                // If SDK binding is asynchronous, onServiceConnected pushes this frame.
                 pushStaticFrame()
             }
         }
@@ -1130,7 +1139,7 @@ class DigimonGlyphToyService : Service() {
             overlay.onStateChanged(isActive)
         }
         input.setDebugEnabled(debugTelemetryEnabled)
-        if (toyDisplayActive) input.start()
+        if (toySession.interactive) input.start()
         inputController = input
 
         // Start autosave
