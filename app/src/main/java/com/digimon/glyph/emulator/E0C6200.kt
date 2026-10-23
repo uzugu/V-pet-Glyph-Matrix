@@ -23,8 +23,9 @@ class E0C6200(
     private val portPullupK0: Int = 15,
     private val portPullupK1: Int = 15,
     private val p3Dedicated: Boolean = false
-) {
-    val clockFrequency: Int get() = clock
+) : EmulatorCore {
+    override val supportsClassicLink = true
+    override val clockFrequency: Int get() = clock
     data class DisplaySnapshot(
         val generation: Long,
         val vramData: IntArray
@@ -140,13 +141,13 @@ class E0C6200(
     private var diagTotalElapsedCycles = 0.0
 
     // Buzzer callback (optional): on/off, frequency in Hz, gain [0..1]
-    var onBuzzerChange: ((on: Boolean, freqHz: Int, gain: Float) -> Unit)? = null
+    override var onBuzzerChange: ((on: Boolean, freqHz: Int, gain: Float) -> Unit)? = null
     // Serial callback (optional): emitted when firmware writes a TX byte via SD registers.
-    var onSerialTx: ((value: Int) -> Unit)? = null
+    override var onSerialTx: ((value: Int) -> Unit)? = null
     // Linked-port callback (optional): value=null means released (not actively driven).
-    var onPortDriveChange: ((port: String, value: Int?) -> Unit)? = null
+    override var onPortDriveChange: ((port: String, value: Int?) -> Unit)? = null
     // Optional I/O trace callback for emulator integration diagnostics.
-    var onIoAccess: ((isWrite: Boolean, addr: Int, value: Int) -> Unit)? = null
+    override var onIoAccess: ((isWrite: Boolean, addr: Int, value: Int) -> Unit)? = null
     private var displayGeneration: Long = 1L
     private var sdWriteMask = 0
     private val lastDrivenPortValues = intArrayOf(-2, -2, -2, -2)
@@ -509,7 +510,7 @@ class E0C6200(
      * This latches into RD and raises ISIO so firmware can handle it via interrupt vector 0xA.
      */
     @Synchronized
-    fun receiveSerialByte(value: Int) {
+    override fun receiveSerialByte(value: Int) {
         RD = value and 0xFF
         ISIO = ISIO or 0x1
     }
@@ -518,7 +519,7 @@ class E0C6200(
      * Apply remote linked-port drive. null means released/high.
      */
     @Synchronized
-    fun applyLinkedPortDrive(port: String, value: Int?) {
+    override fun applyLinkedPortDrive(port: String, value: Int?) {
         val portIndex = when (port) {
             "P0" -> 0
             "P1" -> 1
@@ -531,14 +532,14 @@ class E0C6200(
     }
 
     @Synchronized
-    fun syncLinkedPortDriveState() {
+    override fun syncLinkedPortDriveState() {
         emitAllDrivenPortsIfChanged()
     }
 
     // ========== Button input ==========
 
     @Synchronized
-    fun pinSet(port: String, pin: Int, level: Int) {
+    override fun pinSet(port: String, pin: Int, level: Int) {
         when (port) {
             "K0" -> {
                 val newK0 = (K0 and (1 shl pin).inv()) or (level shl pin)
@@ -566,7 +567,7 @@ class E0C6200(
     }
 
     @Synchronized
-    fun pinRelease(port: String, pin: Int) {
+    override fun pinRelease(port: String, pin: Int) {
         when (port) {
             "K0" -> {
                 val level = (portPullupK0 shr pin) and 0x1
@@ -598,18 +599,18 @@ class E0C6200(
     // ========== VRAM access for display ==========
 
     @Synchronized
-    fun getVRAM(): IntArray {
+    override fun getVRAM(): IntArray {
         return buildDisplayVram()
     }
 
     @Synchronized
-    fun getRAM(): IntArray = RAM.copyOf()
+    override fun getRAM(): IntArray = RAM.copyOf()
 
     @Synchronized
-    fun getRawVRAM(): IntArray = VRAM.copyOf()
+    override fun getRawVRAM(): IntArray = VRAM.copyOf()
 
     @Synchronized
-    fun getDisplaySnapshot(lastGeneration: Long): DisplaySnapshot? {
+    override fun getDisplaySnapshot(lastGeneration: Long): DisplaySnapshot? {
         if (displayGeneration == lastGeneration) return null
         return DisplaySnapshot(displayGeneration, buildDisplayVram())
     }
@@ -742,7 +743,7 @@ class E0C6200(
         return elapsedCycles
     }
 
-    fun clock(): Double = clockInternal()
+    override fun clock(): Double = clockInternal()
 
     /**
      * Execute until at least [targetCycles] have elapsed and return actual executed cycles.
@@ -782,7 +783,7 @@ class E0C6200(
     }
 
     @Synchronized
-    fun resetCpu() {
+    override fun resetCpu() {
         A = 0; B = 0; IX = 0; IY = 0; SP = 0
         PC = 0x100; NPC = 0x100
         CF = 0; ZF = 0; DF = 0; IF = 0
@@ -830,7 +831,7 @@ class E0C6200(
     // ========== State serialization ==========
 
     @Synchronized
-    fun getState(): Map<String, Any> = mapOf(
+    override fun getState(): Map<String, Any> = mapOf(
         "A" to A, "B" to B, "IX" to IX, "IY" to IY, "SP" to SP,
         "PC" to PC, "NPC" to NPC,
         "CF" to CF, "ZF" to ZF, "DF" to DF, "IF" to IF,
@@ -859,7 +860,7 @@ class E0C6200(
     )
 
     /** Timing chain diagnostics for EmulatorLoop rate analysis. */
-    fun getDiagnostics(): Map<String, Any> = mapOf(
+    override fun getDiagnostics(): Map<String, Any> = mapOf(
         "osc1" to diagOsc1Ticks, "timer" to diagTimerTicks, "sw" to diagStopwatchTicks,
         "calls" to diagClockCalls, "halt" to diagHaltCycles,
         "execCyc" to diagTotalExecCycles, "elapsedCyc" to diagTotalElapsedCycles,
@@ -868,7 +869,7 @@ class E0C6200(
     )
 
     @Synchronized
-    fun getCurrentDigimonState(romName: String?): DigimonState? {
+    override fun getCurrentDigimonState(romName: String?): DigimonState? {
         if (romName == null) return null
         val isClassicVpet = DigimonDatabase.resolveVersion(romName) != null
         val speciesId = RAM[0x0B]
@@ -917,7 +918,7 @@ class E0C6200(
 
     @Suppress("UNCHECKED_CAST")
     @Synchronized
-    fun restoreState(state: Map<String, Any>) {
+    override fun restoreState(state: Map<String, Any>) {
         A = state["A"] as? Int ?: 0; B = state["B"] as? Int ?: 0
         IX = state["IX"] as? Int ?: 0; IY = state["IY"] as? Int ?: 0
         SP = state["SP"] as? Int ?: 0; PC = state["PC"] as? Int ?: 0x100; NPC = state["NPC"] as? Int ?: 0x100

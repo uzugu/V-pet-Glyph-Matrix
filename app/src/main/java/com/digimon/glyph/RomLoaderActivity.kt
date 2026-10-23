@@ -190,6 +190,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val mainTitle = findViewById<TextView>(R.id.main_title)
         statusText = findViewById(R.id.statusText)
         val btnPickRom = findViewById<Button>(R.id.btn_pick_rom)
+        findViewById<Button>(R.id.btn_dpower_controls).setOnClickListener { showDPowerControls() }
         val btnStartEmu = findViewById<Button>(R.id.btn_start_emu)
         val btnStopEmu = findViewById<Button>(R.id.btn_stop_emu)
         digimonStatsText = findViewById(R.id.digimonStatsText)
@@ -723,7 +724,7 @@ class RomLoaderActivity : AppCompatActivity() {
                     DigimonDndSettings.isDndActiveNow() -> if (DigimonDndSettings.isFreezeMode()) "WINDOW" else "QUIET"
                     else -> "OFF"
                 }
-                val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (System.currentTimeMillis() - frameSnap.updatedAtMs)
+                val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs)
                 buildString {
                     appendLine("SYS.MONITOR :: LIVE PET STREAM")
                     appendLine("FRAME ${formatFrameAge(frameAgeMs)}  ATTN ${formatFlag(state.needsAttention)}")
@@ -752,13 +753,15 @@ class RomLoaderActivity : AppCompatActivity() {
                     append(" W=${formatCounterRaw(state.wins)} L=${formatCounterRaw(state.losses)} R=${formatCounterRaw(state.winRate)}")
                     append(" A=${if (state.needsAttention) "1" else "0"}")
                 }
+            } else if (frameSnap.vram?.size == 128) {
+                "D-POWER EU 1.01\nPlay on the Glyph Matrix. Pet statistics are not decoded for this device."
             } else {
                 "AWAITING SIGNAL..."
             }
         }
         // Update emulator state stat card
         val emuFrameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE
-                            else System.currentTimeMillis() - frameSnap.updatedAtMs
+                            else android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs
         statEmuValue.text = if (emuFrameAgeMs < 2000L) "ACTIVE" else "IDLE"
         statEmuLabel.text = when {
             emuFrameAgeMs == Long.MAX_VALUE -> "► NO SIGNAL"
@@ -780,7 +783,7 @@ class RomLoaderActivity : AppCompatActivity() {
 
         val snap = InputDebugState.read(this)
         val ageMs = System.currentTimeMillis() - snap.timestampMs
-        val frameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE else (System.currentTimeMillis() - frameSnap.updatedAtMs)
+        val frameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE else (android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs)
         val triggerAgeMs = if (snap.lastTriggerAtMs == 0L) Long.MAX_VALUE else (System.currentTimeMillis() - snap.lastTriggerAtMs)
         val streamState = if (snap.timestampMs == 0L || ageMs > 1500L) "inactive" else "live"
         val frameState = if (frameSnap.updatedAtMs == 0L || frameAgeMs > 1500L) "inactive" else "live"
@@ -855,7 +858,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val profileDiffs = if (baseline != null) collectRamDiffs(ram, baseline, profile.addresses.asIterable()) else emptyList()
         val globalDiffs = if (baseline != null) collectRamDiffs(ram, baseline, 0x00..0x9F) else emptyList()
         val vramDiffs = if (baselineVramLocal != null) collectRamDiffs(vram, baselineVramLocal, vram.indices) else emptyList()
-        val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (System.currentTimeMillis() - frameSnap.updatedAtMs)
+        val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs)
         val baselineAgeText = if (baselineAtMs == 0L) "--" else formatFrameAge(System.currentTimeMillis() - baselineAtMs)
         return buildString {
             appendLine("RAW RAM WATCH :: ${profile.label}")
@@ -1553,61 +1556,66 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun loadRomFromUri(uri: Uri) {
-        try {
-            val inputStream = contentResolver.openInputStream(uri) ?: return
-            val fileName = getFileName(uri)
-
-            val romBytes: ByteArray
-            val romName: String
-
-            if (fileName.endsWith(".zip", ignoreCase = true)) {
-                // Extract .bin from zip
-                val result = extractBinFromZip(inputStream.readBytes())
-                if (result == null) {
-                    Toast.makeText(this, "No .bin file found in zip", Toast.LENGTH_LONG).show()
-                    return
+        val fileName = getFileName(uri)
+        Thread({
+            try {
+                val candidates = contentResolver.openInputStream(uri)?.use {
+                    com.digimon.glyph.emulator.RomImport.read(it, fileName)
+                } ?: error("Cannot open ROM")
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (candidates.size == 1) importCandidate(candidates.single())
+                    else androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Choose a ROM")
+                        .setItems(candidates.map { "${it.device.id} — ${it.name}" }.toTypedArray()) { _, index -> importCandidate(candidates[index]) }
+                        .setNegativeButton("Cancel", null).show()
                 }
-                romBytes = result.first
-                romName = result.second
-            } else {
-                romBytes = inputStream.readBytes()
-                romName = fileName.removeSuffix(".bin")
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this, e.message ?: "ROM import failed", Toast.LENGTH_LONG).show() }
             }
-            inputStream.close()
+        }, "ROM-import").start()
+    }
 
-            // Validate ROM size (8KB = 8192 or 16KB = 16384 bytes)
-            if (romBytes.size != 8192 && romBytes.size != 16384) {
-                Toast.makeText(this, getString(R.string.rom_invalid), Toast.LENGTH_LONG).show()
-                return
-            }
-
-            // Save to internal storage
-            File(filesDir, "current_rom.bin").writeBytes(romBytes)
-            File(filesDir, "current_rom_name").writeText(romName)
-
-            Toast.makeText(this, "${getString(R.string.rom_loaded)}: $romName", Toast.LENGTH_SHORT).show()
-            startBackendService()
-            updateStatus()
-            refreshSaveAndCommandInfo()
+    private fun importCandidate(candidate: com.digimon.glyph.emulator.RomImport.Candidate) {
+        try {
+            // Unique staging files prevent two rapid imports from replacing each other's data.
+            val staged = File.createTempFile("rom-import-", ".bin", filesDir)
+            staged.writeBytes(candidate.bytes)
+            val name = if (candidate.device.id == "UnknownClassic")
+                candidate.name.substringAfterLast('/').substringBeforeLast('.') else candidate.device.id
+            val intent = Intent(this, DigimonGlyphToyService::class.java)
+                .setAction(DigimonGlyphToyService.ACTION_IMPORT_ROM)
+                .putExtra("staged_rom", staged.name).putExtra("rom_name", name)
+            ContextCompat.startForegroundService(this, intent)
+            Toast.makeText(this, "Importing $name", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Error loading ROM: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, e.message ?: "ROM import failed", Toast.LENGTH_LONG).show()
         }
     }
 
-    private fun extractBinFromZip(zipData: ByteArray): Pair<ByteArray, String>? {
-        val zis = ZipInputStream(zipData.inputStream())
-        var entry = zis.nextEntry
-        while (entry != null) {
-            if (entry.name.endsWith(".bin", ignoreCase = true)) {
-                val bytes = zis.readBytes()
-                val name = entry.name.removeSuffix(".bin")
-                zis.close()
-                return Pair(bytes, name)
-            }
-            entry = zis.nextEntry
+    private fun showDPowerControls() {
+        val isDPower = runCatching {
+            com.digimon.glyph.emulator.RomCatalog.identify(File(filesDir, "current_rom.bin").readBytes()).isDPower
+        }.getOrDefault(false)
+        if (!isDPower) {
+            Toast.makeText(this, "Load the D-Power EU 1.01 ROM first", Toast.LENGTH_SHORT).show()
+            return
         }
-        zis.close()
-        return null
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 12, 24, 12) }
+        panel.addView(TextView(this).apply { text = "D-Power EU 1.01\nPlay on the Glyph Matrix: horizontal flicks = Left/Right; forward/back flicks = Up/Down. Tap Glyph button = Up. Hold Glyph button + negative flick = Step; hold + positive flick = Card. Buttons below are optional." })
+        listOf("Left", "Right", "Down", "Up", "Step", "Card").forEachIndexed { index, label ->
+            panel.addView(Button(this).apply {
+                text = label
+                setOnClickListener {
+                    val intent = Intent(this@RomLoaderActivity, DigimonGlyphToyService::class.java)
+                        .setAction(DigimonGlyphToyService.ACTION_WIDGET_BUTTON)
+                        .putExtra(DigimonGlyphToyService.EXTRA_WIDGET_BUTTON, 20 + index)
+                    ContextCompat.startForegroundService(this@RomLoaderActivity, intent)
+                }
+            })
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("D-Power controls").setView(panel)
+            .setPositiveButton("Close", null).show()
     }
 
     private fun getFileName(uri: Uri): String {

@@ -46,16 +46,16 @@ class StateManager(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val gson = Gson()
 
-    fun save(emulator: E0C6200, romName: String, romHash: String? = null) {
+    fun save(emulator: EmulatorCore, romName: String, romHash: String? = null) {
         saveAutosave(emulator, romName, romHash)
     }
 
-    fun restore(emulator: E0C6200): Boolean {
+    fun restore(emulator: EmulatorCore): Boolean {
         return restoreAutosave(emulator, expectedRomName = null, expectedRomHash = null)
     }
 
     fun saveAutosave(
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         romName: String,
         romHash: String?,
         sync: Boolean = false
@@ -75,7 +75,7 @@ class StateManager(context: Context) {
     }
 
     fun restoreAutosave(
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         expectedRomName: String?,
         expectedRomHash: String?
     ): Boolean {
@@ -114,7 +114,7 @@ class StateManager(context: Context) {
 
     fun saveSlot(
         slot: Int,
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         romName: String,
         romHash: String?,
         sync: Boolean = false
@@ -136,7 +136,7 @@ class StateManager(context: Context) {
 
     fun restoreSlot(
         slot: Int,
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         expectedRomName: String?,
         expectedRomHash: String?
     ): Boolean {
@@ -293,7 +293,7 @@ class StateManager(context: Context) {
     }
 
     private fun saveToKeys(
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         stateKey: String,
         romNameKey: String,
         romHashKey: String?,
@@ -314,7 +314,7 @@ class StateManager(context: Context) {
             editor.putString(romHashKey, romHash)
         }
         if (sync) {
-            editor.commit()
+            check(editor.commit()) { "Could not persist emulator save" }
         } else {
             editor.apply()
         }
@@ -322,7 +322,7 @@ class StateManager(context: Context) {
     }
 
     private fun restoreFromKeys(
-        emulator: E0C6200,
+        emulator: EmulatorCore,
         stateKey: String,
         romNameKey: String,
         romHashKey: String?,

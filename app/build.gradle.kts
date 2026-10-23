@@ -1,4 +1,5 @@
 plugins {
+    id("com.chaquo.python")
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -10,9 +11,10 @@ android {
     defaultConfig {
         applicationId = "com.digimon.glyph"
         minSdk = 26
+        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3-owl.1"
+        versionCode = 5
+        versionName = "1.4-dpower.preview1"
     }
 
     buildTypes {
@@ -52,3 +54,5 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.caverock:androidsvg-aar:1.4")
 }
+
+chaquopy { defaultConfig { version = "3.11" } }

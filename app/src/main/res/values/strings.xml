@@ -6,5 +6,6 @@
     <string name="rom_loaded">ROM loaded successfully</string>
     <string name="rom_not_found">No ROM file found. Please load a ROM.</string>
     <string name="pick_rom">Select ROM File</string>
-    <string name="rom_invalid">Invalid ROM file (expected 8192 or 16384 bytes)</string>
+    <string name="rom_invalid">Invalid ROM (expected a classic V-pet dump or verified D-Power EU 1.01)</string>
+    <string name="dpower_controls">D-Power controls and gestures</string>
 </resources>

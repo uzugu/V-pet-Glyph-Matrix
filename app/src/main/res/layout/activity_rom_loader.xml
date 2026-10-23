@@ -242,6 +242,16 @@
                         android:layout_marginStart="6dp" />
                 </LinearLayout>
 
+                <Button
+                    android:id="@+id/btn_dpower_controls"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/dpower_controls"
+                    android:textColor="@color/cyber_blue"
+                    android:textAppearance="@style/TextAppearance.Cyber.Button"
+                    android:background="@drawable/cyber_button_bg" />
+
                 <!-- ─── LIVE VISUAL STREAM ─── -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -558,7 +568,7 @@
                         android:layout_gravity="center_vertical|start"
                         android:layout_marginStart="14dp"
                         android:src="@drawable/ic_cyber_chip"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 
@@ -570,7 +580,7 @@
                         android:layout_marginEnd="14dp"
                         android:scaleX="-1"
                         android:src="@drawable/ic_cyber_chip"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 
@@ -805,7 +815,7 @@
                         android:layout_gravity="center_vertical|start"
                         android:layout_marginStart="14dp"
                         android:src="@drawable/ic_cyber_globe"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 
@@ -817,7 +827,7 @@
                         android:layout_marginEnd="14dp"
                         android:scaleX="-1"
                         android:src="@drawable/ic_cyber_globe"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 
@@ -1136,7 +1146,7 @@
                         android:layout_gravity="center_vertical|start"
                         android:layout_marginStart="14dp"
                         android:src="@drawable/ic_cyber_book"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 
@@ -1148,7 +1158,7 @@
                         android:layout_marginEnd="14dp"
                         android:scaleX="-1"
                         android:src="@drawable/ic_cyber_book"
-                        android:tint="#00E5FF"
+                        app:tint="#00E5FF"
                         android:clickable="false"
                         android:focusable="false" />
 

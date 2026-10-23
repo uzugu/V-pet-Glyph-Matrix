@@ -21,7 +21,7 @@ import java.util.concurrent.locks.LockSupport
  * - When ahead: sleep using LockSupport.parkNanos() for sub-ms precision
  */
 class EmulatorLoop(
-    private val emulator: E0C6200,
+    private val emulator: EmulatorCore,
     private val onFrame: (IntArray) -> Unit,
     private val elapsedNs: () -> Long = { SystemClock.elapsedRealtimeNanos() },
 ) {
@@ -50,7 +50,7 @@ class EmulatorLoop(
     @Volatile private var timingMode: TimingMode = TimingMode.EXACT
     @Volatile private var stepGateEnabled = false
     private var thread: Thread? = null
-    private val commandQueue = ConcurrentLinkedQueue<(E0C6200) -> Unit>()
+    private val commandQueue = ConcurrentLinkedQueue<(EmulatorCore) -> Unit>()
     private val stepGateLock = Any()
     private var stepGateBudgetNs: Long = 0L
     private var stepGateResetAnchorRequested = false
@@ -103,12 +103,12 @@ class EmulatorLoop(
         thread = null
     }
 
-    fun enqueue(command: (E0C6200) -> Unit): Boolean {
+    fun enqueue(command: (EmulatorCore) -> Unit): Boolean {
         commandQueue.offer(command)
         return true
     }
 
-    fun <T> executeSync(timeoutMs: Long = 1200L, command: (E0C6200) -> T): T? {
+    fun <T> executeSync(timeoutMs: Long = 1200L, command: (EmulatorCore) -> T): T? {
         val loopThread = thread ?: return null
         if (!running) return null
         if (Thread.currentThread() === loopThread) {

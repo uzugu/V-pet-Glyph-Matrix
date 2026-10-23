@@ -13,6 +13,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
 import com.digimon.glyph.emulator.E0C6200
+import com.digimon.glyph.emulator.EmulatorCore
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import kotlin.math.abs
 
@@ -76,7 +77,19 @@ class InputController(context: Context) : SensorEventListener {
         context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
     }
 
-    private var emulator: E0C6200? = null
+    private var emulator: EmulatorCore? = null
+    private val isDPower get() = emulator is com.digimon.glyph.emulator.DPowerCore
+    private var dpModifierUsed = false
+    private val dpHeld = mutableSetOf<DPowerInput.Key>()
+    private fun pulseDPower(key: DPowerInput.Key) {
+        if (key in dpHeld) return
+        dpHeld.add(key)
+        pinSet(key.port, key.pin, 1)
+        lastTriggerButton = key.label
+        mainHandler.postDelayed({
+            if (dpHeld.remove(key)) pinRelease(key.port, key.pin)
+        }, FLICK_PRESS_MS)
+    }
 
     // Button state
     private var buttonAActive = false
@@ -142,7 +155,7 @@ class InputController(context: Context) : SensorEventListener {
         }
     }
 
-    fun attach(emu: E0C6200) {
+    fun attach(emu: EmulatorCore) {
         emulator = emu
     }
 
@@ -181,6 +194,11 @@ class InputController(context: Context) : SensorEventListener {
     fun onGlyphButtonDown() {
         noteInteraction()
         glyphPhysicalDown = true
+        if (isDPower) {
+            dpModifierUsed = false
+            onUserInteraction?.invoke()
+            return
+        }
         if (!buttonBActive) {
             buttonBActive = true
             pinSet("K0", BUTTON_B_PIN, 0)
@@ -197,6 +215,11 @@ class InputController(context: Context) : SensorEventListener {
     fun onGlyphButtonUp() {
         noteInteraction()
         glyphPhysicalDown = false
+        if (isDPower) {
+            if (!dpModifierUsed) pulseDPower(DPowerInput.up)
+            onUserInteraction?.invoke()
+            return
+        }
         if (buttonBActive) {
             buttonBActive = false
             pinRelease("K0", BUTTON_B_PIN)
@@ -215,6 +238,9 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     private fun releaseAll() {
+        dpHeld.toList().forEach { pinRelease(it.port, it.pin) }
+        dpHeld.clear()
+        dpModifierUsed = false
         mainHandler.removeCallbacks(releaseBTap)
         mainHandler.removeCallbacks(releaseATap)
         mainHandler.removeCallbacks(releaseCTap)
@@ -401,6 +427,17 @@ class InputController(context: Context) : SensorEventListener {
 
     private fun triggerFlick(axis: FlickAxis, direction: Int, now: Long) {
         noteInteraction()
+        if (isDPower && axis != FlickAxis.NONE) {
+            val key = DPowerInput.flick(axis == FlickAxis.X, direction > 0, glyphPhysicalDown)
+            if (glyphPhysicalDown) dpModifierUsed = true
+            pulseDPower(key)
+            if (axis == FlickAxis.X) lastFlickXMs = now else lastFlickZMs = now
+            lastTriggerAtMs = now
+            onUserInteraction?.invoke()
+            vibrateFlickConfirm()
+            publishDebugSnapshot(force = true)
+            return
+        }
         when (axis) {
             FlickAxis.Z -> {
                 pressBTap()

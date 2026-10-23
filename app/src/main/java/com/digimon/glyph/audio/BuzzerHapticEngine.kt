@@ -15,10 +15,12 @@ class BuzzerHapticEngine(context: Context) {
         private const val MIN_PATTERN_RESTART_MS = 35L
     }
 
-    private val vibrator: Vibrator? = context
-        .getSystemService(VibratorManager::class.java)
-        ?.defaultVibrator
-        ?.takeIf { it.hasVibrator() }
+    private val vibrator: Vibrator? = (if (android.os.Build.VERSION.SDK_INT >= 31) {
+        context.getSystemService(VibratorManager::class.java)?.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+    })?.takeIf { it.hasVibrator() }
 
     @Volatile private var enabled = false
     @Volatile private var toneOn = false

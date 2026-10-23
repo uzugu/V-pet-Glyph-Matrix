@@ -120,7 +120,7 @@ class DisplayBridge {
             zoomOutActive = false
             zoomOutHoldFrames = 0
         }
-        val useZoomOut = autoZoomEnabled && shouldUseZoomOut()
+        val useZoomOut = vramData.size == 512 || (autoZoomEnabled && shouldUseZoomOut())
         if (useZoomOut) {
             renderZoomedOutGameArea(pixels)
         } else {
@@ -128,7 +128,7 @@ class DisplayBridge {
         }
 
         // Render all 8 indicator dots (4 top + 4 bottom).
-        renderMenuDots(pixels, menuStates)
+        if (vramData.size != 512) renderMenuDots(pixels, menuStates)
 
         bitmap.setPixels(pixels, 0, GLYPH_SIZE, 0, 0, GLYPH_SIZE, GLYPH_SIZE)
         return bitmap
@@ -230,7 +230,7 @@ class DisplayBridge {
             }
         }
 
-        renderFullDebugIcons(pixels, readMenuDotStates(vramData))
+        if (vramData.size != 512) renderFullDebugIcons(pixels, readMenuDotStates(vramData))
 
         bitmap.setPixels(pixels, 0, FULL_DEBUG_WIDTH, 0, 0, FULL_DEBUG_WIDTH, FULL_DEBUG_HEIGHT)
         return bitmap
@@ -262,6 +262,12 @@ class DisplayBridge {
         // Clear
         for (row in lcdPixels) row.fill(false)
 
+        // D-Power adapter supplies the upstream-mapped 32x16 bitmap.
+        if (vramData.size == 512) {
+            for (row in 0 until LCD_HEIGHT) for (col in 0 until LCD_WIDTH)
+                lcdPixels[row][col] = vramData[row * LCD_WIDTH + col] != 0
+            return
+        }
         if (vramData.size < 160) return
 
         // Top->bottom rows use reversed nibble order and reversed bit order.
@@ -280,6 +286,7 @@ class DisplayBridge {
     }
 
     private fun readMenuDotStates(vramData: IntArray): BooleanArray {
+        if (vramData.size == 512) return BooleanArray(8)
         // Rearranged order (user-calibrated):
         // - First 4 active states on upper arc.
         // - Last 4 states on lower arc, reversed.
