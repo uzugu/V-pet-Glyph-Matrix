@@ -13,8 +13,8 @@ android {
         minSdk = 26
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4-dpower.preview1"
+        versionCode = 6
+        versionName = "1.4-dpower.preview2"
     }
 
     buildTypes {
@@ -45,7 +45,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.mockito:mockito-core:4.11.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    implementation(files("libs/glyph-matrix-sdk-1.0.aar"))
+    implementation(files("libs/glyph-matrix-sdk-2.0.aar"))
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("com.google.android.material:material:1.12.0")

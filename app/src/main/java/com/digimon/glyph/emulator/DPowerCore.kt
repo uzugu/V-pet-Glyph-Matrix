@@ -13,6 +13,8 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     override var onPortDriveChange: ((String, Int?) -> Unit)? = null
     override var onIoAccess: ((Boolean, Int, Int) -> Unit)? = null
     private val runtime: com.chaquo.python.PyObject
+    private val steps = com.digimon.glyph.input.StepPulses()
+    @Synchronized fun step(): Boolean = steps.enqueue()
     private var generation = 0L
     private var previous = IntArray(0)
     private var audioPoll = 0
@@ -29,6 +31,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     }
     @Synchronized override fun clock(): Double {
         val cycles = runtime.callAttr("advance").toDouble()
+        steps.advance(cycles.toInt()) { pressed -> runtime.callAttr("pin", "CD", 1, if (pressed) 1 else -1) }
         if (++audioPoll >= 10) {
             audioPoll = 0
             val tone = runtime.callAttr("audio").asList()
@@ -48,16 +51,23 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
         if (!pixels.contentEquals(previous)) { previous = pixels; generation++ }
         return if (lastGeneration == generation) null else E0C6200.DisplaySnapshot(generation, pixels)
     }
-    @Synchronized override fun getState(): Map<String, Any> = mapOf("CORE" to "SPL61X", "DPOWER_SNAPSHOT" to runtime.callAttr("snapshot").toString())
+    @Synchronized override fun getState(): Map<String, Any> = mapOf("CORE" to "SPL61X", "DPOWER_SNAPSHOT" to runtime.callAttr("snapshot").toString(),
+        "STEP_PENDING" to steps.pending, "STEP_PHASE" to steps.phase, "STEP_REMAINING" to steps.remaining)
     @Synchronized override fun restoreState(state: Map<String, Any>) {
         require(state["CORE"] == "SPL61X") { "Snapshot belongs to another CPU" }
+        val checked = com.digimon.glyph.input.StepPulses().apply {
+            restore((state["STEP_PENDING"] as? Number)?.toInt() ?: 0,
+                (state["STEP_PHASE"] as? Number)?.toInt() ?: 0,
+                (state["STEP_REMAINING"] as? Number)?.toInt() ?: 0)
+        }
         runtime.callAttr("restore", state["DPOWER_SNAPSHOT"] as? String ?: error("Missing D-Power snapshot"))
+        steps.restore(checked.pending, checked.phase, checked.remaining)
         previous = IntArray(0)
         lastTone = Pair(-1, -1f)
     }
     override fun getDiagnostics(): Map<String, Any> = mapOf("core" to "SPL61X")
     override fun getCurrentDigimonState(romName: String?): DigimonState? = null
-    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); previous = IntArray(0); lastTone = Pair(-1, -1f) }
+    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
     @Synchronized override fun pinSet(port: String, pin: Int, level: Int) {
         // Existing three-button Glyph surface: A=left, B=up, C=right.
         if (port == "K0") {

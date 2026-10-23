@@ -8,4 +8,34 @@
     <string name="pick_rom">Select ROM File</string>
     <string name="rom_invalid">Invalid ROM (expected a classic V-pet dump or verified D-Power EU 1.01)</string>
     <string name="dpower_controls">D-Power controls and gestures</string>
+    <string name="glyph_connected">Glyph connected</string>
+    <string name="glyph_disconnected">Glyph disconnected — open this toy in Nothing Glyph Toys</string>
+    <string name="glyph_output_error">Glyph output failed — reconnect the toy</string>
+    <string name="auto_fit">Automatically fit wide screens</string>
+    <string name="dpower_fit">Full D-Power LCD fitted to Glyph</string>
+    <string name="classic_help">Classic V-pet guide</string>
+    <string name="reset_pet">Reset this pet</string>
+    <string name="reset_pet_message">Reset %1$s? This starts a new pet and replaces its autosave. Manual save slots are kept.</string>
+    <string name="back_up_first">Back up first</string>
+    <string name="back_up_hint">Save to a manual slot below, then reset when you are ready.</string>
+    <string name="controls_frozen">Paused by quiet hours. Controls resume when the pet resumes.</string>
+    <string name="dpower_gesture_help">Play on the Glyph Matrix.
+
+Flick left or right: Left / Right.
+Move toward or away from you: Up / Down.
+Hold and release the Glyph button without a flick: Up.
+A short press switches Glyph toys.
+Hold the Glyph button and flick left: Step.
+Hold the Glyph button and flick right: Card.
+
+Step simulates one step; it is not an automatic pedometer. Sound is a simplified tone preview. Screen buttons below are optional.</string>
+    <string-array name="dpower_buttons">
+        <item>Left</item><item>Right</item><item>Down</item><item>Up</item><item>Step</item><item>Card</item>
+    </string-array>
+    <string name="cancel_import">Cancel import</string>
+    <string name="walking_enable">Enable walking steps</string>
+    <string name="walking_disable">Disable walking steps</string>
+    <string name="walking_help">Walking steps use your phone’s step detector to press the emulated Step input. Counts only while D-Power is running; Stop and DND Freeze pause it. Keep the pet started for screen-off walking. No past steps are imported.</string>
+    <string name="walking_unavailable">No step detector is available. Use the manual Step button or Glyph hold-and-flick.</string>
+    <string name="walking_permission_denied">Walking steps need Physical activity permission. Manual Step still works.</string>
 </resources>

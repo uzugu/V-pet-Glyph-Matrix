@@ -51,3 +51,6 @@ hs_err_pid*.log
 /tools/telegram_bundle_20260313_093248/
 /tools/telegram_bundle_20260313_093248_slots/
 CLAUDE.md
+
+# Download SDK directly from Nothing with tools/fetch_glyph_sdk.py
+/app/libs/glyph-matrix-sdk-2.0.aar

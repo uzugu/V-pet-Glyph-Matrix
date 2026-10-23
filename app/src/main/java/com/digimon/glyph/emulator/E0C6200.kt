@@ -540,20 +540,21 @@ class E0C6200(
 
     @Synchronized
     override fun pinSet(port: String, pin: Int, level: Int) {
+        require(pin in 0..3 && level in 0..1) { "Invalid input pin" }
         when (port) {
             "K0" -> {
                 val newK0 = (K0 and (1 shl pin).inv()) or (level shl pin)
-                if (EIK0 != 0 && (DFK0 shr pin) != level && (K0 shr pin) != level) {
+                if ((EIK0 and (1 shl pin)) != 0 && ((DFK0 shr pin) and 1) != level && ((K0 shr pin) and 1) != level) {
                     IK0 = IK0 or IO_IK0
                 }
-                if (pin == 3 && (PTC and IO_PTC) < 2 && (DFK0 shr pin) != level && (K0 shr pin) != level) {
+                if (pin == 3 && (PTC and IO_PTC) < 2 && ((DFK0 shr pin) and 1) != level && ((K0 shr pin) and 1) != level) {
                     processPtimer()
                 }
                 K0 = newK0
             }
             "K1" -> {
                 val newK1 = (K1 and (1 shl pin).inv()) or (level shl pin)
-                if (EIK1 != 0 && level == 0 && (K1 shr pin) != level) {
+                if ((EIK1 and (1 shl pin)) != 0 && level == 0 && ((K1 shr pin) and 1) != level) {
                     IK1 = IK1 or IO_IK1
                 }
                 K1 = newK1
@@ -568,14 +569,15 @@ class E0C6200(
 
     @Synchronized
     override fun pinRelease(port: String, pin: Int) {
+        require(pin in 0..3) { "Invalid input pin" }
         when (port) {
             "K0" -> {
                 val level = (portPullupK0 shr pin) and 0x1
                 val newK0 = (K0 and (1 shl pin).inv()) or (level shl pin)
-                if (EIK0 != 0 && (DFK0 shr pin) != level && (K0 shr pin) != level) {
+                if ((EIK0 and (1 shl pin)) != 0 && ((DFK0 shr pin) and 1) != level && ((K0 shr pin) and 1) != level) {
                     IK0 = IK0 or IO_IK0
                 }
-                if (pin == 3 && (PTC and IO_PTC) < 2 && (DFK0 shr pin) != level && (K0 shr pin) != level) {
+                if (pin == 3 && (PTC and IO_PTC) < 2 && ((DFK0 shr pin) and 1) != level && ((K0 shr pin) and 1) != level) {
                     processPtimer()
                 }
                 K0 = newK0
@@ -583,15 +585,15 @@ class E0C6200(
             "K1" -> {
                 val level = (portPullupK1 shr pin) and 0x1
                 val newK1 = (K1 and (1 shl pin).inv()) or (level shl pin)
-                if (EIK1 != 0 && level == 0 && (K1 shr pin) != level) {
+                if ((EIK1 and (1 shl pin)) != 0 && level == 0 && ((K1 shr pin) and 1) != level) {
                     IK1 = IK1 or IO_IK1
                 }
                 K1 = newK1
             }
-            "P0" -> if (IOC and IO_IOC0 == 0) P0 = (P0 and (1 shl pin).inv()) or (PUP and IO_PUP0)
-            "P1" -> if (IOC and IO_IOC1 == 0) P1 = (P1 and (1 shl pin).inv()) or (PUP and IO_PUP1)
-            "P2" -> if (IOC and IO_IOC2 == 0) P2 = (P2 and (1 shl pin).inv()) or (PUP and IO_PUP2)
-            "P3" -> if (IOC and IO_IOC3 == 0 && !p3Dedicated) P3 = (P3 and (1 shl pin).inv()) or (PUP and IO_PUP3)
+            "P0" -> if (IOC and IO_IOC0 == 0) P0 = (P0 and (1 shl pin).inv()) or ((if (PUP and IO_PUP0 != 0) 1 else 0) shl pin)
+            "P1" -> if (IOC and IO_IOC1 == 0) P1 = (P1 and (1 shl pin).inv()) or ((if (PUP and IO_PUP1 != 0) 1 else 0) shl pin)
+            "P2" -> if (IOC and IO_IOC2 == 0) P2 = (P2 and (1 shl pin).inv()) or ((if (PUP and IO_PUP2 != 0) 1 else 0) shl pin)
+            "P3" -> if (IOC and IO_IOC3 == 0 && !p3Dedicated) P3 = (P3 and (1 shl pin).inv()) or ((if (PUP and IO_PUP3 != 0) 1 else 0) shl pin)
             "RES" -> RESET = 0
         }
     }
@@ -832,6 +834,14 @@ class E0C6200(
 
     @Synchronized
     override fun getState(): Map<String, Any> = mapOf(
+        "STATE_VERSION" to 2,
+        "SC" to SC, "HZR" to HZR, "CTRL_SVD" to CTRL_SVD, "RESET" to RESET,
+        "IF_DELAY" to (if (ifDelay) 1 else 0),
+        "BZ_SOUND" to (if (buzzerSoundOn) 1 else 0),
+        "BZ_ENV_ON" to (if (buzzerEnvelopeOn) 1 else 0),
+        "BZ_ENV_STEP" to buzzerEnvelopeStep, "BZ_ENV_CYCLE" to buzzerEnvelopeCycle,
+        "BZ_ENV_COUNTER" to buzzerEnvelopeCounter, "BZ_ONESHOT_COUNTER" to buzzerOneShotCounter,
+        "BZ_OUTPUT" to (if (buzzerOutputOn) 1 else 0), "BZ_GAIN" to buzzerOutputGain.toDouble(),
         "A" to A, "B" to B, "IX" to IX, "IY" to IY, "SP" to SP,
         "PC" to PC, "NPC" to NPC,
         "CF" to CF, "ZF" to ZF, "DF" to DF, "IF" to IF,
@@ -919,6 +929,12 @@ class E0C6200(
     @Suppress("UNCHECKED_CAST")
     @Synchronized
     override fun restoreState(state: Map<String, Any>) {
+        validateSnapshot(state)
+        SC = state["SC"] as? Int ?: 0
+        HZR = state["HZR"] as? Int ?: 0
+        CTRL_SVD = state["CTRL_SVD"] as? Int ?: IO_SVDDT
+        RESET = state["RESET"] as? Int ?: 0
+        ifDelay = state["IF_DELAY"] == 1
         A = state["A"] as? Int ?: 0; B = state["B"] as? Int ?: 0
         IX = state["IX"] as? Int ?: 0; IY = state["IY"] as? Int ?: 0
         SP = state["SP"] as? Int ?: 0; PC = state["PC"] as? Int ?: 0x100; NPC = state["NPC"] as? Int ?: 0x100
@@ -971,8 +987,59 @@ class E0C6200(
         } else {
             setBuzzerOff()
         }
+        if (state["STATE_VERSION"] == 2) {
+            buzzerSoundOn = state["BZ_SOUND"] == 1
+            buzzerEnvelopeOn = state["BZ_ENV_ON"] == 1
+            buzzerEnvelopeStep = state["BZ_ENV_STEP"] as Int
+            buzzerEnvelopeCycle = state["BZ_ENV_CYCLE"] as Int
+            buzzerEnvelopeCounter = state["BZ_ENV_COUNTER"] as Int
+            buzzerOneShotCounter = state["BZ_ONESHOT_COUNTER"] as Int
+            buzzerOutputOn = state["BZ_OUTPUT"] == 1
+            buzzerOutputGain = (state["BZ_GAIN"] as Number).toFloat()
+            emitBuzzerStateIfChanged(force = true)
+        }
         emitAllDrivenPortsIfChanged()
         markDisplayDirty()
+    }
+
+    private fun validateSnapshot(state: Map<String, Any>) {
+        val version = state["STATE_VERSION"] ?: 1
+        require(version == 1 || version == 2) { "Unsupported classic snapshot version" }
+        for ((key, size) in listOf("RAM" to RAM.size, "VRAM" to VRAM.size)) {
+            val data = state[key] as? IntArray ?: error("Missing $key")
+            require(data.size == size && data.all { it in 0..15 }) { "Invalid $key" }
+        }
+        val required = listOf("A", "B", "IX", "IY", "SP", "PC", "NPC", "CF", "ZF", "DF", "IF", "HALT")
+        require(required.all { state[it] is Int }) { "Incomplete CPU snapshot" }
+        val template = getState()
+        for ((key, value) in state) {
+            if (template[key] is Int) {
+                require(value is Int) { "Invalid $key" }
+                val max = when {
+                    key.startsWith("DBG_") -> Int.MAX_VALUE
+                    key in listOf("PC", "NPC") -> 0x1FFF
+                    key in listOf("IX", "IY") -> 0xFFF
+                    key in listOf("SP", "TM", "PT", "RD", "SD") -> 255
+                    key in listOf("CF", "ZF", "DF", "IF", "HALT", "RESET", "IF_DELAY", "BZ_SOUND", "BZ_ENV_ON", "BZ_OUTPUT") -> 1
+                    key == "BZ_ENV_STEP" -> 7
+                    key in listOf("BZ_ENV_CYCLE", "BZ_ENV_COUNTER") -> ENVELOPE_CYCLE_DIV.max()
+                    key == "BZ_ONESHOT_COUNTER" -> ONE_SHOT_PULSE_WIDTH_DIV.max()
+                    key == "STATE_VERSION" -> 2
+                    else -> 15
+                }
+                require(value in 0..max) { "Out-of-range $key" }
+            }
+        }
+        val phases = mapOf("OSC1_COUNTER" to osc1ClockDiv, "TIMER_COUNTER" to TIMER_CLOCK_DIV,
+            "STOPWATCH_COUNTER" to STOPWATCH_CLOCK_DIV, "PTIMER_COUNTER" to PTIMER_CLOCK_DIV.max(), "BZ_GAIN" to 1.0)
+        for ((key, max) in phases) if (state.containsKey(key)) {
+            val number = (state[key] as? Number)?.toDouble() ?: error("Invalid $key")
+            require(number.isFinite() && number in 0.0..max) { "Invalid $key" }
+        }
+        if (version == 2) {
+            require(template.keys.filter { it.startsWith("BZ_") }.all { state.containsKey(it) }) { "Incomplete buzzer snapshot" }
+            require((state["BZ_ENV_CYCLE"] as Int) in ENVELOPE_CYCLE_DIV) { "Invalid envelope cycle" }
+        }
     }
 
     // ========== PC advance helper ==========

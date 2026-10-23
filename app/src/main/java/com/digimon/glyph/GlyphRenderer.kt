@@ -10,10 +10,10 @@ import com.nothing.ketchum.GlyphMatrixObject
  * Bridges emulator Bitmap output to the Nothing Glyph Matrix hardware.
  * Creates a GlyphMatrixFrame from a 25x25 Bitmap and pushes it to the LED grid.
  */
-class GlyphRenderer(private val context: Context) {
+class GlyphRenderer(private val context: Context, private val ownsToyDisplay: () -> Boolean) {
 
-    private var manager: GlyphMatrixManager? = null
-    private var ready = false
+    @Volatile private var manager: GlyphMatrixManager? = null
+    @Volatile private var ready = false
 
     fun init(mgr: GlyphMatrixManager) {
         manager = mgr
@@ -22,25 +22,28 @@ class GlyphRenderer(private val context: Context) {
 
     fun pushFrame(bitmap: Bitmap) {
         val mgr = manager ?: return
-        if (!ready) return
+        if (!ready || !ownsToyDisplay()) return
         try {
             val obj = GlyphMatrixObject.Builder()
                 .setImageSource(bitmap)
                 .setPosition(0, 0)
-                .setBrightness(4095)
+                .setBrightness(255)
                 .build()
 
             val frame = GlyphMatrixFrame.Builder()
                 .addTop(obj)
                 .build(context)
 
+            if (!ready || !ownsToyDisplay()) return
             mgr.setMatrixFrame(frame.render())
+            com.digimon.glyph.emulator.EmulatorStatus.glyph(com.digimon.glyph.emulator.EmulatorStatus.Glyph.CONNECTED)
         } catch (_: Exception) {
-            // SDK may throw if service disconnected
+            com.digimon.glyph.emulator.EmulatorStatus.glyph(com.digimon.glyph.emulator.EmulatorStatus.Glyph.OUTPUT_ERROR)
         }
     }
 
     fun turnOff() {
+        if (!ownsToyDisplay()) return
         try {
             manager?.turnOff()
         } catch (_: Exception) {}

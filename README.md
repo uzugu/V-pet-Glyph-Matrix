@@ -18,7 +18,7 @@ Play your favorite Digimon V-pet ROMs natively on Android! This app works seamle
 **[Download the latest APK from the Releases page!](https://github.com/uzugu/V-pet-Glyph-Matrix/releases)**
 
 1. Download and install the APK.
-2. Provide an authentic Digimon ROM file (only Digital Monster **V1, V2, or V3** are currently supported). Accepted formats are `.bin` or `.zip` (8KB or 16KB).
+2. Provide an authentic Digimon ROM file (classic **V1JA, V1JB, V1ES, V2J, V3J, V4J** and experimental **D-Power EU 1.01** are supported). Accepted formats are `.bin` or `.zip` (classic 8/16 KiB; D-Power 96 KiB).
 3. If using a Nothing Phone (3), enable the app under `Settings -> Glyph -> Glyph Toys`.
 4. Add the widget to your home screen!
 
@@ -46,6 +46,7 @@ This project ports the `BrickEmuPy` architecture directly into Android Kotlin fo
 ```bash
 git clone https://github.com/uzugu/V-pet-Glyph-Matrix.git
 cd V-pet-Glyph-Matrix
+python3 tools/fetch_glyph_sdk.py
 ./gradlew assembleDebug
 ```
 
@@ -156,6 +157,7 @@ Input path:
 
 Build APK:
 ```bash
+python3 tools/fetch_glyph_sdk.py
 ./gradlew assembleDebug
 ```
 
@@ -190,7 +192,7 @@ adb shell dumpsys batterystats com.digimon.glyph
 
 - Kotlin
 - Android SDK / Gradle
-- Nothing Glyph Matrix SDK (`app/libs/glyph-matrix-sdk-1.0.aar`)
+- Nothing Glyph Matrix SDK 2.0 (download with `python3 tools/fetch_glyph_sdk.py`)
 
 ## Native OWL widget (preview)
 
@@ -219,3 +221,5 @@ Scheduler delays are recovered by executing the owed firmware instructions,
 preserving each timer interrupt. The former speed correction is removed, and
 fractional timer state survives save/restores. See
 [the diagnosis and verification](docs/clock-synchronization.md).
+
+SDK 2.0 setup, official documentation and hardware limits: [Glyph integration review](docs/glyph/sdk.md).

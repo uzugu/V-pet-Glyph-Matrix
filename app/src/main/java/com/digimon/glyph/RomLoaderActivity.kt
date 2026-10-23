@@ -16,6 +16,7 @@ import android.net.Uri
 import android.provider.Settings
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.os.Handler
 import android.os.Looper
 import android.os.Process
@@ -50,6 +51,7 @@ import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
+import com.digimon.glyph.emulator.EmulatorStatus
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.StateManager
 import com.digimon.glyph.input.InputDebugState
@@ -68,6 +70,17 @@ import java.util.zip.ZipInputStream
  * After loading, the ROM is saved to internal storage for the Glyph Toy service to use.
  */
 class RomLoaderActivity : AppCompatActivity() {
+    private var walkingButton: Button? = null
+    private val walkingPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+        com.digimon.glyph.input.WalkingInput.setEnabled(this, granted)
+        updateWalkingButton()
+        if (!granted) Toast.makeText(this, R.string.walking_permission_denied, Toast.LENGTH_LONG).show()
+    }
+    private fun updateWalkingButton() {
+        walkingButton?.setText(if (com.digimon.glyph.input.WalkingInput.enabled(this) && com.digimon.glyph.input.WalkingInput.permitted(this))
+            R.string.walking_disable else R.string.walking_enable)
+    }
+
 
     private lateinit var statusText: TextView
     private lateinit var autosaveText: TextView
@@ -99,10 +112,14 @@ class RomLoaderActivity : AppCompatActivity() {
     private var baselineRomLabel: String? = null
     private val stateManager by lazy { StateManager(this) }
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastStatusRevision = -1L
+    private var importWorker: Thread? = null
+    private var importRequest = 0L
     private val debugRefresh = object : Runnable {
         override fun run() {
+            updateStatus()
             renderDebugState()
-            mainHandler.postDelayed(this, 120L)
+            mainHandler.postDelayed(this, if (EmulatorDebugSettings.isDebugEnabled()) 120L else 500L)
         }
     }
 
@@ -191,6 +208,7 @@ class RomLoaderActivity : AppCompatActivity() {
         statusText = findViewById(R.id.statusText)
         val btnPickRom = findViewById<Button>(R.id.btn_pick_rom)
         findViewById<Button>(R.id.btn_dpower_controls).setOnClickListener { showDPowerControls() }
+        findViewById<Button>(R.id.btn_cancel_import).setOnClickListener { cancelImport() }
         val btnStartEmu = findViewById<Button>(R.id.btn_start_emu)
         val btnStopEmu = findViewById<Button>(R.id.btn_stop_emu)
         digimonStatsText = findViewById(R.id.digimonStatsText)
@@ -388,7 +406,7 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         btnLoadAuto.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_LOAD_AUTOSAVE, 0, "Load autosave")
+            confirmLoad(0)
         }
 
         btnRestart.setOnClickListener {
@@ -396,7 +414,7 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         btnFullReset.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Full reset")
+            confirmReset()
         }
 
         btnComboAb.setOnClickListener {
@@ -508,6 +526,7 @@ class RomLoaderActivity : AppCompatActivity() {
         })
 
         btnTutorial.setOnClickListener {
+            if (EmulatorStatus.snapshot().isDPower) { showDPowerControls(); return@setOnClickListener }
             val versionHint = readCurrentRomIdentity().first
             startActivity(
                 Intent(this, TutorialActivity::class.java)
@@ -616,6 +635,7 @@ class RomLoaderActivity : AppCompatActivity() {
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
+        loadInitialRomIdentity()
         updateStatus()
         updateDndStatus(textDndStatus, btnDndStartTime, btnDndEndTime)
         refreshSaveAndCommandInfo()
@@ -631,7 +651,13 @@ class RomLoaderActivity : AppCompatActivity() {
                 findViewById(R.id.btn_dnd_end_time)
             )
         }
+        mainHandler.removeCallbacks(debugRefresh)
         mainHandler.post(debugRefresh)
+    }
+
+    override fun onDestroy() {
+        cancelImport()
+        super.onDestroy()
     }
 
     private fun checkTamerNamePrompt() {
@@ -665,30 +691,68 @@ class RomLoaderActivity : AppCompatActivity() {
         mainHandler.removeCallbacks(debugRefresh)
     }
 
-    private fun updateStatus() {
-        val romFile = File(filesDir, "current_rom.bin")
-        val nameFile = File(filesDir, "current_rom_name")
-        if (romFile.exists()) {
-            val name = if (nameFile.exists()) nameFile.readText().trim() else "unknown"
-            val (base, version) = parseRomNameParts(name)
-            statusText.text = if (version != null) "ROM loaded: $base $version" else "ROM loaded: $name"
-            if (version != null) {
-                val display = "$base $version"
-                val spannable = SpannableString(display)
-                spannable.setSpan(
-                    ForegroundColorSpan(ContextCompat.getColor(this, R.color.cyber_yellow)),
-                    base.length + 1,
-                    display.length,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
-                )
-                statRomValue.text = spannable
-            } else {
-                statRomValue.text = base
+    private fun loadInitialRomIdentity() {
+        val before = EmulatorStatus.snapshot()
+        if (before.name != null || before.busy) return
+        Thread({
+            runCatching {
+                val file = File(filesDir, "current_rom.bin")
+                if (file.exists()) {
+                    val bytes = file.inputStream().use { com.digimon.glyph.emulator.RomImport.readRomBytes(it) }
+                    val device = com.digimon.glyph.emulator.RomCatalog.identify(bytes)
+                    val name = if (device.id == "UnknownClassic") File(filesDir, "current_rom_name").takeIf { it.exists() }?.readText()?.trim() ?: device.id else device.id
+                    EmulatorStatus.initialDevice(name, sha256(bytes), before.revision)
+                }
+            }.onFailure {
+                if (EmulatorStatus.snapshot().revision == before.revision)
+                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, "Stored ROM could not be read: ${it.message}")
             }
-        } else {
-            statusText.text = getString(R.string.rom_not_found)
-            statRomValue.text = "—"
+        }, "ROM-identity").start()
+    }
+
+    private fun updateStatus() {
+        val status = EmulatorStatus.snapshot()
+        if (status.revision == lastStatusRevision) return
+        lastStatusRevision = status.revision
+        statusText.text = listOfNotNull(status.name?.let { "Selected device: $it" } ?: getString(R.string.rom_not_found),
+            status.message.takeIf { it.isNotBlank() }, status.error).joinToString("\n")
+        statRomValue.text = status.name ?: "—"
+        statEmuValue.text = when (status.run) {
+            EmulatorStatus.Run.RUNNING -> "RUNNING"
+            EmulatorStatus.Run.FROZEN -> "PAUSED"
+            EmulatorStatus.Run.STARTING -> "STARTING"
+            EmulatorStatus.Run.ERROR -> "ERROR"
+            EmulatorStatus.Run.STOPPED -> "STOPPED"
         }
+        statEmuLabel.text = when (status.glyph) {
+            EmulatorStatus.Glyph.CONNECTED -> getString(R.string.glyph_connected)
+            EmulatorStatus.Glyph.DISCONNECTED -> getString(R.string.glyph_disconnected)
+            EmulatorStatus.Glyph.OUTPUT_ERROR -> getString(R.string.glyph_output_error)
+        }
+        findViewById<Button>(R.id.btn_pick_rom).isEnabled = !status.busy
+        findViewById<Button>(R.id.btn_start_emu).isEnabled = status.name != null && !status.busy
+        findViewById<Button>(R.id.btn_stop_emu).isEnabled = status.run != EmulatorStatus.Run.STOPPED && !status.busy
+        findViewById<Button>(R.id.btn_cancel_import).visibility =
+            if (status.importing in listOf(EmulatorStatus.Import.SCANNING, EmulatorStatus.Import.CHOOSING)) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btn_dpower_controls).visibility = if (status.isDPower) View.VISIBLE else View.GONE
+        findViewById<Switch>(R.id.switch_zoom).apply {
+            isEnabled = !status.isDPower
+            text = getString(if (status.isDPower) R.string.dpower_fit else R.string.auto_fit)
+        }
+        val classic = status.name != null && !status.isDPower
+        findViewById<Button>(R.id.btn_toggle_battle).apply {
+            isEnabled = classic
+            text = if (status.isDPower) "Battles unavailable for D-Power" else "Battles"
+        }
+        if (!classic) findViewById<View>(R.id.layout_battle).visibility = View.GONE
+        (findViewById<View>(R.id.btn_combo_ab).parent as? View)?.visibility = if (classic) View.VISIBLE else View.GONE
+        for (id in listOf(R.id.btn_combo_ab, R.id.btn_combo_ac, R.id.btn_combo_bc)) {
+            findViewById<View>(id).visibility = if (classic) View.VISIBLE else View.GONE
+        }
+        for (id in listOf(R.id.switch_attention_notifications, R.id.switch_show_care_mistakes)) {
+            findViewById<View>(id).visibility = if (status.hasClassicMetadata) View.VISIBLE else View.GONE
+        }
+        findViewById<Button>(R.id.btn_tutorial).setText(if (status.isDPower) R.string.dpower_controls else R.string.classic_help)
     }
 
     private fun parseRomNameParts(name: String): Pair<String, String?> {
@@ -715,7 +779,7 @@ class RomLoaderActivity : AppCompatActivity() {
         if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
             lastFrameUpdateMs = frameSnap.updatedAtMs
             val state = frameSnap.digimonState
-            digimonStatsText.text = if (state != null) {
+            digimonStatsText.text = if (state != null && EmulatorStatus.snapshot().hasClassicMetadata) {
                 val name = state.info?.name ?: "UNKNOWN"
                 val stage = state.info?.stage ?: "UNKNOWN STAGE"
                 val showCareMistakes = DigimonAttentionSettings.isShowCareMistakesEnabled()
@@ -755,21 +819,12 @@ class RomLoaderActivity : AppCompatActivity() {
                 }
             } else if (frameSnap.vram?.size == 128) {
                 "D-POWER EU 1.01\nPlay on the Glyph Matrix. Pet statistics are not decoded for this device."
+            } else if (EmulatorStatus.snapshot().name != null) {
+                "Pet statistics are not decoded for this ROM. Use the Glyph display to play."
             } else {
                 "AWAITING SIGNAL..."
             }
         }
-        // Update emulator state stat card
-        val emuFrameAgeMs = if (frameSnap.updatedAtMs == 0L) Long.MAX_VALUE
-                            else android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs
-        statEmuValue.text = if (emuFrameAgeMs < 2000L) "ACTIVE" else "IDLE"
-        statEmuLabel.text = when {
-            emuFrameAgeMs == Long.MAX_VALUE -> "► NO SIGNAL"
-            emuFrameAgeMs < 2000L          -> "► FRAME  ${emuFrameAgeMs}ms AGO"
-            emuFrameAgeMs < 60_000L        -> "► LAST  ${emuFrameAgeMs / 1000}s AGO"
-            else                           -> "► EMULATOR STATE"
-        }
-
         refreshSaveAndCommandInfo()
         renderRamDebugState(frameSnap)
 
@@ -852,6 +907,16 @@ class RomLoaderActivity : AppCompatActivity() {
     private fun buildRamDebugText(frameSnap: FrameDebugState.Snapshot, romName: String?): String {
         val ram = frameSnap.ram ?: return "RAW RAM WATCH\nawaiting live frame..."
         val vram = frameSnap.vram ?: return "RAW RAM WATCH\nawaiting live frame..."
+        if (EmulatorStatus.snapshot().isDPower) {
+            return buildString {
+                appendLine("D-POWER RAW RAM — first 256 bytes of ${ram.size}")
+                appendLine("Classic watch profiles and decoded statistics do not apply.")
+                ram.take(256).chunked(16).forEachIndexed { row, values ->
+                    append("%04X: ".format(row * 16))
+                    appendLine(values.joinToString(" ") { "%02X".format(it and 0xFF) })
+                }
+            }.trimEnd()
+        }
         val profile = ramWatchProfile
         val baseline = baselineRam
         val baselineVramLocal = baselineVram
@@ -1023,7 +1088,8 @@ class RomLoaderActivity : AppCompatActivity() {
                 append(": ")
                 val rowEnd = (rowStart + rowWidth).coerceAtMost(values.size)
                 for (addr in rowStart until rowEnd) {
-                    append(values[addr].and(0xF).toString(16).uppercase())
+                    append(values[addr].and(if (EmulatorStatus.snapshot().isDPower) 0xFF else 0xF)
+                        .toString(16).uppercase().padStart(if (EmulatorStatus.snapshot().isDPower) 2 else 1, '0'))
                     if (addr != rowEnd - 1) append(' ')
                 }
                 appendLine()
@@ -1080,8 +1146,8 @@ class RomLoaderActivity : AppCompatActivity() {
             textSize = 16f
             setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_blue))
             setBackgroundResource(R.drawable.cyber_button_bg)
-            val lp = LinearLayout.LayoutParams(200, 120) // approx 60dp wide, 40dp high
-            lp.marginEnd = 16
+            val lp = LinearLayout.LayoutParams(dp(80), dp(48)) // approx 60dp wide, 40dp high
+            lp.marginEnd = dp(8)
             layoutParams = lp
             setOnClickListener {
                 sendCommand(EmulatorCommandBus.CMD_SAVE_SLOT, slot, "Save slot $slot")
@@ -1093,10 +1159,10 @@ class RomLoaderActivity : AppCompatActivity() {
             textSize = 16f
             setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_yellow))
             setBackgroundResource(R.drawable.cyber_button_bg)
-            val lp = LinearLayout.LayoutParams(200, 120)
+            val lp = LinearLayout.LayoutParams(dp(80), dp(48))
             layoutParams = lp
             setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_LOAD_SLOT, slot, "Load slot $slot")
+                confirmLoad(slot)
             }
         }
         row.addView(info)
@@ -1107,9 +1173,18 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun sendCommand(type: String, arg: Int, label: String) {
-        startBackendService()
-        EmulatorCommandBus.post(this, type, arg)
-        Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
+        val status = EmulatorStatus.snapshot()
+        if (status.busy || status.run == EmulatorStatus.Run.FROZEN) {
+            Toast.makeText(this, if (status.busy) "Wait for ROM import to finish" else "Resume the pet before changing its saves", Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            EmulatorCommandBus.post(this, type, arg)
+            startBackendService()
+            Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message ?: "Command could not be queued", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun refreshBackendSettingsSilently() {
@@ -1324,16 +1399,8 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun readCurrentRomIdentity(): Pair<String?, String?> {
-        val romNameFile = File(filesDir, "current_rom_name")
-        val romFile = File(filesDir, "current_rom.bin")
-        val name = if (romNameFile.exists()) romNameFile.readText().trim() else null
-        if (!romFile.exists()) return Pair(name, null)
-        val hash = try {
-            sha256(romFile.readBytes())
-        } catch (_: Exception) {
-            null
-        }
-        return Pair(name, hash)
+        val status = EmulatorStatus.snapshot()
+        return Pair(status.name, status.hash)
     }
 
     private fun formatTime(ts: Long): String {
@@ -1459,7 +1526,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val input = InputDebugState.read(this)
         val inputAgeMs = if (input.timestampMs == 0L) -1L else (now - input.timestampMs)
         val frame = FrameDebugState.snapshot()
-        val frameAgeMs = if (frame.updatedAtMs == 0L) -1L else (now - frame.updatedAtMs)
+        val frameAgeMs = if (frame.updatedAtMs == 0L) -1L else (android.os.SystemClock.uptimeMillis() - frame.updatedAtMs)
         val autosave = stateManager.getAutosaveInfo(romName, romHash)
         val slot1 = stateManager.getSlotInfo(1, romName, romHash)
         val slot2 = stateManager.getSlotInfo(2, romName, romHash)
@@ -1556,57 +1623,137 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun loadRomFromUri(uri: Uri) {
-        val fileName = getFileName(uri)
-        Thread({
+        val request = EmulatorStatus.beginImport() ?: return
+        importRequest = request
+        updateStatus()
+        importWorker = Thread({
             try {
+                val fileName = getFileName(uri)
                 val candidates = contentResolver.openInputStream(uri)?.use {
                     com.digimon.glyph.emulator.RomImport.read(it, fileName)
                 } ?: error("Cannot open ROM")
                 runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    if (candidates.size == 1) importCandidate(candidates.single())
-                    else androidx.appcompat.app.AlertDialog.Builder(this)
-                        .setTitle("Choose a ROM")
-                        .setItems(candidates.map { "${it.device.id} — ${it.name}" }.toTypedArray()) { _, index -> importCandidate(candidates[index]) }
-                        .setNegativeButton("Cancel", null).show()
+                    if (!canFinishImport(request)) return@runOnUiThread
+                    if (candidates.size == 1) importCandidate(candidates.single(), request)
+                    else {
+                        EmulatorStatus.importResult(request, EmulatorStatus.Import.CHOOSING, "Choose a device from the archive")
+                        androidx.appcompat.app.AlertDialog.Builder(this)
+                            .setTitle("Choose a ROM")
+                            .setItems(candidates.map { "${it.device.id} — ${it.name}" }.toTypedArray()) { _, index ->
+                                if (canFinishImport(request)) importCandidate(candidates[index], request)
+                            }
+                            .setNegativeButton("Cancel") { _, _ -> cancelImport() }
+                            .setOnCancelListener { cancelImport() }.show()
+                    }
                 }
             } catch (e: Exception) {
-                runOnUiThread { Toast.makeText(this, e.message ?: "ROM import failed", Toast.LENGTH_LONG).show() }
+                runOnUiThread {
+                    if (canFinishImport(request)) EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, "Import failed: ${e.message}")
+                }
             }
-        }, "ROM-import").start()
+        }, "ROM-import").also { it.start() }
     }
 
-    private fun importCandidate(candidate: com.digimon.glyph.emulator.RomImport.Candidate) {
+    private fun canFinishImport(request: Long): Boolean {
+        val state = EmulatorStatus.snapshot()
+        return !isFinishing && !isDestroyed && state.request == request && state.busy
+    }
+
+    private fun cancelImport() {
+        val status = EmulatorStatus.snapshot()
+        if (status.request == importRequest && status.importing in listOf(EmulatorStatus.Import.SCANNING, EmulatorStatus.Import.CHOOSING)) {
+            importWorker?.interrupt()
+            EmulatorStatus.importResult(importRequest, EmulatorStatus.Import.CANCELLED, "Import cancelled; previous device kept")
+        }
+    }
+
+    private fun importCandidate(candidate: com.digimon.glyph.emulator.RomImport.Candidate, request: Long) {
+        var staged: File? = null
         try {
-            // Unique staging files prevent two rapid imports from replacing each other's data.
-            val staged = File.createTempFile("rom-import-", ".bin", filesDir)
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.SWITCHING, "Saving current pet and loading ${candidate.device.id}…")
+            staged = File.createTempFile("rom-import-", ".bin", filesDir)
             staged.writeBytes(candidate.bytes)
             val name = if (candidate.device.id == "UnknownClassic")
                 candidate.name.substringAfterLast('/').substringBeforeLast('.') else candidate.device.id
             val intent = Intent(this, DigimonGlyphToyService::class.java)
                 .setAction(DigimonGlyphToyService.ACTION_IMPORT_ROM)
-                .putExtra("staged_rom", staged.name).putExtra("rom_name", name)
+                .putExtra("staged_rom", staged.name).putExtra("rom_name", name).putExtra("import_request", request)
             ContextCompat.startForegroundService(this, intent)
-            Toast.makeText(this, "Importing $name", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, e.message ?: "ROM import failed", Toast.LENGTH_LONG).show()
+            staged?.delete()
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, "Import failed: ${e.message}")
         }
     }
 
+    private fun dp(value: Int) = (value * resources.displayMetrics.density + 0.5f).toInt()
+
+    private fun confirmReset() {
+        val status = EmulatorStatus.snapshot()
+        if (status.name == null) return
+        AlertDialog.Builder(this).setTitle(getString(R.string.reset_pet))
+            .setMessage(getString(R.string.reset_pet_message, status.name))
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.back_up_first) { _, _ ->
+                findViewById<View>(R.id.layout_save_tools).visibility = View.VISIBLE
+                Toast.makeText(this, R.string.back_up_hint, Toast.LENGTH_LONG).show()
+            }
+            .setPositiveButton(R.string.reset_pet) { _, _ ->
+                if (EmulatorStatus.snapshot().hash == status.hash) sendCommand(EmulatorCommandBus.CMD_FULL_RESET, 0, "Reset pet")
+            }.show()
+    }
+
+    private fun confirmLoad(slot: Int) {
+        val status = EmulatorStatus.snapshot()
+        val info = if (slot == 0) stateManager.getAutosaveInfo(status.name, status.hash)
+            else stateManager.getSlotInfo(slot, status.name, status.hash)
+        if (!info.exists) { Toast.makeText(this, "No save in this slot", Toast.LENGTH_SHORT).show(); return }
+        val label = if (slot == 0) "Autosave" else "Slot $slot"
+        AlertDialog.Builder(this).setTitle("Load $label?")
+            .setMessage("${status.name}\n${formatTime(info.timestampMs)}\nThis replaces current progress with this save.")
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton("Load") { _, _ ->
+                if (EmulatorStatus.snapshot().hash == status.hash)
+                    sendCommand(if (slot == 0) EmulatorCommandBus.CMD_LOAD_AUTOSAVE else EmulatorCommandBus.CMD_LOAD_SLOT, slot, "Load $label")
+            }.show()
+    }
+
     private fun showDPowerControls() {
-        val isDPower = runCatching {
-            com.digimon.glyph.emulator.RomCatalog.identify(File(filesDir, "current_rom.bin").readBytes()).isDPower
-        }.getOrDefault(false)
-        if (!isDPower) {
-            Toast.makeText(this, "Load the D-Power EU 1.01 ROM first", Toast.LENGTH_SHORT).show()
-            return
+        if (!EmulatorStatus.snapshot().isDPower) return
+        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(12), dp(16), dp(12)) }
+        panel.addView(TextView(this).apply { text = getString(R.string.dpower_gesture_help) })
+        panel.addView(TextView(this).apply { text = getString(R.string.walking_help) })
+        walkingButton = Button(this).apply {
+            isEnabled = com.digimon.glyph.input.WalkingInput.available(this@RomLoaderActivity)
+            setOnClickListener {
+                val walking = com.digimon.glyph.input.WalkingInput
+                if (walking.enabled(this@RomLoaderActivity) && walking.permitted(this@RomLoaderActivity)) {
+                    walking.setEnabled(this@RomLoaderActivity, false)
+                } else if (walking.permitted(this@RomLoaderActivity)) {
+                    walking.setEnabled(this@RomLoaderActivity, true)
+                } else {
+                    walkingPermission.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                }
+                updateWalkingButton()
+            }
         }
-        val panel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(24, 12, 24, 12) }
-        panel.addView(TextView(this).apply { text = "D-Power EU 1.01\nPlay on the Glyph Matrix: horizontal flicks = Left/Right; forward/back flicks = Up/Down. Tap Glyph button = Up. Hold Glyph button + negative flick = Step; hold + positive flick = Card. Buttons below are optional." })
-        listOf("Left", "Right", "Down", "Up", "Step", "Card").forEachIndexed { index, label ->
+        updateWalkingButton()
+        panel.addView(walkingButton)
+        if (!com.digimon.glyph.input.WalkingInput.available(this)) {
+            panel.addView(TextView(this).apply { text = getString(R.string.walking_unavailable) })
+        }
+        if (EmulatorStatus.snapshot().run == EmulatorStatus.Run.FROZEN) {
+            panel.addView(TextView(this).apply { text = getString(R.string.controls_frozen) })
+        }
+        resources.getStringArray(R.array.dpower_buttons).forEachIndexed { index, label ->
             panel.addView(Button(this).apply {
                 text = label
+                isEnabled = EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN
                 setOnClickListener {
+                    if (!EmulatorStatus.snapshot().isDPower) return@setOnClickListener
+                    if (EmulatorStatus.snapshot().run == EmulatorStatus.Run.FROZEN) {
+                        Toast.makeText(this@RomLoaderActivity, R.string.controls_frozen, Toast.LENGTH_SHORT).show()
+                        return@setOnClickListener
+                    }
                     val intent = Intent(this@RomLoaderActivity, DigimonGlyphToyService::class.java)
                         .setAction(DigimonGlyphToyService.ACTION_WIDGET_BUTTON)
                         .putExtra(DigimonGlyphToyService.EXTRA_WIDGET_BUTTON, 20 + index)
@@ -1614,8 +1761,9 @@ class RomLoaderActivity : AppCompatActivity() {
                 }
             })
         }
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle("D-Power controls").setView(panel)
-            .setPositiveButton("Close", null).show()
+        val scroll = android.widget.ScrollView(this).apply { addView(panel) }
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.dpower_controls).setView(scroll)
+            .setPositiveButton("Close", null).setOnDismissListener { walkingButton = null }.show()
     }
 
     private fun getFileName(uri: Uri): String {

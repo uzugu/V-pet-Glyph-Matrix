@@ -4,6 +4,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class DPowerInputTest {
+    @Test fun duplicateEventsAndModifiedReleaseDoNotEmitPhantomTaps() {
+        val button = DPowerInput.ButtonGesture()
+        assertFalse(button.up())
+        assertTrue(button.down())
+        button.modifierUsed()
+        assertFalse(button.down())
+        assertFalse(button.up())
+        assertTrue(button.down())
+        assertTrue(button.up())
+        assertFalse(button.up())
+        button.down(); button.cancel()
+        assertFalse(button.up())
+    }
     @Test fun glyphGesturesReachEveryHardwareInput() {
         val expected = listOf(DPowerInput.left, DPowerInput.right, DPowerInput.down, DPowerInput.up)
         val actual = listOf(true, false).flatMap { horizontal -> listOf(false, true).map { DPowerInput.flick(horizontal, it, false) } }

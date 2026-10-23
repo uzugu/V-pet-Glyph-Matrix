@@ -11,7 +11,8 @@ object EmulatorCommandBus {
         val id: Long,
         val type: String,
         val arg: Int,
-        val timestampMs: Long
+        val timestampMs: Long,
+        val romHash: String? = null
     )
 
     data class Ack(
@@ -43,6 +44,20 @@ object EmulatorCommandBus {
     const val BUTTON_B = 11
     const val BUTTON_C = 12
 
+    private const val KEY_QUEUE = "pending_commands_v1"
+    private val gson = com.google.gson.Gson()
+    private fun queue(prefs: android.content.SharedPreferences): MutableList<Command> {
+        val encoded = prefs.getString(KEY_QUEUE, null)
+        if (encoded != null) return runCatching {
+            gson.fromJson(encoded, Array<Command>::class.java).toMutableList()
+        }.getOrDefault(mutableListOf())
+        val id = prefs.getLong(KEY_CMD_ID, 0L)
+        val type = prefs.getString(KEY_CMD_TYPE, null)
+        return if (type != null && id > prefs.getLong(KEY_ACK_ID, 0L)) mutableListOf(
+            Command(id, type, prefs.getInt(KEY_CMD_ARG, 0), prefs.getLong(KEY_CMD_TIME, 0L))
+        ) else mutableListOf()
+    }
+
     private const val PREFS_NAME = "emulator_command_bus"
     private const val KEY_CMD_ID = "cmd_id"
     private const val KEY_CMD_TYPE = "cmd_type"
@@ -56,31 +71,28 @@ object EmulatorCommandBus {
     @Synchronized
     fun post(context: Context, type: String, arg: Int = 0): Long {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val pending = queue(prefs)
+        require(pending.size < 64) { "Too many pending commands; wait for the current action" }
         val nextId = prefs.getLong(KEY_CMD_ID, 0L) + 1L
-        prefs.edit()
-            .putLong(KEY_CMD_ID, nextId)
-            .putString(KEY_CMD_TYPE, type)
-            .putInt(KEY_CMD_ARG, arg)
-            .putLong(KEY_CMD_TIME, System.currentTimeMillis())
-            .apply()
+        pending += Command(nextId, type, arg, System.currentTimeMillis(),
+            if (type == CMD_REFRESH_SETTINGS) null else EmulatorStatus.snapshot().hash)
+        prefs.edit().putLong(KEY_CMD_ID, nextId).putString(KEY_QUEUE, gson.toJson(pending)).apply()
         return nextId
     }
 
+    @Synchronized
     fun readPending(context: Context, lastHandledId: Long): Command? {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val id = prefs.getLong(KEY_CMD_ID, 0L)
-        val ackedId = prefs.getLong(KEY_ACK_ID, 0L)
-        val seenId = maxOf(lastHandledId, ackedId)
-        if (id <= seenId) return null
-        val type = prefs.getString(KEY_CMD_TYPE, null) ?: return null
-        val arg = prefs.getInt(KEY_CMD_ARG, 0)
-        val ts = prefs.getLong(KEY_CMD_TIME, 0L)
-        return Command(id, type, arg, ts)
+        val seen = maxOf(lastHandledId, prefs.getLong(KEY_ACK_ID, 0L))
+        return queue(prefs).firstOrNull { it.id > seen }
     }
 
+    @Synchronized
     fun ack(context: Context, id: Long, status: String) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (id < prefs.getLong(KEY_ACK_ID, 0L)) return
+        prefs.edit()
+            .putString(KEY_QUEUE, gson.toJson(queue(prefs).filter { it.id > id }))
             .putLong(KEY_ACK_ID, id)
             .putString(KEY_ACK_STATUS, status)
             .putLong(KEY_ACK_TIME, System.currentTimeMillis())

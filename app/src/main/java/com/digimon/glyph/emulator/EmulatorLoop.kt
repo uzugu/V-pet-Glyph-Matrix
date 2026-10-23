@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.LockSupport
 
 /**
@@ -25,6 +26,7 @@ class EmulatorLoop(
     private val onFrame: (IntArray) -> Unit,
     private val elapsedNs: () -> Long = { SystemClock.elapsedRealtimeNanos() },
 ) {
+    var onFailure: ((Throwable) -> Unit)? = null
     var onVirtualTick: ((Double) -> Unit)? = null
     enum class TimingMode { EXACT, FULL_ACCURATE, POWER_SAVE }
 
@@ -104,6 +106,7 @@ class EmulatorLoop(
     }
 
     fun enqueue(command: (EmulatorCore) -> Unit): Boolean {
+        if (!running) return false
         commandQueue.offer(command)
         return true
     }
@@ -118,8 +121,11 @@ class EmulatorLoop(
         val latch = CountDownLatch(1)
         val resultRef = AtomicReference<T?>()
         val errorRef = AtomicReference<Throwable?>()
-        commandQueue.offer { core ->
-            try {
+        // 0=queued, 1=executing, 2=cancelled. Once execution starts, wait for its
+        // actual outcome rather than reporting a timeout followed by late mutation.
+        val phase = AtomicInteger(0)
+        val queued: (EmulatorCore) -> Unit = { core ->
+            if (phase.compareAndSet(0, 1)) try {
                 resultRef.set(command(core))
             } catch (t: Throwable) {
                 errorRef.set(t)
@@ -127,7 +133,14 @@ class EmulatorLoop(
                 latch.countDown()
             }
         }
-        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) return null
+        commandQueue.offer(queued)
+        if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
+            if (phase.compareAndSet(0, 2)) {
+                commandQueue.remove(queued)
+                return null
+            }
+            latch.await()
+        }
         val error = errorRef.get()
         if (error != null) {
             throw RuntimeException("Emulator command failed", error)
@@ -137,6 +150,17 @@ class EmulatorLoop(
 
 
     private fun runLoop() {
+        try {
+            runLoopBody()
+        } catch (failure: Throwable) {
+            onFailure?.invoke(failure)
+        } finally {
+            running = false
+            commandQueue.clear()
+        }
+    }
+
+    private fun runLoopBody() {
         try { Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY) } catch (_: Exception) {}
         // elapsedRealtime includes Android suspend; nanoTime does not.
         val startNs = elapsedNs()

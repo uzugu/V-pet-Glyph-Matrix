@@ -79,15 +79,17 @@ class InputController(context: Context) : SensorEventListener {
 
     private var emulator: EmulatorCore? = null
     private val isDPower get() = emulator is com.digimon.glyph.emulator.DPowerCore
-    private var dpModifierUsed = false
+    private val dpButton = DPowerInput.ButtonGesture()
+    private var dpGeneration = 0L
     private val dpHeld = mutableSetOf<DPowerInput.Key>()
     private fun pulseDPower(key: DPowerInput.Key) {
         if (key in dpHeld) return
         dpHeld.add(key)
+        val generation = dpGeneration
         pinSet(key.port, key.pin, 1)
         lastTriggerButton = key.label
         mainHandler.postDelayed({
-            if (dpHeld.remove(key)) pinRelease(key.port, key.pin)
+            if (generation == dpGeneration && dpHeld.remove(key)) pinRelease(key.port, key.pin)
         }, FLICK_PRESS_MS)
     }
 
@@ -193,9 +195,9 @@ class InputController(context: Context) : SensorEventListener {
 
     fun onGlyphButtonDown() {
         noteInteraction()
+        if (isDPower && !dpButton.down()) return
         glyphPhysicalDown = true
         if (isDPower) {
-            dpModifierUsed = false
             onUserInteraction?.invoke()
             return
         }
@@ -216,7 +218,7 @@ class InputController(context: Context) : SensorEventListener {
         noteInteraction()
         glyphPhysicalDown = false
         if (isDPower) {
-            if (!dpModifierUsed) pulseDPower(DPowerInput.up)
+            if (dpButton.up()) pulseDPower(DPowerInput.up)
             onUserInteraction?.invoke()
             return
         }
@@ -240,7 +242,8 @@ class InputController(context: Context) : SensorEventListener {
     private fun releaseAll() {
         dpHeld.toList().forEach { pinRelease(it.port, it.pin) }
         dpHeld.clear()
-        dpModifierUsed = false
+        dpGeneration++
+        dpButton.cancel()
         mainHandler.removeCallbacks(releaseBTap)
         mainHandler.removeCallbacks(releaseATap)
         mainHandler.removeCallbacks(releaseCTap)
@@ -429,7 +432,7 @@ class InputController(context: Context) : SensorEventListener {
         noteInteraction()
         if (isDPower && axis != FlickAxis.NONE) {
             val key = DPowerInput.flick(axis == FlickAxis.X, direction > 0, glyphPhysicalDown)
-            if (glyphPhysicalDown) dpModifierUsed = true
+            if (glyphPhysicalDown) dpButton.modifierUsed()
             pulseDPower(key)
             if (axis == FlickAxis.X) lastFlickXMs = now else lastFlickZMs = now
             lastTriggerAtMs = now

@@ -2,6 +2,22 @@ package com.digimon.glyph.input
 
 /** Physical Glyph controls, independent of sensor plumbing for reproducible tests. */
 object DPowerInput {
+    class ButtonGesture {
+        private var held = false
+        private var modified = false
+        fun down(): Boolean {
+            if (held) return false
+            held = true; modified = false
+            return true
+        }
+        fun modifierUsed() { if (held) modified = true }
+        fun up(): Boolean {
+            val tap = held && !modified
+            cancel()
+            return tap
+        }
+        fun cancel() { held = false; modified = false }
+    }
     data class Key(val port: String, val pin: Int, val label: String)
     val left = Key("EF", 0, "Left")
     val right = Key("EF", 1, "Right")

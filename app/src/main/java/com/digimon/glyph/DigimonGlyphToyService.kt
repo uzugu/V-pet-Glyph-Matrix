@@ -35,6 +35,7 @@ import com.digimon.glyph.emulator.DisplayBridge
 import com.digimon.glyph.emulator.DisplayRenderSettings
 import com.digimon.glyph.emulator.E0C6200
 import com.digimon.glyph.emulator.EmulatorCore
+import com.digimon.glyph.emulator.EmulatorStatus
 import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
@@ -112,7 +113,15 @@ class DigimonGlyphToyService : Service() {
 
     private var glyphManager: Any? = null  // GlyphMatrixManager, typed as Any to avoid class-load on non-Nothing
     private lateinit var stateManager: StateManager
+    private val walkingInput by lazy {
+        com.digimon.glyph.input.WalkingInput(this) {
+            if (!DigimonDndSettings.isFrozenNow()) runOnEmulatorAsync { core ->
+                (core as? com.digimon.glyph.emulator.DPowerCore)?.step()
+            }
+        }
+    }
     private var standaloneMode = false
+    @Volatile private var toyDisplayActive = false
     private val owlBridge: OwlBridge by lazy {
         OwlBridge(this,
             start = {
@@ -152,6 +161,8 @@ class DigimonGlyphToyService : Service() {
     private var ioTraceWindowStartMs = 0L
     private val ioTraceLastValues = HashMap<Int, Int>()
     private var glyphManagerInited = false
+    private var glyphConnectionGeneration = 0L
+    private var glyphRegistered = false
     private var frameHeartbeatCount: Long = 0L
     private var lastFrameHeartbeatLogMs: Long = 0L
     private var cpuWakeLock: PowerManager.WakeLock? = null
@@ -176,6 +187,7 @@ class DigimonGlyphToyService : Service() {
     private var battleRdBridgeLastTxAtMs = 0L
     private var lastNeedsAttention: Boolean? = null
     private val widgetButtonReleaseTokens = IntArray(3)
+    private val dpButtonReleaseTokens = IntArray(6)
 
     private var virtualDCom: com.digimon.glyph.battle.VirtualDCom? = null
 
@@ -188,6 +200,7 @@ class DigimonGlyphToyService : Service() {
     }
     private val commandPollRunnable = object : Runnable {
         override fun run() {
+            walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore && EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING)
             processPendingCommands()
             applyAudioHapticSettingsIfChanged()
             applyTimingSettingIfChanged()
@@ -239,7 +252,9 @@ class DigimonGlyphToyService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? {
         if (intent?.action == OwlProtocol.ACTION_BIND) return owlBridge.messenger.binder
+        toyDisplayActive = true
         Log.d(TAG, "onBind glyphAvailable=${GlyphAvailability.isAvailable}")
+        inputController?.start()
         ensureServiceStarted()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
@@ -266,6 +281,11 @@ class DigimonGlyphToyService : Service() {
             return false
         }
         Log.d(TAG, "onUnbind")
+        toyDisplayActive = false
+        inputController?.stop()
+        releaseGlyphManager()
+        // Display binding is independent of an explicitly started pet's lifetime.
+        if (standaloneMode) return true
         // Nothing OS may transiently unbind/rebind toy services.
         // Delay shutdown so brief binder churn does not freeze gameplay.
         mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -275,7 +295,9 @@ class DigimonGlyphToyService : Service() {
 
     override fun onRebind(intent: Intent?) {
         if (intent?.action == OwlProtocol.ACTION_BIND) return
+        toyDisplayActive = true
         Log.d(TAG, "onRebind")
+        inputController?.start()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
         mainHandler.post(commandPollRunnable)
@@ -283,7 +305,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
+        try { when (intent?.action) {
             ACTION_IMPORT_ROM -> {
                 tryStartForeground()
                 importStagedRom(intent)
@@ -301,7 +323,10 @@ class DigimonGlyphToyService : Service() {
             }
             ACTION_STOP -> {
                 Log.d(TAG, "Stop requested")
-                saveState(sync = true, reason = "stop_action")
+                if (emulator != null && !saveState(sync = true, reason = "stop_action")) {
+                    EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, "Stop cancelled: could not save the pet")
+                    return START_NOT_STICKY
+                }
                 stopEmulator()
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
@@ -315,35 +340,64 @@ class DigimonGlyphToyService : Service() {
                 exitDoNotDisturb("alarm")
             }
         }
+        } catch (failure: Exception) {
+            Log.e(TAG, "Service action failed", failure)
+            EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, "Action failed: ${failure.message}")
+        }
         return START_NOT_STICKY
     }
 
     private fun importStagedRom(intent: Intent) {
+        val request = intent.getLongExtra("import_request", -1L)
+        val status = EmulatorStatus.snapshot()
+        if (request != status.request || status.importing != EmulatorStatus.Import.SWITCHING) return
         val stagedName = intent.getStringExtra("staged_rom") ?: return
         if (!stagedName.startsWith("rom-import-") || stagedName.contains('/') || stagedName.contains('\\')) return
         val staged = java.io.File(filesDir, stagedName)
+        val targetFile = java.io.File(filesDir, "current_rom.bin")
+        val nameFile = java.io.File(filesDir, "current_rom_name")
+        var oldBytes: ByteArray? = null
+        var oldName: String? = null
+        val wasRunning = emulator != null
+        var stopped = false
         try {
+            oldBytes = if (targetFile.exists()) targetFile.inputStream().use { com.digimon.glyph.emulator.RomImport.readRomBytes(it) } else null
+            oldName = if (nameFile.exists()) nameFile.readText() else null
             val bytes = staged.inputStream().use { com.digimon.glyph.emulator.RomImport.readRomBytes(it) }
             val device = com.digimon.glyph.emulator.RomCatalog.identify(bytes)
             val name = if (device.id == "UnknownClassic") intent.getStringExtra("rom_name") ?: "UnknownClassic" else device.id
-            // Validate before saving/stopping the previous device.
-            if (emulator != null) check(saveState(sync = true, reason = "rom_switch")) { "Could not save current pet; ROM unchanged" }
+            val prepared = if (device.isDPower) com.digimon.glyph.emulator.DPowerCore(this, bytes) else E0C6200(bytes)
+            if (wasRunning) check(saveState(sync = true, reason = "rom_switch")) { "Could not save current pet; ROM unchanged" }
             stopBattleLink()
             stopEmulator()
-            val target = android.util.AtomicFile(java.io.File(filesDir, "current_rom.bin"))
-            val stream = target.startWrite()
-            try { stream.write(bytes); target.finishWrite(stream) }
-            catch (e: Exception) { target.failWrite(stream); throw e }
-            java.io.File(filesDir, "current_rom_name").writeText(name)
-            ensureWidgetRuntimeStarted()
-            android.widget.Toast.makeText(this, "Loaded $name", android.widget.Toast.LENGTH_SHORT).show()
+            stopped = true
+            writeRomAtomically(bytes)
+            nameFile.writeText(name)
+            ensureWidgetRuntimeStarted(prepared)
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.COMPLETE, "Loaded $name")
         } catch (e: Exception) {
             Log.e(TAG, "ROM switch failed", e)
-            android.widget.Toast.makeText(this, "ROM switch failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+            if (stopped) try {
+                stopEmulator()
+                if (oldBytes != null) writeRomAtomically(oldBytes) else targetFile.delete()
+                if (oldName != null) nameFile.writeText(oldName) else nameFile.delete()
+                EmulatorStatus.device(oldName, oldBytes?.let { sha256(it) })
+                if (wasRunning) ensureWidgetRuntimeStarted()
+            } catch (rollback: Exception) {
+                EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, "Could not restart previous pet: ${rollback.message}")
+            }
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, "Import failed: ${e.message}")
         } finally { staged.delete() }
     }
 
-    private fun ensureWidgetRuntimeStarted() {
+    private fun writeRomAtomically(bytes: ByteArray) {
+        val target = android.util.AtomicFile(java.io.File(filesDir, "current_rom.bin"))
+        val stream = target.startWrite()
+        try { stream.write(bytes); target.finishWrite(stream) }
+        catch (e: Exception) { target.failWrite(stream); throw e }
+    }
+
+    private fun ensureWidgetRuntimeStarted(preparedCore: EmulatorCore? = null) {
         standaloneMode = true
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         // Only call startForeground if this was a startForegroundService call.
@@ -364,7 +418,7 @@ class DigimonGlyphToyService : Service() {
         mainHandler.removeCallbacks(commandPollRunnable)
         mainHandler.post(commandPollRunnable)
         // Start the emulator immediately so the widget path works without opening the app.
-        startEmulator()
+        startEmulator(preparedCore = preparedCore)
     }
 
     private fun syncDndStateWithClock(reason: String) {
@@ -395,6 +449,10 @@ class DigimonGlyphToyService : Service() {
             stopBattleLink()
         }
         val shouldResume = emulatorLoop != null
+        if (shouldResume && !saveState(sync = true, reason = "dnd_start_$trigger")) {
+            EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, "Quiet-hours freeze cancelled: save failed")
+            return
+        }
         DigimonDndSettings.setFrozenState(
             this,
             frozen = true,
@@ -403,12 +461,12 @@ class DigimonGlyphToyService : Service() {
         DigimonDndScheduler.reschedule(this)
         lastNeedsAttention = null
         if (shouldResume) {
-            saveState(sync = true, reason = "dnd_start_$trigger")
             stopEmulator(clearFrameState = false, preserveWidgetPreview = true)
         } else {
             WidgetFramePusher.ensureRunning(this)
             WidgetFramePusher.refreshNow(this)
         }
+        EmulatorStatus.runtime(EmulatorStatus.Run.FROZEN)
         Log.d(TAG, "DND entered trigger=$trigger resumePending=${DigimonDndSettings.isResumePending()}")
     }
 
@@ -424,6 +482,7 @@ class DigimonGlyphToyService : Service() {
             WidgetFramePusher.ensureRunning(this)
             WidgetFramePusher.refreshNow(this)
         }
+        if (emulatorLoop == null) EmulatorStatus.runtime(EmulatorStatus.Run.STOPPED)
         Log.d(TAG, "DND exited trigger=$trigger resumed=$shouldResume")
     }
 
@@ -628,12 +687,23 @@ class DigimonGlyphToyService : Service() {
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_START) -> {
                 Log.d(TAG, "Toy start")
+                toyDisplayActive = true
+                initGlyphManager()
                 startEmulator()
+                inputController?.start()
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_END) -> {
                 Log.d(TAG, "Toy end")
+                toyDisplayActive = false
+                inputController?.stop()
+                releaseGlyphManager()
                 mainHandler.removeCallbacks(delayedShutdownRunnable)
-                saveState(sync = true, reason = "status_end")
+                if (standaloneMode) {
+                    inputController?.stop()
+                    releaseGlyphManager()
+                    return
+                }
+                if (!saveState(sync = true, reason = "status_end")) return
                 stopEmulator()
                 releaseGlyphManager()
                 stopSelf()
@@ -652,29 +722,42 @@ class DigimonGlyphToyService : Service() {
 
     private fun initGlyphManager() {
         if (!GlyphAvailability.isAvailable) return
-        if (glyphManagerInited) return
+        if (!toyDisplayActive || glyphManagerInited) return
         val mgr = com.nothing.ketchum.GlyphMatrixManager.getInstance(this)
         glyphManager = mgr
         // Defensive cleanup: Nothing firmware can leave a stale remote connection
         // across rapid toy service restarts; clear it before init().
         safeGlyphManagerUninit("pre_init_cleanup")
+        val generation = ++glyphConnectionGeneration
         mgr.init(object : com.nothing.ketchum.GlyphMatrixManager.Callback {
             override fun onServiceConnected(name: ComponentName?) {
+                if (!toyDisplayActive || generation != glyphConnectionGeneration) return
                 Log.d(TAG, "Glyph service connected")
-                val targetDevice = Build.MODEL ?: "A024"
-                mgr.register(targetDevice)
+                val targetDevice = com.nothing.ketchum.Glyph.DEVICE_23112
+                if (!mgr.register(targetDevice)) {
+                    EmulatorStatus.glyph(EmulatorStatus.Glyph.OUTPUT_ERROR)
+                    return
+                }
+                glyphRegistered = true
+                EmulatorStatus.glyph(EmulatorStatus.Glyph.CONNECTED)
                 Log.d(TAG, "Glyph manager registered with target=$targetDevice")
                 
                 if (emulatorLoop != null && glyphRenderer == null) {
                     Log.d(TAG, "Late-binding GlyphRenderer to running emulator")
-                    val renderer = GlyphRenderer(this@DigimonGlyphToyService)
+                    val renderer = GlyphRenderer(this@DigimonGlyphToyService) { toyDisplayActive }
                     renderer.init(mgr)
                     glyphRenderer = renderer
                 } else {
                     startEmulator()
                 }
+                pushStaticFrame()
             }
             override fun onServiceDisconnected(name: ComponentName?) {
+                if (generation != glyphConnectionGeneration) return
+                glyphRegistered = false
+                EmulatorStatus.glyph(EmulatorStatus.Glyph.DISCONNECTED)
+                glyphRenderer?.release()
+                glyphRenderer = null
                 Log.d(TAG, "Glyph service disconnected")
             }
         })
@@ -682,8 +765,12 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun releaseGlyphManager() {
+        glyphConnectionGeneration++
+        glyphRegistered = false
+        EmulatorStatus.glyph(EmulatorStatus.Glyph.DISCONNECTED)
         if (!glyphManagerInited) return
         glyphRenderer?.release()
+        glyphRenderer = null
         safeGlyphManagerUninit("release")
         glyphManagerInited = false
     }
@@ -735,7 +822,7 @@ class DigimonGlyphToyService : Service() {
         }
     }
 
-    private fun startEmulator(forceDuringDnd: Boolean = false) {
+    private fun startEmulator(forceDuringDnd: Boolean = false, preparedCore: EmulatorCore? = null) {
         if (emulatorLoop != null) return // Already running
         DigimonDndSettings.init(this)
         if (!forceDuringDnd &&
@@ -746,13 +833,17 @@ class DigimonGlyphToyService : Service() {
             DigimonDndSettings.setFrozenState(this, frozen = true, resumeAfterDnd = true)
             WidgetFramePusher.ensureRunning(this)
             WidgetFramePusher.refreshNow(this)
+            loadRom() // Publish selected identity even when the clock is intentionally frozen.
+            EmulatorStatus.runtime(EmulatorStatus.Run.FROZEN)
             Log.d(TAG, "startEmulator blocked by active DND window")
             return
         }
 
+        EmulatorStatus.runtime(EmulatorStatus.Run.STARTING)
         stateManager = StateManager(this)
         val romData = loadRom()
         if (romData == null) {
+            EmulatorStatus.runtime(EmulatorStatus.Run.STOPPED, "Load a ROM to start")
             Log.e(TAG, "No ROM loaded, cannot start emulator")
             return
         }
@@ -761,7 +852,7 @@ class DigimonGlyphToyService : Service() {
             Log.e(TAG, "Invalid ROM", e)
             return
         }
-        val emu: EmulatorCore = if (device.isDPower) com.digimon.glyph.emulator.DPowerCore(this, romData) else E0C6200(romData)
+        val emu: EmulatorCore = preparedCore ?: if (device.isDPower) com.digimon.glyph.emulator.DPowerCore(this, romData) else E0C6200(romData)
         emulator = emu
 
         val dcom = com.digimon.glyph.battle.VirtualDCom(
@@ -798,8 +889,8 @@ class DigimonGlyphToyService : Service() {
         val renderer: GlyphRenderer?
         if (GlyphAvailability.isAvailable) {
             val mgr = glyphManager as? com.nothing.ketchum.GlyphMatrixManager
-            if (mgr != null) {
-                renderer = GlyphRenderer(this)
+            if (mgr != null && glyphRegistered) {
+                renderer = GlyphRenderer(this) { toyDisplayActive }
                 renderer.init(mgr)
                 glyphRenderer = renderer
             } else {
@@ -985,7 +1076,16 @@ class DigimonGlyphToyService : Service() {
             }
         }
 
+        loop.onFailure = { failure ->
+            mainHandler.post {
+                if (emulatorLoop === loop) {
+                    stopEmulator()
+                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, "Emulator stopped: ${failure.message}")
+                }
+            }
+        }
         loop.start()
+        EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING)
         applyTimingSettingIfChanged(force = true)
 
         val overlay = InputOverlayAnimator()
@@ -997,22 +1097,27 @@ class DigimonGlyphToyService : Service() {
             handleUserInteractionForTimingBoost()
         }
         input.onPinSet = { port, pin, level ->
+            if (emu is com.digimon.glyph.emulator.DPowerCore && port == "CD" && pin == 1) {
+                if (level == 1) runOnEmulatorAsync { core -> if (core === emu) emu.step() }
+            } else {
             if (port == "K0" && level == 0) {
                 onLocalBattleButtonDown(pin)
             }
             runOnEmulatorAsync { core -> core.pinSet(port, pin, level) }
+            }
         }
         input.onPinRelease = { port, pin ->
             if (port == "K0") {
                 onLocalBattleButtonUp(pin)
             }
-            runOnEmulatorAsync { core -> core.pinRelease(port, pin) }
+            if (!(emu is com.digimon.glyph.emulator.DPowerCore && port == "CD" && pin == 1))
+                runOnEmulatorAsync { core -> core.pinRelease(port, pin) }
         }
         input.onInputRateModeChanged = { isActive ->
             overlay.onStateChanged(isActive)
         }
         input.setDebugEnabled(debugTelemetryEnabled)
-        input.start()
+        if (toyDisplayActive) input.start()
         inputController = input
 
         // Start autosave
@@ -1031,6 +1136,9 @@ class DigimonGlyphToyService : Service() {
             WidgetFramePusher.stop()
         }
         mainHandler.removeCallbacks(autosaveRunnable)
+        walkingInput.stop()
+        for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
+        for (i in dpButtonReleaseTokens.indices) dpButtonReleaseTokens[i]++
         emulatorLoop?.stop()
         emulatorLoop = null
         emulator?.onBuzzerChange = null
@@ -1081,6 +1189,7 @@ class DigimonGlyphToyService : Service() {
         ioTraceWindowStartMs = 0L
         ioTraceLastValues.clear()
         releaseCpuWakeLock()
+        EmulatorStatus.runtime(EmulatorStatus.Run.STOPPED)
         if (preserveWidgetPreview) {
             WidgetFramePusher.ensureRunning(this)
             WidgetFramePusher.refreshNow(this)
@@ -1132,6 +1241,7 @@ class DigimonGlyphToyService : Service() {
             romHash = sha256(bytes)
             val identified = com.digimon.glyph.emulator.RomCatalog.identify(bytes)
             if (identified.id != "UnknownClassic") romName = identified.id
+            EmulatorStatus.device(romName, romHash)
             bytes
         } catch (e: Exception) {
             Log.e(TAG, "Failed to load ROM", e)
@@ -1142,6 +1252,10 @@ class DigimonGlyphToyService : Service() {
     private fun processPendingCommands() {
         val cmd = EmulatorCommandBus.readPending(this, lastHandledCommandId) ?: return
         lastHandledCommandId = cmd.id
+        if (cmd.romHash != null && cmd.romHash != romHash) {
+            EmulatorCommandBus.ack(this, cmd.id, "cancelled: the selected ROM changed")
+            return
+        }
         val isBattleCommand = when (cmd.type) {
             EmulatorCommandBus.CMD_BATTLE_START_HOST,
             EmulatorCommandBus.CMD_BATTLE_START_JOIN,
@@ -1242,7 +1356,7 @@ class DigimonGlyphToyService : Service() {
 
     private fun restartEmulator(): String {
         if (emulatorLoop == null) return "restart skipped: emulator not running"
-        saveState(sync = true, reason = "restart_command")
+        if (!saveState(sync = true, reason = "restart_command")) return "restart cancelled: save failed"
         stopEmulator()
         startEmulator()
         return "emulator restarted"
@@ -1252,8 +1366,14 @@ class DigimonGlyphToyService : Service() {
         val name = romName
         if (name != null) {
             val seq = runOnEmulatorSync { core ->
-                core.resetCpu()
-                stateManager.saveAutosave(core, name, romHash, sync = true)
+                val before = core.getState()
+                try {
+                    core.resetCpu()
+                    stateManager.saveAutosave(core, name, romHash, sync = true)
+                } catch (failure: Exception) {
+                    core.restoreState(before)
+                    throw failure
+                }
             } ?: return "reset failed: emulator not running"
             Log.d(TAG, "Full reset autosave seq=$seq")
         } else {
@@ -1268,6 +1388,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun pressCombo(combo: Int): String {
+        if (emulator?.supportsClassicLink != true) return "Classic button combos are unavailable for this device"
         val input = inputController ?: return "combo failed: input not running"
         val name = when (combo) {
             EmulatorCommandBus.COMBO_AB -> "A+B"
@@ -1545,11 +1666,17 @@ class DigimonGlyphToyService : Service() {
         if (button in 20..25) {
             val active = emulator ?: return
             if (active !is com.digimon.glyph.emulator.DPowerCore) return
+            if (button == 24) {
+                runOnEmulatorAsync { core -> if (core === active) active.step() }
+                return
+            }
             val ports = arrayOf("EF", "EF", "EF", "EF", "CD", "CD")
             val pins = intArrayOf(0, 1, 2, 4, 1, 2)
             val index = button - 20
+            val token = ++dpButtonReleaseTokens[index]
             runOnEmulatorAsync { core -> if (core === active) core.pinSet(ports[index], pins[index], 1) }
             mainHandler.postDelayed({
+                if (dpButtonReleaseTokens[index] != token) return@postDelayed
                 runOnEmulatorAsync { core -> if (core === active) core.pinRelease(ports[index], pins[index]) }
             }, DEFAULT_BUTTON_HOLD_MS)
             return

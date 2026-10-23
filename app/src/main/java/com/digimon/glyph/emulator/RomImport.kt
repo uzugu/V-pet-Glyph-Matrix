@@ -11,6 +11,7 @@ object RomImport {
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(8192)
         while (true) {
+            if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Import cancelled")
             val n = input.read(buffer, 0, minOf(buffer.size, RomCatalog.MAX_ROM_BYTES + 1 - output.size()))
             if (n < 0) break
             output.write(buffer, 0, n)
@@ -36,6 +37,7 @@ object RomImport {
                 val output = ByteArrayOutputStream()
                 var size = 0L
                 while (true) {
+                    if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Import cancelled")
                     val n = zip.read(buffer)
                     if (n < 0) break
                     total += n; size += n
