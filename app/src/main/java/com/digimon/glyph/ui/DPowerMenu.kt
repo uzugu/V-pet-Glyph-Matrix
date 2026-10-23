@@ -22,6 +22,7 @@ class DPowerMenu(
     private val startPet: () -> Unit,
     private val stopPet: () -> Unit,
     private val press: (Int) -> Unit,
+    private val scanCard: () -> Unit,
     private val walkingClick: () -> Unit,
 ) {
     private val cyan = Color.rgb(66, 221, 227)
@@ -60,8 +61,9 @@ class DPowerMenu(
         row(device, listOf(context.getString(R.string.dp_start) to startPet, context.getString(R.string.dp_stop) to stopPet))
         val labels = context.resources.getStringArray(R.array.dpower_buttons)
         for (pair in listOf(0 to 1, 2 to 3, 4 to 5)) {
-            row(device, listOf(labels[pair.first] to { press(pair.first) }, labels[pair.second] to { press(pair.second) }), manual = true)
+            row(device, listOf(labels[pair.first] to { press(pair.first) }, (if (pair.second == 5) context.getString(R.string.nfc_scan_card) else labels[pair.second]) to { if (pair.second == 5) scanCard() else press(pair.second) }), manual = true)
         }
+        device.addView(text(context.getString(R.string.nfc_menu_help), 14f, muted))
         val help = text(context.getString(R.string.dpower_gesture_help), 14f, muted).apply { visibility = View.GONE }
         device.addView(button(context.getString(R.string.dp_gesture_toggle)) { help.visibility = if (help.visibility == View.VISIBLE) View.GONE else View.VISIBLE })
         device.addView(help)

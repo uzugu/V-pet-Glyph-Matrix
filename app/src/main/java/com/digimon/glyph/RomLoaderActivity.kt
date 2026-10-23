@@ -72,6 +72,13 @@ import java.util.zip.ZipInputStream
 class RomLoaderActivity : AppCompatActivity() {
     private var updatingRenderSwitch = false
     private var walkingButton: Button? = null
+    private val nfcCardScanner by lazy {
+        com.digimon.glyph.input.NfcCardScanner(this) { revision ->
+            startService(Intent(this, DigimonGlyphToyService::class.java)
+                .setAction(DigimonGlyphToyService.ACTION_NFC_CARD)
+                .putExtra(DigimonGlyphToyService.EXTRA_NFC_REVISION, revision))
+        }
+    }
     private var dpowerMenu: com.digimon.glyph.ui.DPowerMenu? = null
     private val walkingPermission = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
         com.digimon.glyph.input.WalkingInput.setEnabled(this, granted)
@@ -692,6 +699,7 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
+        nfcCardScanner.stop()
         super.onPause()
         mainHandler.removeCallbacks(debugRefresh)
     }
@@ -1731,6 +1739,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val menu = com.digimon.glyph.ui.DPowerMenu(this,
             startPet = { if (EmulatorStatus.snapshot().isDPower && !EmulatorStatus.snapshot().busy) startBackendService() },
             stopPet = { if (EmulatorStatus.snapshot().isDPower && !EmulatorStatus.snapshot().busy) stopBackendService() },
+            scanCard = { nfcCardScanner.scan() },
             press = { index ->
                 val state = EmulatorStatus.snapshot()
                 if (state.isDPower && !state.busy && state.run != EmulatorStatus.Run.FROZEN) {
@@ -1751,6 +1760,7 @@ class RomLoaderActivity : AppCompatActivity() {
         walkingButton = menu.walkingButton
         updateWalkingButton()
         menu.show {
+            nfcCardScanner.stop()
             dpowerMenu = null
             walkingButton = null
             findViewById<Switch>(R.id.switch_audio).isChecked = EmulatorAudioSettings.isAudioEnabled()

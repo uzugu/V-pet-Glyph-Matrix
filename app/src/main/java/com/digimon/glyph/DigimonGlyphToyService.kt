@@ -99,6 +99,8 @@ class DigimonGlyphToyService : Service() {
         private const val DEFAULT_BUTTON_HOLD_MS = 85L
 
         const val ACTION_START_WIDGET = "com.digimon.glyph.START_WIDGET"
+        const val ACTION_NFC_CARD = "com.digimon.glyph.NFC_CARD"
+        const val EXTRA_NFC_REVISION = "nfc_revision"
         const val ACTION_WIDGET_BUTTON = "com.digimon.glyph.WIDGET_BUTTON"
         const val ACTION_STOP = "com.digimon.glyph.STOP"
         const val ACTION_IMPORT_ROM = "com.digimon.glyph.IMPORT_ROM"
@@ -315,6 +317,12 @@ class DigimonGlyphToyService : Service() {
             ACTION_START_WIDGET -> {
                 Log.d(TAG, "Starting in standalone widget mode")
                 ensureWidgetRuntimeStarted()
+            }
+            ACTION_NFC_CARD -> {
+                val state = com.digimon.glyph.emulator.EmulatorStatus.snapshot()
+                // A scan must never start a stopped pet or land in a newly loaded ROM.
+                if (state.isDPower && !state.busy && state.run == com.digimon.glyph.emulator.EmulatorStatus.Run.RUNNING &&
+                    state.revision == intent.getLongExtra(EXTRA_NFC_REVISION, -1L)) pressWidgetButton(25)
             }
             ACTION_WIDGET_BUTTON -> {
                 ensureWidgetRuntimeStarted()

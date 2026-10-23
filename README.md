@@ -231,3 +231,5 @@ To produce a version-named preview APK, run `./gradlew :app:packageVersionedDebu
 Open **D-Power console** after loading D-Power EU 1.01. The Digivice-themed menu groups device controls, step training, Glyph display, and sound/feedback. Automatic steps offer 0.5–4 steps/second through the emulated Step contact; walking and manual inputs take priority. Display options include the split NanoFont clock, proportional LCD fit, four pet/clock brightness presets, and smoother rendering. Settings persist automatically; ROM import, saves and DND remain on the main screen. See [step input](docs/dpower/pedometer.md) and [clock/brightness](docs/dpower/clock.md).
 
 Preview 9 validation: 64 JVM tests, debug APK build and Android lint. Phone menu layout, physical LED brightness and firmware step crediting still need on-device verification.
+
+Preview 10 adds **Scan NFC card** to the D-Power console. While the app is open and unlocked, one NFC tag detection sends the existing Card input. Tag contents do not select a power. See [NFC operation and limits](docs/dpower/nfc.md).

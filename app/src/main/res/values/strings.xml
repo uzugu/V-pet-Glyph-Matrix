@@ -70,4 +70,14 @@ Step sends one emulated step contact. Enable walking or automatic steps in Step 
     <string name="dp_haptics">Sound vibration</string>
     <string name="dp_saved_help">Settings save automatically. ROM files, manual saves and DND scheduling remain on the main screen.</string>
     <string name="dp_close">Done</string>
+    <string name="nfc_scan_card">Scan NFC card</string>
+    <string name="nfc_title">CARD SLASH / NFC</string>
+    <string name="nfc_menu_help">Scan an NFC tag to send Card input. Start the pet first and keep this app open and the screen unlocked. Each scan sends one input; tag contents do not select a power.</string>
+    <string name="nfc_scan_help">Hold an NFC tag near the phone’s NFC antenna. One detection sends one Card input, then scanning stops. Scan closes after 30 seconds. Printed cards without an NFC chip cannot be detected.</string>
+    <string name="nfc_pet_not_ready">Start D-Power and leave quiet hours before scanning a card.</string>
+    <string name="nfc_unavailable">NFC is unavailable on this device. Glyph hold-and-flick right still sends Card input.</string>
+    <string name="nfc_disabled">Turn on NFC in Android settings, then return and tap Scan NFC card.</string>
+    <string name="nfc_settings">NFC settings</string>
+    <string name="nfc_scan_failed">Could not start NFC scanning. Return to the console and try again.</string>
+    <string name="nfc_card_sent">Card input sent</string>
 </resources>
