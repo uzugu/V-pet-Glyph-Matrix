@@ -64,3 +64,9 @@ tasks.register<Copy>("packageVersionedDebug") {
     into(layout.buildDirectory.dir("outputs/distributions"))
     rename { "V-Pet-Glyph-${android.defaultConfig.versionName}-debug.apk" }
 }
+
+// Opt-in hardware/ROM checks must rerun when their external test environment changes.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    inputs.property("classicRomDir", providers.environmentVariable("CLASSIC_ROM_DIR").orElse(""))
+    inputs.property("frameExchangeValidationDir", providers.environmentVariable("FRAME_EXCHANGE_VALIDATION_DIR").orElse(""))
+}

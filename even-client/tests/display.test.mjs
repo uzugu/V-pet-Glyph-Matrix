@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 const stub = `export const waitForEvenAppBridge=async()=>globalThis.__vpetBridge;
 export const OsEventTypeList={CLICK_EVENT:0,SCROLL_TOP_EVENT:1,SCROLL_BOTTOM_EVENT:2,DOUBLE_CLICK_EVENT:3,FOREGROUND_ENTER_EVENT:4,FOREGROUND_EXIT_EVENT:5,ABNORMAL_EXIT_EVENT:6,SYSTEM_EXIT_EVENT:7};
 export const StartUpPageCreateResult={success:0},ImageRawDataUpdateResult={success:'success'};
+export class MenuContainerProperty{constructor(p){Object.assign(this,p)}}
+export class MenuItemProperty{constructor(p){Object.assign(this,p)}}
 export class ImageContainerProperty{constructor(p){Object.assign(this,p)}}
 export class TextContainerProperty{constructor(p){Object.assign(this,p)}}
 export class CreateStartUpPageContainer{constructor(p){Object.assign(this,p)}}
@@ -37,7 +39,8 @@ test("display serializes images, rebuilds once and isolates native menu input", 
     peak = 0,
     sends = 0,
     exit = 0,
-    unsubscribed = 0;
+    unsubscribed = 0,
+    pages = [];
   globalThis.__vpetBridge = {
     onEvenHubEvent(fn) {
       handler = fn;
@@ -45,11 +48,13 @@ test("display serializes images, rebuilds once and isolates native menu input", 
         unsubscribed++;
       };
     },
-    async createStartUpPageContainer() {
+    async createStartUpPageContainer(page) {
+      pages.push(page);
       created++;
       return 0;
     },
-    async rebuildPageContainer() {
+    async rebuildPageContainer(page) {
+      pages.push(page);
       rebuilds++;
       return true;
     },
@@ -63,10 +68,12 @@ test("display serializes images, rebuilds once and isolates native menu input", 
     },
   };
   const d = new Display(),
-    inputs = [];
+    inputs = [],
+    actions = [];
   await d.connect(
     (x) => inputs.push(x),
     () => exit++,
+    (button) => actions.push(button),
   );
   await Promise.all([
     d.draw(new Uint8Array(20000)),
@@ -84,9 +91,29 @@ test("display serializes images, rebuilds once and isolates native menu input", 
   await d.connect(
     (x) => inputs.push(x),
     () => exit++,
+    (button) => actions.push(button),
   );
   assert.equal(created, 1);
   assert.equal(rebuilds, 1);
+  assert.equal(pages.at(-1).menuObject, undefined);
+  await d.setDPower(true);
+  assert.deepEqual(
+    pages.at(-1).menuObject.menuItems.map((x) => x.itemName),
+    ["Step", "Card input"],
+  );
+  handler({ sysEvent: { eventType: 4 } });
+  handler({ menuItemClickEvent: { itemID: 1 } });
+  handler({ menuItemClickEvent: { itemID: 2 } });
+  assert.deepEqual(actions, ["step", "card"]);
+  handler({ sysEvent: { eventType: 5 } });
+  await d.setDPower(false);
+  assert.equal(
+    pages.at(-1).menuObject,
+    undefined,
+    "classic rebuild must remove D-Power actions",
+  );
+  handler({ menuItemClickEvent: { itemID: 1 } });
+  assert.deepEqual(actions, ["step", "card"]);
   handler({ sysEvent: { eventType: 7 } });
   assert.equal(d.active, false);
   assert.equal(exit, 1);

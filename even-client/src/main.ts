@@ -8,6 +8,7 @@ const display = new Display(),
   ctx = canvas.getContext("2d")!;
 let running = false,
   generation = 0,
+  inputRevision = 0,
   current: Frame | null = null,
   session = crypto.randomUUID(),
   seq = 0,
@@ -72,11 +73,18 @@ function keys() {
 }
 function press(button: string) {
   const captured = current,
-    epoch = generation;
+    epoch = generation,
+    revision = inputRevision;
   if (!running || !captured?.ready) return;
   inputChain = inputChain
     .then(async () => {
-      if (epoch !== generation || current?.romHash !== captured.romHash) return;
+      if (
+        epoch !== generation ||
+        revision !== inputRevision ||
+        !current?.ready ||
+        current?.romHash !== captured.romHash
+      )
+        return;
       const res = await request("press", {
         method: "POST",
         body: JSON.stringify({
@@ -89,7 +97,7 @@ function press(button: string) {
       if (!res.ok) throw new Error("Input rejected; reconnect before playing");
     })
     .catch((e) => {
-      if (epoch === generation) {
+      if (epoch === generation && revision === inputRevision) {
         error(String(e));
         disconnect();
       }
@@ -98,6 +106,7 @@ function press(button: string) {
 function disconnect() {
   running = false;
   ++generation;
+  ++inputRevision;
   current = null;
   last = "";
   glassesLast = "";
@@ -122,6 +131,8 @@ async function poll(epoch: number) {
       }
       status(value.state);
       error("");
+      if (await display.setDPower(value.dpower)) glassesLast = "";
+      if (epoch !== generation) return;
       if (display.active && glassesLast !== changed) {
         await display.draw(
           value.ready ? imagePixels(value) : new Uint8Array(20000),
@@ -131,6 +142,12 @@ async function poll(epoch: number) {
       }
     } catch (e) {
       if (generation !== epoch) return;
+      // A failed fetch/update invalidates queued inputs and the previous display cache.
+      // A new session also permits recovery after the phone server restarts.
+      ++inputRevision;
+      session = crypto.randomUUID();
+      seq = 0;
+      last = "";
       current = null;
       keys();
       status("RECONNECTING");
@@ -139,6 +156,7 @@ async function poll(epoch: number) {
       if (glassesLast !== "blank") {
         try {
           await display.draw(new Uint8Array(20000));
+          if (epoch !== generation) return;
           glassesLast = "blank";
         } catch {}
       }
@@ -162,9 +180,15 @@ $("connect").onclick = () => {
 $("disconnect").onclick = disconnect;
 $("glasses").onclick = async () => {
   try {
-    await display.connect((kind) => {
-      if (current) press(gesture(kind, current.dpower));
-    }, disconnect);
+    await display.connect(
+      (kind) => {
+        if (current) press(gesture(kind, current.dpower));
+      },
+      disconnect,
+      (button) => {
+        if (current?.dpower) press(button);
+      },
+    );
     glassesLast = "";
     error(display.active ? "" : "Even bridge unavailable");
   } catch (e) {
