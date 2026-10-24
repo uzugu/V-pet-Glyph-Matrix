@@ -19,6 +19,26 @@ class Mixer:
 
     def advance(self, cycles):
         remaining = cycles * self.RATE / self.CLOCK
+        # Both channels silent: advance the sample clock without 48000 Python
+        # mixing/packing iterations per second. Keep sample count and fractional
+        # state identical so the next audible edge remains correctly aligned.
+        if all(channel is None for channel in self.channels):
+            if self.fraction > 0 and remaining > 0:
+                width = min(remaining, 1.0 - self.fraction)
+                self.fraction += width
+                remaining -= width
+                if self.fraction >= 1.0 - 1e-10:
+                    sample = round(max(-1.0, min(1.0, self.area)) * 32767)
+                    self.output.extend(struct.pack('<h', sample))
+                    self.fraction = self.area = 0.0
+            if remaining > 1e-10:
+                whole = int(remaining + 1e-10)
+                # Buffer is bounded even for long silent intervals.
+                self.output.extend(b'\0' * (min(whole, 4800) * 2))
+                self.fraction = max(0.0, remaining - whole)
+                self.area = 0.0
+            if len(self.output) > 9600: del self.output[:-9600]
+            return
         while remaining > 1e-10:
             width = min(remaining, 1.0 - self.fraction)
             mixed = 0.0

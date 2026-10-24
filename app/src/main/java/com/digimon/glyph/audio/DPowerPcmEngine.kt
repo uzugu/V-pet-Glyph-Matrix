@@ -46,7 +46,14 @@ class DPowerPcmEngine {
                     track?.let { runCatching { it.pause(); it.flush() } }
                     trackEpoch = epoch
                 }
-                val packet = queue.poll(20, TimeUnit.MILLISECONDS) ?: continue
+                val packet = queue.poll(250, TimeUnit.MILLISECONDS)
+                if (packet == null) {
+                    // No audible data: release the device instead of leaving a
+                    // playing AudioTrack (and its audio power path) open all night.
+                    track?.let { runCatching { it.pause(); it.flush(); it.release() } }
+                    track = null
+                    continue
+                }
                 if (!enabled || packet.epoch != epoch) continue
                 try {
                     if (track == null) {

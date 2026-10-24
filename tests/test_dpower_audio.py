@@ -74,3 +74,22 @@ class AudioTests(unittest.TestCase):
         m = Mixer(); count = 0
         for _ in range(1000): m.advance(2200); count += len(m.drain()) // 2
         self.assertEqual(48000, count)
+
+class IdleAudioTests(unittest.TestCase):
+    def test_silent_fast_path_preserves_partial_audible_sample(self):
+        mixer = Mixer()
+        mixer.change(0, (0, False, 1, 0))
+        mixer.advance(Mixer.CLOCK / Mixer.RATE / 2)
+        mixer.change(0, None)
+        mixer.advance(Mixer.CLOCK / Mixer.RATE * 2.5)
+        self.assertEqual((8192, 0, 0), samples(mixer))
+        self.assertEqual(0, mixer.fraction)
+
+    def test_silent_clock_continuation(self):
+        mixer = Mixer()
+        for _ in range(1000): mixer.advance(2200); mixer.drain()
+        self.assertEqual([0.0, 0.0], mixer.phase)
+        self.assertAlmostEqual(0, mixer.fraction, places=7)
+        mixer.change(0, (1000, False, 1, 0)); mixer.advance(2200)
+        expected = Mixer(); expected.change(0, (1000, False, 1, 0)); expected.advance(2200)
+        self.assertEqual(expected.drain(), mixer.drain())

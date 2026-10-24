@@ -19,13 +19,14 @@ import java.util.concurrent.locks.LockSupport
  * - clock() returns cycles already scaled by OSC1 clock divider
  * - Use the core's oscillator frequency to budget real elapsed time
  * - When behind: execute every owed instruction, preserving firmware interrupts
- * - When ahead: sleep using LockSupport.parkNanos() for sub-ms precision
+ * - When ahead: coalesce normal work so the CPU can idle; link mode keeps fine pacing
  */
 class EmulatorLoop(
     private val emulator: EmulatorCore,
     private val onFrame: (IntArray) -> Unit,
     private val elapsedNs: () -> Long = { SystemClock.elapsedRealtimeNanos() },
     private val displayRevision: () -> Long = { 0L },
+    private val parkNs: (Long) -> Unit = { LockSupport.parkNanos(it) },
 ) {
     var onFailure: ((Throwable) -> Unit)? = null
     var onVirtualTick: ((Double) -> Unit)? = null
@@ -65,6 +66,7 @@ class EmulatorLoop(
 
     fun setTimingMode(mode: TimingMode) {
         timingMode = mode
+        LockSupport.unpark(thread)
     }
 
     fun setStepGateEnabled(enabled: Boolean) {
@@ -89,7 +91,7 @@ class EmulatorLoop(
         if (running) return
         running = true
         thread = Thread(::runLoop, "E0C6200-Emulator").apply {
-            priority = Thread.MAX_PRIORITY
+            priority = Thread.NORM_PRIORITY
             isDaemon = true
             start()
         }
@@ -109,6 +111,7 @@ class EmulatorLoop(
     fun enqueue(command: (EmulatorCore) -> Unit): Boolean {
         if (!running) return false
         commandQueue.offer(command)
+        LockSupport.unpark(thread)
         return true
     }
 
@@ -135,6 +138,7 @@ class EmulatorLoop(
             }
         }
         commandQueue.offer(queued)
+        LockSupport.unpark(thread)
         if (!latch.await(timeoutMs, TimeUnit.MILLISECONDS)) {
             if (phase.compareAndSet(0, 2)) {
                 commandQueue.remove(queued)
@@ -162,7 +166,7 @@ class EmulatorLoop(
     }
 
     private fun runLoopBody() {
-        try { Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY) } catch (_: Exception) {}
+        try { Process.setThreadPriority(Process.THREAD_PRIORITY_DEFAULT) } catch (_: Exception) {}
         // elapsedRealtime includes Android suspend; nanoTime does not.
         val startNs = elapsedNs()
         val pacer = RealtimePacer(emulator.clockFrequency, startNs)
@@ -239,8 +243,16 @@ class EmulatorLoop(
             val aheadNs = -pacer.debtNs(elapsedNs())
             if (aheadNs > 1_000) {
                 // All modes run firmware at 1x. Power saving changes rendering/waiting only.
-                val sleepNs = (aheadNs - 20_000).toLong()
-                if (sleepNs > 0) LockSupport.parkNanos(sleepNs)
+                // Batch real-time work into short bursts so the CPU can enter
+                // idle between them. All owed instructions still run; commands
+                // unpark immediately. Link/full-accuracy keeps fine pacing.
+                val coalesceNs = when (mode) {
+                    TimingMode.FULL_ACCURATE -> 0L
+                    TimingMode.EXACT -> 8_000_000L
+                    TimingMode.POWER_SAVE -> 20_000_000L
+                }
+                val sleepNs = (aheadNs - 20_000).toLong() + coalesceNs
+                if (sleepNs > 0) parkNs(sleepNs)
             }
         }
     }
