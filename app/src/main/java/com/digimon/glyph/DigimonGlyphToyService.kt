@@ -196,6 +196,44 @@ class DigimonGlyphToyService : Service() {
     private var virtualDCom: com.digimon.glyph.battle.VirtualDCom? = null
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile private var evenStream: com.digimon.glyph.even.EvenStreamServer? = null
+    @Volatile private var evenRows = ""
+    private fun updateEvenStream() {
+        val wanted = emulator != null && com.digimon.glyph.even.EvenStreamSettings.enabled(this)
+        if (!wanted) { evenStream?.close(); evenStream = null; return }
+        if (evenStream != null) return
+        try {
+            evenStream = com.digimon.glyph.even.EvenStreamServer(com.digimon.glyph.even.EvenStreamSettings.token(this),
+                frame = {
+                    val state = EmulatorStatus.snapshot()
+                    com.google.gson.Gson().toJson(mapOf("version" to 1, "width" to 32, "height" to 24,
+                        "rows" to evenRows, "romHash" to state.hash, "dpower" to state.isDPower,
+                        "ready" to (state.run == EmulatorStatus.Run.RUNNING && !state.busy), "state" to state.run.name))
+                }, press = { button, hash ->
+                    val state = EmulatorStatus.snapshot()
+                    val allowed = state.hash == hash && state.run == EmulatorStatus.Run.RUNNING && !state.busy &&
+                        (if (state.isDPower) button in setOf("left","right","up","down","step","card","a","b","c") else button in setOf("a","b","c"))
+                    if (allowed) mainHandler.post {
+                        val current = EmulatorStatus.snapshot()
+                        if (current.hash == hash && current.run == EmulatorStatus.Run.RUNNING && !current.busy) {
+                            if (current.isDPower) {
+                                val index = when(button) { "left","a" -> 0; "right","c" -> 1; "down" -> 2; "up","b" -> 3; "step" -> 4; else -> 5 }
+                                pressWidgetButton(20 + index)
+                            } else pressWidgetButton(when(button) { "a" -> EmulatorCommandBus.BUTTON_A; "b" -> EmulatorCommandBus.BUTTON_B; else -> EmulatorCommandBus.BUTTON_C })
+                        }
+                    }
+                    allowed
+                })
+            evenRows = ""
+            pushStaticFrame()
+        } catch (e: Exception) { Log.e(TAG, "Even G2 local stream unavailable", e) }
+    }
+    private fun publishEven(bitmap: android.graphics.Bitmap) {
+        if (evenStream == null) return
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        evenRows = com.digimon.glyph.owl.OwlPixels.rows(pixels, bitmap.width, bitmap.height).joinToString("\n")
+    }
     private val autosaveRunnable = object : Runnable {
         override fun run() {
             saveState(sync = false, reason = "interval")
@@ -205,6 +243,7 @@ class DigimonGlyphToyService : Service() {
     private val commandPollRunnable = object : Runnable {
         override fun run() {
             walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore && EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING)
+            updateEvenStream()
             processPendingCommands()
             applyAudioHapticSettingsIfChanged()
             applyTimingSettingIfChanged()
@@ -318,6 +357,7 @@ class DigimonGlyphToyService : Service() {
                 Log.d(TAG, "Starting in standalone widget mode")
                 ensureWidgetRuntimeStarted()
             }
+            "com.digimon.glyph.EXCHANGE_EXPORT", "com.digimon.glyph.EXCHANGE_IMPORT" -> exchangeSave(intent)
             ACTION_NFC_CARD -> {
                 val state = com.digimon.glyph.emulator.EmulatorStatus.snapshot()
                 // A scan must never start a stopped pet or land in a newly loaded ROM.
@@ -497,6 +537,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onDestroy() {
+        evenStream?.close(); evenStream = null
         owlBridge.disconnect()
         super.onDestroy()
         Log.d(TAG, "onDestroy")
@@ -683,6 +724,49 @@ class DigimonGlyphToyService : Service() {
                     }
                 }
             }
+        }
+    }
+
+    private fun exchangeSave(intent: Intent) {
+        if (!com.digimon.glyph.sync.ExchangeActions.authorized(intent)) return
+        val expected = intent.getStringExtra("rom_hash")
+        val state = EmulatorStatus.snapshot()
+        if (emulator == null || state.busy || expected != romHash || state.run == EmulatorStatus.Run.FROZEN) {
+            android.widget.Toast.makeText(this, "Start the matching pet outside quiet hours first", android.widget.Toast.LENGTH_LONG).show(); return
+        }
+        val folder = com.digimon.glyph.sync.ExchangeFolder(this)
+        val profile = if (state.isDPower) "DPowerEU101" else state.name ?: return
+        val importing = intent.action == "com.digimon.glyph.EXCHANGE_IMPORT"
+        // The loop serialises capture/restore with CPU execution. No live state enters Syncthing.
+        runOnEmulatorAsync { core ->
+            try {
+                check(romHash == expected && !EmulatorStatus.snapshot().busy && EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN) { "ROM changed during handoff" }
+                if (!importing) {
+                    val record = com.digimon.glyph.sync.PortableSave.create(core, expected!!, profile, folder.origin, folder.parent(expected))
+                    folder.publish(record)
+                } else {
+                    val record = com.digimon.glyph.sync.PortableSave.decode(folder.read(intent.data ?: error("Missing save")))
+                    val incoming = com.digimon.glyph.sync.PortableSave.state(record, core, expected!!, profile)
+                    val backup = com.digimon.glyph.sync.PortableSave.create(core, expected, profile, folder.origin, folder.parent(expected))
+                    val dir = java.io.File(filesDir, "handoff-backups").apply { mkdirs() }
+                    java.io.File(dir, backup.id + ".vpetsave").writeText(com.digimon.glyph.sync.PortableSave.encode(backup))
+                    val previous = core.getState()
+                    try {
+                        core.restoreState(incoming)
+                        if (core is com.digimon.glyph.emulator.DPowerCore) {
+                            for (pin in intArrayOf(0,1,2,4)) core.pinRelease("EF", pin)
+                        } else for (pin in 0..2) core.pinRelease("K0", pin)
+                        stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
+                    } catch(e: Exception) {
+                        core.restoreState(previous)
+                        stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
+                        throw e
+                    }
+                    // An ancestry preference failure must not roll back a committed save.
+                    folder.mark(record)
+                }
+                mainHandler.post { android.widget.Toast.makeText(this, if(importing) "Synced save resumed; previous state backed up" else "Save published to exchange folder", android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
+            } catch (e: Exception) { mainHandler.post { android.widget.Toast.makeText(this, "Save exchange failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show() } }
         }
     }
 
@@ -1059,7 +1143,11 @@ class DigimonGlyphToyService : Service() {
                     if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.DPowerOptions.brightness.petColor else null,
                     protectClock = emu is com.digimon.glyph.emulator.DPowerCore)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
-                if (owlBridge.observed) owlBridge.publish(bridge.renderFullDebugFrame(vram))
+                if (owlBridge.observed || evenStream != null) {
+                    val full = bridge.renderFullDebugFrame(vram)
+                    if (owlBridge.observed) owlBridge.publish(full)
+                    publishEven(full)
+                }
                 val now = SystemClock.uptimeMillis()
                 val state = emu.getCurrentDigimonState(romName)
                 maybeNotifyNeedsAttention(state)
@@ -1193,6 +1281,8 @@ class DigimonGlyphToyService : Service() {
         glyphRenderer = null
         displayBridge = null
         emulator = null
+        evenRows = ""
+        evenStream?.close(); evenStream = null
         lastDebugFramePublishMs = 0L
         frameHeartbeatCount = 0L
         lastFrameHeartbeatLogMs = 0L
@@ -1235,10 +1325,11 @@ class DigimonGlyphToyService : Service() {
     private fun pushStaticFrame() {
         // For AOD, render one frame from current VRAM state
         val bridge = displayBridge ?: return
-        val renderer = glyphRenderer ?: return
+        val renderer = glyphRenderer
         val vram = runOnEmulatorSync { core -> core.getVRAM() } ?: return
         val bitmap = bridge.renderFrame(vram)
-        renderer.pushFrame(bitmap)
+        renderer?.pushFrame(bitmap)
+        publishEven(bridge.renderFullDebugFrame(vram))
     }
 
     private fun saveState(sync: Boolean = false, reason: String = "unspecified"): Boolean {

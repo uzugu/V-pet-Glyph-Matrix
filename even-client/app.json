@@ -1,0 +1,17 @@
+{
+  "package_id": "com.digimon.vpetstream",
+  "edition": "202601",
+  "name": "V-pet Stream",
+  "version": "0.1.0",
+  "min_app_version": "2.2.10",
+  "min_sdk_version": "0.0.16",
+  "entrypoint": "index.html",
+  "permissions": [
+    {
+      "name": "network",
+      "desc": "Streams the pet display and sends button presses to V-pet Glyph on this phone.",
+      "whitelist": ["http://127.0.0.1:8766"]
+    }
+  ],
+  "supported_languages": ["en"]
+}

@@ -249,6 +249,7 @@
                         android:layout_marginStart="6dp" />
                 </LinearLayout>
 
+                <Button android:id="@+id/btn_connections" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/connections_title" />
                 <Button
                     android:id="@+id/btn_dpower_controls"
                     android:layout_width="match_parent"
