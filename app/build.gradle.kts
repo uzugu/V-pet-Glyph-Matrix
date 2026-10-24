@@ -13,8 +13,8 @@ android {
         minSdk = 26
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 14
-        versionName = "1.4-dpower.preview10"
+        versionCode = 15
+        versionName = "1.4-dpower.preview11"
     }
 
     buildTypes {
@@ -63,4 +63,10 @@ tasks.register<Copy>("packageVersionedDebug") {
     from(layout.buildDirectory.dir("outputs/apk/debug")) { include("app-debug.apk") }
     into(layout.buildDirectory.dir("outputs/distributions"))
     rename { "V-Pet-Glyph-${android.defaultConfig.versionName}-debug.apk" }
+}
+
+// Opt-in hardware/ROM checks must rerun when their external test environment changes.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    inputs.property("classicRomDir", providers.environmentVariable("CLASSIC_ROM_DIR").orElse(""))
+    inputs.property("frameExchangeValidationDir", providers.environmentVariable("FRAME_EXCHANGE_VALIDATION_DIR").orElse(""))
 }

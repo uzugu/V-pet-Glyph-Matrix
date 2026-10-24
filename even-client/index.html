@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>V-pet · G2 link</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <span class="eyebrow">DIGITAL MONSTER / REMOTE TERMINAL</span
+        ><span class="badge">EVEN G2</span>
+      </header>
+      <h1>Your pet.<br /><em>Within sight.</em></h1>
+      <p class="intro">
+        Your phone runs the Digivice. Your glasses carry its screen.
+      </p>
+      <section class="console">
+        <div class="readout">
+          <span>LIVE LCD</span
+          ><span id="status" role="status">DISCONNECTED</span>
+        </div>
+        <div class="lcd">
+          <canvas
+            id="screen"
+            width="200"
+            height="100"
+            aria-label="Live Digivice screen"
+          ></canvas>
+        </div>
+        <div id="keys" class="keys"></div>
+        <p id="gestures">Press → A · swipe up → B · swipe down → C</p>
+      </section>
+      <section class="pairing">
+        <span class="eyebrow">01 / PHONE LINK</span
+        ><label for="token">Pairing key</label
+        ><input
+          id="token"
+          type="password"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Paste key from V-pet Glyph"
+        />
+        <p>
+          In the phone app, start the pet and enable
+          <strong>Even G2 streaming</strong>. Copy its pairing key here.
+        </p>
+        <div class="actions">
+          <button id="connect">Connect phone</button
+          ><button id="glasses" class="secondary">Connect glasses</button
+          ><button id="disconnect" class="secondary">Disconnect</button>
+        </div>
+        <p id="error" role="alert"></p>
+      </section>
+      <footer>
+        <span>V-PET / STREAM 0.1.1</span
+        ><span>Phone-local connection · no ROMs on glasses</span>
+      </footer>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

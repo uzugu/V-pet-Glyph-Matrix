@@ -80,4 +80,5 @@ Step sends one emulated step contact. Enable walking or automatic steps in Step 
     <string name="nfc_settings">NFC settings</string>
     <string name="nfc_scan_failed">Could not start NFC scanning. Return to the console and try again.</string>
     <string name="nfc_card_sent">Card input sent</string>
+    <string name="connections_title">Even G2 &amp; save sync</string>
 </resources>

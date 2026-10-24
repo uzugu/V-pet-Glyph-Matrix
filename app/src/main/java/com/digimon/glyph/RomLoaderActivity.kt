@@ -70,6 +70,16 @@ import java.util.zip.ZipInputStream
  * After loading, the ROM is saved to internal storage for the Glyph Toy service to use.
  */
 class RomLoaderActivity : AppCompatActivity() {
+    private val exchangeFolderPicker = registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) {
+            try {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                com.digimon.glyph.sync.ExchangeFolder(this).setTree(uri)
+            } catch (_: SecurityException) {
+                Toast.makeText(this, "Choose a folder with persistent read and write access", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
     private var updatingRenderSwitch = false
     private var walkingButton: Button? = null
     private val nfcCardScanner by lazy {
@@ -215,6 +225,9 @@ class RomLoaderActivity : AppCompatActivity() {
 
         val mainTitle = findViewById<TextView>(R.id.main_title)
         statusText = findViewById(R.id.statusText)
+        findViewById<Button>(R.id.btn_connections).setOnClickListener {
+            com.digimon.glyph.sync.ConnectionsMenu.show(this) { exchangeFolderPicker.launch(com.digimon.glyph.sync.ExchangeFolder(this).tree) }
+        }
         val btnPickRom = findViewById<Button>(R.id.btn_pick_rom)
         findViewById<Button>(R.id.btn_dpower_controls).setOnClickListener { showDPowerControls() }
         findViewById<Button>(R.id.btn_cancel_import).setOnClickListener { cancelImport() }
