@@ -8,6 +8,22 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EmulatorLoopClockTest {
+    @Test fun powerSaveBatchesWakeupsWithoutStoppingTheFirmwareClock() {
+        val waits = java.util.concurrent.atomic.AtomicInteger()
+        val core = TimingRom.core()
+        val loop = EmulatorLoop(core, {}, { System.nanoTime() }, parkNs = { ns ->
+            waits.incrementAndGet()
+            java.util.concurrent.locks.LockSupport.parkNanos(ns)
+        })
+        loop.setTimingMode(EmulatorLoop.TimingMode.POWER_SAVE)
+        loop.start()
+        try {
+            Thread.sleep(1200)
+            assertTrue("Power saving should need fewer than 90 waits in 1.2 seconds: ${waits.get()}", waits.get() < 90)
+            assertEquals(1, loop.executeSync(1000) { it.getState()["DBG_INT_COUNT"] })
+        } finally { loop.stop() }
+    }
+
     @Test fun normalPacingBatchesWakeupsAndCommandsWakeTheWorker() {
         val waits = java.util.concurrent.atomic.AtomicInteger()
         val parked = CountDownLatch(1)

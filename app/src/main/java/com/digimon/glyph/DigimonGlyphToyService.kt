@@ -40,6 +40,7 @@ import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.EmulatorLoop
+import com.digimon.glyph.emulator.EmulatorTimingPolicy
 import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.StateManager
@@ -1646,9 +1647,12 @@ class DigimonGlyphToyService : Service() {
         val boostActive = now < interactionBoostUntilMs
         val battleTimingLock = battleConnected
         val battleStepGateActive = battleConnected && stepModeEnabled
-        val desiredMode =
-            if (battleTimingLock || fullAccuracyEnabled || boostActive) EmulatorLoop.TimingMode.FULL_ACCURATE
-            else EmulatorLoop.TimingMode.EXACT
+        val desiredMode = EmulatorTimingPolicy.select(
+            powerSave = EmulatorTimingSettings.isPowerSaveEnabled(),
+            smootherDisplay = fullAccuracyEnabled,
+            interactionBoost = boostActive,
+            battleConnected = battleTimingLock,
+        )
         if (!force &&
             fullAccuracyEnabled == lastFullAccuracyEnabled &&
             desiredMode == lastAppliedTimingMode &&
@@ -1665,11 +1669,9 @@ class DigimonGlyphToyService : Service() {
                 emulatorLoop?.pulseStepBudget((stepSliceMs + BATTLE_STEP_CONNECT_PRIME_MS).coerceAtMost(1_000))
             }
         }
-        if (desiredMode == EmulatorLoop.TimingMode.EXACT || desiredMode == EmulatorLoop.TimingMode.FULL_ACCURATE) {
-            acquireCpuWakeLock()
-        } else {
-            releaseCpuWakeLock()
-        }
+        // Every mode runs the firmware in real time. Suspending the CPU here
+        // would accumulate simulation debt and stop the pet's clock.
+        acquireCpuWakeLock()
         lastAppliedTimingMode = desiredMode
         Log.d(
             TAG,
@@ -1680,7 +1682,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun handleUserInteractionForTimingBoost() {
-        if (EmulatorTimingSettings.isFullAccuracyEnabled()) return
+        if (EmulatorTimingSettings.isFullAccuracyEnabled() && !EmulatorTimingSettings.isPowerSaveEnabled()) return
         interactionBoostUntilMs = SystemClock.uptimeMillis() + INTERACTION_TIMING_BOOST_MS
         if (lastAppliedTimingMode != EmulatorLoop.TimingMode.FULL_ACCURATE) {
             applyTimingSettingIfChanged(force = true)

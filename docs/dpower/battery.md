@@ -1,4 +1,4 @@
-# Background battery investigation — preview12
+# Background battery investigation — preview13
 
 The reported overnight battery drain is not yet reproduced on the phone: ADB was unavailable during this change. This update removes measured waste; it does not establish an overnight battery-life improvement.
 
@@ -17,4 +17,22 @@ The real EU1.01 ROM did not enter its CPU sleep state during the sampled startup
 
 Checks: real-ROM Python state/audio/input continuation tests, silence/subsample waveform tests, classic firmware clock regression across display stalls and timing-mode changes, normal-mode worker wakeup bound and command delivery. Android build and lint are required before publishing the preview.
 
-This change is in **V-pet Glyph Matrix**, package`com.digimon.glyph`. The separate reconstructed D-Arc application in`d-arc-glyph/app-project` has its own render-driven runtime. It was inspected but not modified; these APKs do not share code at runtime.
+This change is in **V-pet Glyph Matrix**, package`com.digimon.glyph`. The separate reconstructed D-Arc application in`d-arc-glyph/app-project` has its own render-driven runtime. Its separate power-saving changes are documented in that repository; these APKs do not share code at runtime.
+
+
+## Preview13: explicit power-saving mode
+
+The launcher now has a persisted **Power saving** switch. It uses the existing
+4 FPS display profile and 20 ms wakeup batching. It overrides the cosmetic
+smoother-display preference; input temporarily boosts refresh and battle links
+retain full timing. The mode changes neither CPU oscillator speed nor the owed
+instruction budget. The simulation wake lock remains held in this mode so
+Android sleep cannot silently stop the firmware clock. This is a reduction in
+refresh/wakeup work, not a CPU-free standby mode for a running ROM.
+
+New checks verify mode precedence, fewer than 90 worker waits over a 1.2-second
+power-saving sample, one serviced firmware second in that sample, and the
+existing render-stall/mode-transition continuity regression. With the six private
+classic ROMs supplied through `CLASSIC_ROM_DIR`, the complete suite reports
+75 tests, 74 passed, one opt-in hardware test skipped. Debug assembly and lint
+passed. Phone battery and locked-screen Glyph retention remain unverified.

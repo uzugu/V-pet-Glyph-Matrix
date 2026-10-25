@@ -385,6 +385,19 @@
                     android:trackTint="@null" />
 
                 <Switch
+                    android:id="@+id/switch_power_save"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="Power saving (4 FPS idle; overrides smoother display)"
+                    android:fontFamily="monospace"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null" />
+
+                <Switch
                     android:id="@+id/switch_exact_timing"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -237,6 +237,7 @@ class RomLoaderActivity : AppCompatActivity() {
         
         val switchZoom = findViewById<Switch>(R.id.switch_zoom)
         val switchAudio = findViewById<Switch>(R.id.switch_audio)
+        val switchPowerSave = findViewById<Switch>(R.id.switch_power_save)
         val switchExactTiming = findViewById<Switch>(R.id.switch_exact_timing)
         val switchHaptic = findViewById<Switch>(R.id.switch_haptic)
 
@@ -343,7 +344,7 @@ class RomLoaderActivity : AppCompatActivity() {
         statEmuValue.typeface = teko
 
         val shareTechViews = listOf(
-            statusText, switchZoom, switchAudio, switchExactTiming, switchHaptic,
+            statusText, switchZoom, switchAudio, switchExactTiming, switchPowerSave, switchHaptic,
             autosaveText, btnSaveAuto, btnLoadAuto, btnRestart, btnFullReset,
             btnComboAb, btnComboAc, btnComboBc,
             rbNearby, rbInternet, rbSim, rbPureEcho, rbXor, rbGlobal,
@@ -408,6 +409,12 @@ class RomLoaderActivity : AppCompatActivity() {
         switchAudio.isChecked = EmulatorAudioSettings.isAudioEnabled()
         switchAudio.setOnCheckedChangeListener { _, isChecked ->
             EmulatorAudioSettings.setAudioEnabled(this@RomLoaderActivity, isChecked)
+            EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }
+
+        switchPowerSave.isChecked = EmulatorTimingSettings.isPowerSaveEnabled()
+        switchPowerSave.setOnCheckedChangeListener { _, isChecked ->
+            EmulatorTimingSettings.setPowerSaveEnabled(this@RomLoaderActivity, isChecked)
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
@@ -1778,6 +1785,7 @@ class RomLoaderActivity : AppCompatActivity() {
             walkingButton = null
             findViewById<Switch>(R.id.switch_audio).isChecked = EmulatorAudioSettings.isAudioEnabled()
             findViewById<Switch>(R.id.switch_haptic).isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
+            findViewById<Switch>(R.id.switch_power_save).isChecked = EmulatorTimingSettings.isPowerSaveEnabled()
             findViewById<Switch>(R.id.switch_exact_timing).isChecked = EmulatorTimingSettings.isFullAccuracyEnabled()
             updateStatus()
         }
