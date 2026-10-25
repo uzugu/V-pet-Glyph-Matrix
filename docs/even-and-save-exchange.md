@@ -12,7 +12,7 @@ Goal: Glyph remains the phone emulator and Nothing Matrix display. Even G2 is an
 
 ## Use
 
-1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview15-debug.apk`.
+1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview16-debug.apk`.
 2. Start the pet. Open **Even G2 & save sync**, enable streaming and copy the pairing key.
 3. Install `even-client/vpet-stream.ehpk` in Even App. Paste the key, connect phone, then connect glasses. These apps run on the same phone; `127.0.0.1` is intentional.
 4. Classic gestures: press A, swipe up B, swipe down C, double press B. D-Power: press Up, swipe up Left, swipe down Right, double press Down. For D-Power, tap then long press opens the native glasses menu with **Step** and **Card input**. The same actions are available on the phone controls; Card is an emulated contact, not an NFC scan.
@@ -85,3 +85,39 @@ Use a unique validation subdirectory on both devices. Normal save browsing scans
 On Frame, run `tools/validate-syncthing-handoff.py --exchange-dir ~/.local/share/vpet-frame/exchange/validation/<run> --rom-dir ~/.local/share/vpet-frame/roms --count 7 --timeout 240`.
 
 On the host, set `FRAME_EXCHANGE_VALIDATION_DIR=/srv/data/vpet-save-exchange/validation/<run>` and `CLASSIC_ROM_DIR` before running the Android JVM `SaveHandoffTest`; it publishes all six revisions and validates the Frame responses. Gradle treats these environment paths as test inputs so changing them cannot reuse a skipped/cached result. Then run `python3 tools/validate-dpower-syncthing.py --exchange-dir /srv/data/vpet-save-exchange/validation/<run> --rom /path/to/DPowerDigiviceEU101.bin`. The responder exits after seven requests. Both sides execute real firmware; snapshots are removed after verification. No ROM bytes are transferred by Syncthing.
+
+
+## Preview16: publication and backup failure handling
+
+Publishing a snapshot and recording local ancestry are separate commits. If the
+ancestry preference cannot be saved, the completed snapshot remains intact and
+the app reports success with a history warning. A resumed, durably saved pet
+also remains resumed after a history failure. The next publication may form a
+separate branch; existing files and explicit branch selection remain available.
+
+SAF providers can preserve document IDs during rename and can lose a rename
+acknowledgement after completing it. Cleanup deletes only partials whose rename
+has not been attempted. Ambiguous rename failures leave the document alone;
+check the exchange folder before retrying. Unfinished `.partial` files remain
+ignored by readers and Syncthing. No cleanup path deletes a completed snapshot
+through its former URI.
+
+Before import changes a pet, its private backup is encoded, validated, written
+to a unique temporary file, flushed with `FileDescriptor.sync`, checked by
+reading it back and exclusively published with a hardlink. App-private Linux
+storage must support hardlinks; failure prevents import. Existing backup IDs
+cannot be overwritten. This syncs file contents before publication; directory
+metadata persistence across sudden device power loss is not established by
+host tests. The Android SAF provider's filesystem/rename guarantees still need
+phone validation.
+
+Save exchange rejects an active battle link. Host failure-injection tests cover
+stable document IDs, failed preference commits, corrupted provider reads,
+ambiguous rename outcomes, backup byte verification, identity reuse and an
+unavailable backup directory. These exercise Android boundary mocks and actual
+host filesystem writes; they do not constitute phone SAF/hardlink validation.
+
+Preview16 software gate: 123 JVM tests, 122 passed and one opt-in Frame
+hardware test skipped, with all six private classic ROMs supplied. Versioned
+debug packaging and lint passed. ADB device discovery and wireless-debugging
+mDNS discovery both returned no devices.

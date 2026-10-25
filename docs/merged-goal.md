@@ -46,6 +46,11 @@ save exchange with the separate Steam Frame app within this same project goal.
   safe-boundary and unchanged-state checks, JSON save continuation, rendered
   digits and portable phone/Kotlin–Frame/Python clock-state roundtrips.
   Phone UI validation remains a hardware check.
+- Preview16 hardens save publication against stable SAF document IDs and
+  ambiguous renames, separates ancestry failures from completed handoffs, and
+  verifies/syncs private backups before replacing a pet. Battle-linked handoffs
+  are rejected. Its full gate passed 122 tests with one hardware test skipped,
+  versioned debug packaging and lint. Phone SAF validation remains pending.
 - G2/save exchange work is tracked in `even-and-save-exchange.md`; remaining
   hardware checks must not be represented as completed.
 

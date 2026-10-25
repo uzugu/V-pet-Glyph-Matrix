@@ -162,7 +162,7 @@ class DigimonGlyphToyService : Service() {
     private var lastAppliedStepGateEnabled = false
     private var interactionBoostUntilMs: Long = 0L
     private var debugTelemetryEnabled = false
-    private var battleConnected = false
+    @Volatile private var battleConnected = false
     private var ioTraceCount = 0L
     private var ioTraceWindowStartMs = 0L
     private val ioTraceLastValues = HashMap<Int, Int>()
@@ -736,6 +736,10 @@ class DigimonGlyphToyService : Service() {
         if (emulator == null || state.busy || expected != romHash || state.run == EmulatorStatus.Run.FROZEN) {
             android.widget.Toast.makeText(this, "Start the matching pet outside quiet hours first", android.widget.Toast.LENGTH_LONG).show(); return
         }
+        if (battleConnected) {
+            android.widget.Toast.makeText(this, "Stop the battle link before exchanging saves", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         val folder = com.digimon.glyph.sync.ExchangeFolder(this)
         val profile = if (state.isDPower) "DPowerEU101" else state.name ?: return
         val importing = intent.action == "com.digimon.glyph.EXCHANGE_IMPORT"
@@ -743,15 +747,18 @@ class DigimonGlyphToyService : Service() {
         runOnEmulatorAsync { core ->
             try {
                 check(romHash == expected && !EmulatorStatus.snapshot().busy && EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN) { "ROM changed during handoff" }
+                check(!battleConnected) { "Stop the battle link before exchanging saves" }
+                val completedRecord: com.digimon.glyph.sync.PortableSave.Record
                 if (!importing) {
                     val record = com.digimon.glyph.sync.PortableSave.create(core, expected!!, profile, folder.origin, folder.parent(expected))
                     folder.publish(record)
+                    completedRecord = record
                 } else {
                     val record = com.digimon.glyph.sync.PortableSave.decode(folder.read(intent.data ?: error("Missing save")))
                     val incoming = com.digimon.glyph.sync.PortableSave.state(record, core, expected!!, profile)
                     val backup = com.digimon.glyph.sync.PortableSave.create(core, expected, profile, folder.origin, folder.parent(expected))
-                    val dir = java.io.File(filesDir, "handoff-backups").apply { mkdirs() }
-                    java.io.File(dir, backup.id + ".vpetsave").writeText(com.digimon.glyph.sync.PortableSave.encode(backup))
+                    com.digimon.glyph.sync.LocalSnapshotBackups.write(java.io.File(filesDir, "handoff-backups"), backup)
+                    check(!battleConnected) { "Stop the battle link before exchanging saves" }
                     val previous = core.getState()
                     try {
                         core.restoreState(incoming)
@@ -764,10 +771,14 @@ class DigimonGlyphToyService : Service() {
                         stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
                         throw e
                     }
-                    // An ancestry preference failure must not roll back a committed save.
-                    folder.mark(record)
+                    completedRecord = record
                 }
-                mainHandler.post { android.widget.Toast.makeText(this, if(importing) "Synced save resumed; previous state backed up" else "Save published to exchange folder", android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
+                // History is device-local bookkeeping. Failure cannot undo a published
+                // snapshot or roll back an already committed emulator save.
+                val historyFailure = runCatching { folder.mark(completedRecord) }.exceptionOrNull()
+                val message = (if (importing) "Synced save resumed; previous state backed up" else "Save published to exchange folder") +
+                    (if (historyFailure != null) "; handoff history could not be saved. The next snapshot may appear as a separate branch." else "")
+                mainHandler.post { android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
             } catch (e: Exception) { mainHandler.post { android.widget.Toast.makeText(this, "Save exchange failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show() } }
         }
     }

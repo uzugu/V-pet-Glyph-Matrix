@@ -13,8 +13,8 @@ android {
         minSdk = 26
         ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 19
-        versionName = "1.4-dpower.preview15"
+        versionCode = 20
+        versionName = "1.4-dpower.preview16"
     }
 
     buildTypes {

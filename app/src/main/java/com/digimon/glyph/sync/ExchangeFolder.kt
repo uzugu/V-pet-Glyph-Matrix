@@ -43,11 +43,19 @@ class ExchangeFolder(private val context: Context) {
         val parent = DocumentsContract.buildDocumentUriUsingTree(root, DocumentsContract.getTreeDocumentId(root))
         val name = "${record.romHash}--${record.id}.vpetsave"
         val partial = DocumentsContract.createDocument(context.contentResolver, parent, "application/octet-stream", "$name.partial") ?: error("Could not create save")
+        // A provider may keep the document ID across rename, or complete rename
+        // before reporting an error. Once attempted, never delete through the old URI.
+        var renameAttempted = false
         try {
             context.contentResolver.openOutputStream(partial, "w")!!.use { it.write(PortableSave.encode(record).toByteArray(Charsets.UTF_8)); it.flush() }
             require(read(partial) == PortableSave.encode(record)) { "Save verification failed" }
+            renameAttempted = true
             check(DocumentsContract.renameDocument(context.contentResolver, partial, name) != null) { "Folder provider must support rename to publish completed saves" }
-            mark(record)
-        } catch (e: Exception) { try { DocumentsContract.deleteDocument(context.contentResolver, partial) } catch (_: Exception) {}; throw e }
+        } catch (e: Exception) {
+            if (!renameAttempted) {
+                try { DocumentsContract.deleteDocument(context.contentResolver, partial) } catch (_: Exception) {}
+            }
+            throw e
+        }
     }
 }
