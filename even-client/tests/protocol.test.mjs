@@ -23,6 +23,7 @@ const base = {
   width: 32,
   height: 24,
   romHash: "a".repeat(64),
+    inputEpoch: "12345678-1234-1234-1234-123456789abc:0",
   dpower: false,
   ready: true,
   state: "RUNNING",
@@ -37,6 +38,8 @@ test("strict frame dimensions and marker vocabulary", () => {
     { ...base, rows: base.rows + "\n" },
     { ...base, rows: base.rows.replace(".", "x") },
     { ...base, romHash: "wrong" },
+    { ...base, inputEpoch: undefined },
+    { ...base, inputEpoch: "wrong" },
   ])
     assert.throws(() => frame(value));
 });

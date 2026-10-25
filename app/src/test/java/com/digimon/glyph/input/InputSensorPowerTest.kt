@@ -170,4 +170,19 @@ class InputSensorPowerTest {
         assertEquals(0, f.pins.count { it == "K0:2=0" })
     }
 
+    @Test fun cancellingInputInvalidatesOldComboReleaseWithoutReleasingANewerPress() {
+        val f = Fixture()
+        f.controller.start()
+        assertTrue(f.controller.triggerComboTap(1)) // A+B
+        f.controller.cancelPendingInput()
+        f.scheduler.advance(20)
+        assertTrue(f.controller.triggerComboTap(2)) // A+C
+        f.pins.clear()
+        f.scheduler.advance(75) // old combo deadline, new combo still held
+        assertTrue(f.pins.isEmpty())
+        f.scheduler.advance(20)
+        assertTrue(f.pins.contains("K0:2=release"))
+        assertTrue(f.pins.contains("K0:0=release"))
+    }
+
 }

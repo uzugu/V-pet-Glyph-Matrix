@@ -82,7 +82,8 @@ function press(button: string) {
         epoch !== generation ||
         revision !== inputRevision ||
         !current?.ready ||
-        current?.romHash !== captured.romHash
+        current?.romHash !== captured.romHash ||
+        current?.inputEpoch !== captured.inputEpoch
       )
         return;
       const res = await request("press", {
@@ -92,6 +93,7 @@ function press(button: string) {
           seq: ++seq,
           button,
           romHash: captured.romHash,
+          inputEpoch: captured.inputEpoch,
         }),
       });
       if (!res.ok) throw new Error("Input rejected; reconnect before playing");
@@ -123,6 +125,12 @@ async function poll(epoch: number) {
       const value = frame(await response.json());
       if (generation !== epoch) return;
       const changed = JSON.stringify(value);
+      if (current && current.inputEpoch !== value.inputEpoch) {
+        ++inputRevision;
+        session = crypto.randomUUID();
+        seq = 0;
+        inputChain = Promise.resolve();
+      }
       current = value;
       if (last !== changed) {
         last = changed;

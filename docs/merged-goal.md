@@ -51,6 +51,11 @@ save exchange with the separate Steam Frame app within this same project goal.
   verifies/syncs private backups before replacing a pet. Battle-linked handoffs
   are rejected. Its full gate passed 122 tests with one hardware test skipped,
   versioned debug packaging and lint. Phone SAF validation remains pending.
+- Preview17 / EHPK 0.1.2 invalidate queued input across save imports and
+  emulator restarts, clear held tracking and reject delayed HTTP requests using
+  a frame-bound input session identifier. The save file protocol is unchanged.
+  Gate: 128 JVM tests passed, one hardware test skipped, APK/lint passed; seven
+  EHPK tests and package build passed.
 - G2/save exchange work is tracked in `even-and-save-exchange.md`; remaining
   hardware checks must not be represented as completed.
 
@@ -58,3 +63,14 @@ save exchange with the separate Steam Frame app within this same project goal.
 
 The user cleared the former goal and the unified objective is now active in
 this session's goal tracker.
+
+
+## Remaining device validation
+
+The remaining acceptance checks require a connected Android phone and Even G2:
+locked-screen overnight power consumption in both apps, Glyph output retention,
+physical gesture/step inputs, phone clock-control UI, actual Even-host localhost
+networking/display/input/reconnect and Android SAF ↔ Syncthing ↔ Frame handoffs.
+No device appeared in ADB or wireless-debugging discovery on three consecutive
+work turns. Host tests and microbenchmarks do not establish these outcomes.
+Frame remains asleep as requested; do not wake it for host-only checks.

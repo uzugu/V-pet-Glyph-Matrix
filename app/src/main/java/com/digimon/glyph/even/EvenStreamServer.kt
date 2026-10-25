@@ -13,7 +13,7 @@ import java.util.concurrent.ArrayBlockingQueue
 
 /** Bounded local-only HTTP stream for an EHPK hosted by Even on the same phone. */
 class EvenStreamServer(private val token: String, private val frame: () -> String,
-                       private val press: (String, String) -> Boolean, port: Int = 8766) : AutoCloseable {
+                       private val press: (String, String, String) -> Boolean, port: Int = 8766) : AutoCloseable {
     private val socket = token.let {
         require(it.matches(Regex("[a-f0-9]{32}")))
         ServerSocket(port, 4, InetAddress.getByName("127.0.0.1"))
@@ -66,9 +66,11 @@ class EvenStreamServer(private val token: String, private val frame: () -> Strin
                     val bytes = ByteArray(length); var read = 0
                     while (read < length) { val n = input.read(bytes, read, length - read); require(n > 0); read += n }
                     val obj = JsonParser.parseString(bytes.toString(Charsets.UTF_8)).asJsonObject
-                    require(obj.keySet() == setOf("session", "seq", "button", "romHash"))
+                    require(obj.keySet() == setOf("session", "seq", "button", "romHash", "inputEpoch"))
                     val session = obj["session"].asString; val seq = obj["seq"].asString.toLong()
                     val button = obj["button"].asString; val hash = obj["romHash"].asString
+                    val epoch = obj["inputEpoch"].asString
+                    require(epoch.matches(Regex("[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}:[0-9]{1,19}")))
                     require(session.matches(Regex("[a-f0-9-]{36}")) && seq in 1..9007199254740991L)
                     require(button in setOf("a","b","c","left","right","up","down","step","card"))
                     require(hash.matches(Regex("[a-f0-9]{64}")))
@@ -77,7 +79,7 @@ class EvenStreamServer(private val token: String, private val frame: () -> Strin
                         if (seq <= old || seq != old + 1) false else {
                             if (seen.size >= 64 && session !in seen) seen.remove(seen.keys.first())
                             seen[session] = seq
-                            press(button, hash)
+                            press(button, hash, epoch)
                         }
                     }
                     respond(client, if (accepted) 200 else 409, "{\"accepted\":$accepted}")

@@ -256,6 +256,8 @@ class InputController(
         publishDebugSnapshot(force = true)
     }
 
+    fun cancelPendingInput() { releaseAll() }
+
     private fun releaseAll() {
         dpHeld.toList().forEach { pinRelease(it.port, it.pin) }
         dpHeld.clear()
@@ -593,7 +595,9 @@ class InputController(
         }
 
         if (pressA || pressB || pressC) {
+            val generation = dpGeneration
             mainHandler.postDelayed({
+                if (generation != dpGeneration) return@postDelayed
                 if (pressA && !buttonALatchedByB) {
                     releaseA()
                 }

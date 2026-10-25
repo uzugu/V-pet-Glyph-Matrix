@@ -6,13 +6,13 @@ Goal: Glyph remains the phone emulator and Nothing Matrix display. Even G2 is an
 
 - Android preview11 / code15: **Even G2 & save sync** in the ROM loader.
 - Phone-local authenticated HTTP host on `127.0.0.1:8766`, disabled until enabled in that menu. Does not expose a LAN listener. Token is generated privately on the phone.
-- `even-client/` v0.1.1: SDK0.0.16, requires Even App2.2.10+. Integer-scaled LCD, classic care icons, native ring/glasses button gestures, browser preview and manual controls. No emulator or ROM on the glasses.
+- `even-client/` v0.1.2: SDK0.0.16, requires Even App2.2.10+. Integer-scaled LCD, classic care icons, native ring/glasses button gestures, browser preview and manual controls. No emulator or ROM on the glasses.
 - Frame companion scene9: save browser with explicit select and resume, publish, refresh and pagination. Existing spatial UI and crash protection preserved.
 - Explicit snapshot import with a backup. Neither device automatically loads the newest file. Divergent branch tips are visible and require choosing a state; emulator states cannot be merged.
 
 ## Use
 
-1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview16-debug.apk`.
+1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview17-debug.apk`.
 2. Start the pet. Open **Even G2 & save sync**, enable streaming and copy the pairing key.
 3. Install `even-client/vpet-stream.ehpk` in Even App. Paste the key, connect phone, then connect glasses. These apps run on the same phone; `127.0.0.1` is intentional.
 4. Classic gestures: press A, swipe up B, swipe down C, double press B. D-Power: press Up, swipe up Left, swipe down Right, double press Down. For D-Power, tap then long press opens the native glasses menu with **Step** and **Card input**. The same actions are available on the phone controls; Card is an emulated contact, not an NFC scan.
@@ -50,7 +50,7 @@ Classic payload uses Glyph STATE_VERSION2, including RAM, VRAM, CPU, timer phase
 
 Android uses SAF: write `.partial`, flush, verify content, then provider rename. Choose a local storage provider supporting rename; SAF does not promise filesystem fsync or atomic rename on every provider. Readers validate full identity/checksum/state before import. Frame validates on a fresh emulator, publishes with fsync and an exclusive final link, and backs up before replacement. Its exchange folder must support hardlinks (normal Linux home storage does).
 
-Streaming API: authenticated `GET /v1/frame` returns version1,32×24 marker rows, ROM hash, readiness and runtime state. `POST /v1/press` accepts session UUID, monotonically consecutive seq, button and expected ROM hash. No retries after ambiguous input. CORS/preflight supported; server queues, request sizes and session history are bounded.
+Streaming API: authenticated `GET /v1/frame` returns version1,32×24 marker rows, ROM hash, readiness, runtime state and a required `inputEpoch` (phone-service UUID plus local generation). `POST /v1/press` accepts session UUID, monotonically consecutive seq, button, expected ROM hash and the frame’s `inputEpoch`. No retries after ambiguous input. CORS/preflight supported; server queues, request sizes and session history are bounded.
 
 ## Verification and remaining hardware checks
 
@@ -121,3 +121,37 @@ Preview16 software gate: 123 JVM tests, 122 passed and one opt-in Frame
 hardware test skipped, with all six private classic ROMs supplied. Versioned
 debug packaging and lint passed. ADB device discovery and wireless-debugging
 mDNS discovery both returned no devices.
+
+
+## Preview17 / EHPK 0.1.2: inputs across handoffs
+
+Save import invalidates earlier input work and rejects new commands while it
+reads, verifies, backs up and resumes the snapshot. The phone clears held-button
+tracking and delayed release callbacks on both sides of the operation. CPU-side
+inputs queued before import, main-thread work posted by G2, old widget releases
+and delayed classic combo releases cannot mutate the resumed pet. Inputs resume
+in a fresh generation on success or failure; stale lifecycle completions cannot
+unlock or clear a newer session. Walking-input events follow the same gate.
+
+Every streamed frame now supplies `inputEpoch`, and each G2 button request must
+include the value from its captured frame. ROM identity alone is insufficient
+when importing another save of the same ROM. A UUID distinguishes phone-service
+instances; a generation distinguishes imports and emulator restarts within the
+instance. HTTP rejects stale identifiers even when their request arrives after
+import finishes. The EHPK drops its previous input queue on identifier changes
+and accepts fresh input without waiting for an older request's acknowledgement.
+A late failure from an old request cannot disconnect the new session.
+
+**Install preview17+ and EHPK 0.1.2 together.** Earlier EHPKs cannot send the required
+identifier; new EHPKs reject frames from hosts that do not supply it. Save-exchange
+file format v1 and Frame's portable-state protocol are unchanged.
+
+Tests exercise the real emulator worker in all three timing modes, controller
+combo deadlines, HTTP requests spanning replacement and phone-service restart,
+and a browser session whose ROM hash and LCD remain identical across import.
+Actual phone/G2 input and import behavior still needs hardware validation.
+
+Preview17 software gate: 129 JVM tests, 128 passed and one opt-in Frame
+hardware test skipped, using all six private classic ROMs. Debug packaging and
+lint passed. EHPK 0.1.2 passed seven browser/display tests and build/package.
+The phone was absent from both ADB and wireless-debugging mDNS discovery.
