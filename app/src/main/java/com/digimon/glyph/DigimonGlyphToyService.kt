@@ -1239,6 +1239,7 @@ class DigimonGlyphToyService : Service() {
         input.onInputRateModeChanged = { isActive ->
             overlay.onStateChanged(isActive)
         }
+        input.setPowerSaveEnabled(EmulatorTimingSettings.isPowerSaveEnabled())
         input.setDebugEnabled(debugTelemetryEnabled)
         if (toySession.interactive) input.start()
         inputController = input
@@ -1672,8 +1673,10 @@ class DigimonGlyphToyService : Service() {
         val boostActive = now < interactionBoostUntilMs
         val battleTimingLock = battleConnected
         val battleStepGateActive = battleConnected && stepModeEnabled
+        val powerSave = EmulatorTimingSettings.isPowerSaveEnabled()
+        inputController?.setPowerSaveEnabled(powerSave)
         val desiredMode = EmulatorTimingPolicy.select(
-            powerSave = EmulatorTimingSettings.isPowerSaveEnabled(),
+            powerSave = powerSave,
             smootherDisplay = fullAccuracyEnabled,
             interactionBoost = boostActive,
             battleConnected = battleTimingLock,

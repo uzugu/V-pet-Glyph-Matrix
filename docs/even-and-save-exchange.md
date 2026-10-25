@@ -12,7 +12,7 @@ Goal: Glyph remains the phone emulator and Nothing Matrix display. Even G2 is an
 
 ## Use
 
-1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview11-debug.apk`.
+1. Install `app/build/outputs/distributions/V-Pet-Glyph-1.4-dpower.preview15-debug.apk`.
 2. Start the pet. Open **Even G2 & save sync**, enable streaming and copy the pairing key.
 3. Install `even-client/vpet-stream.ehpk` in Even App. Paste the key, connect phone, then connect glasses. These apps run on the same phone; `127.0.0.1` is intentional.
 4. Classic gestures: press A, swipe up B, swipe down C, double press B. D-Power: press Up, swipe up Left, swipe down Right, double press Down. For D-Power, tap then long press opens the native glasses menu with **Step** and **Card input**. The same actions are available on the phone controls; Card is an emulated contact, not an NFC scan.

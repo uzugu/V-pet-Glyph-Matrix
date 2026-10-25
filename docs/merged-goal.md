@@ -34,9 +34,13 @@ save exchange with the separate Steam Frame app within this same project goal.
   processing. This does not establish acceptable overnight battery usage.
 - Persisted V-pet power-saving controls are implemented in preview13; the full
   JVM suite, including six private-ROM cases, debug build and lint passed.
-- D-Arc 1.1.0 adds idle batching, lower refresh, identical-save/display suppression
-  and selective motion sensing. Commit `773b715` in its separate repository
-  passed 108 JVM tests, debug assembly and lint. Hardware checks remain pending.
+- D-Arc 1.1.1 adds idle batching, lower refresh, identical-save/display suppression
+  and selective motion sensing. Commit `9b51440` in its separate repository
+  integrates upstream fidelity fixes and passed 213 JVM tests, debug assembly and lint. Hardware checks remain pending.
+- Preview15 additionally stops unused idle gesture sensors in power mode, with
+  immediate restoration on Glyph input and a monotonic idle timeout. The full
+  private-ROM suite reports 117 tests (116 passed, one hardware check skipped);
+  debug packaging and lint passed.
 - Preview14 implements one-time firmware clock controls for all six classic
   revisions. `clock-traces/` records Python and Kotlin button/rollover traces,
   safe-boundary and unchanged-state checks, JSON save continuation, rendered

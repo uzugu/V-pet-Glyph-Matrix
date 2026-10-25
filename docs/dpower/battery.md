@@ -36,3 +36,31 @@ existing render-stall/mode-transition continuity regression. With the six privat
 classic ROMs supplied through `CLASSIC_ROM_DIR`, the complete suite reports
 75 tests, 74 passed, one opt-in hardware test skipped. Debug assembly and lint
 passed. Phone battery and locked-screen Glyph retention remain unverified.
+
+
+## Preview15: stop unused idle gesture sensors
+
+In persisted power-saving mode, the input controller unregisters rotation and
+acceleration sensors while controls are idle. They previously kept sampling at
+normal rate even though gesture processing ignored idle samples. Pressing the
+Glyph button immediately restores game-rate sensors; releasing it begins a
+60-second activity window. A held button keeps controls armed. The timeout runs
+on the main Handler using monotonic uptime, so becoming idle does not require
+another sensor event. Stop cancels that timeout and releases held keys.
+
+Registration resumes with fresh motion/filter state to prevent a stale sample
+from generating a flick. Both linear acceleration and accelerometer fallback
+follow this policy. Normal mode retains its original normal-rate idle sensors.
+Hardware step inputs use the separate WalkingInput path and are unaffected.
+Changing power mode applies the sensor policy immediately, including when the
+emulator is temporarily running at an interaction-boost timing profile.
+
+Host tests exercise the actual InputController against recorded SensorManager
+calls and a virtual Handler: no idle registrations, immediate wake, held input,
+release timeout, preference transitions, fallback sensor, stop cleanup, fresh
+motion baseline and a deliberate flick. This establishes software behavior;
+phone sensor power draw and gesture latency still require hardware measurement.
+
+Preview15 gate: 117 JVM tests, 116 passed, one opt-in Frame hardware test
+skipped. All six private classic ROMs were supplied; versioned debug packaging
+and lint passed. No Android device was connected.
