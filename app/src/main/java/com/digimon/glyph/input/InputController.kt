@@ -6,6 +6,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Handler
+import android.os.SystemClock
 import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Build
@@ -25,7 +26,11 @@ import kotlin.math.abs
  * - left/right (X axis) => A/C
  * - toward/away (Z axis) => B
  */
-class InputController(context: Context) : SensorEventListener {
+class InputController(
+    context: Context,
+    private val mainHandler: Handler = Handler(Looper.getMainLooper()),
+    private val uptimeMs: () -> Long = { SystemClock.uptimeMillis() },
+) : SensorEventListener {
 
     private enum class FlickAxis { NONE, X, Z }
     private enum class InputRateMode { IDLE, ACTIVE }
@@ -69,7 +74,6 @@ class InputController(context: Context) : SensorEventListener {
     private val linearAccelerationSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
     private val accelerometerFallback =
         if (linearAccelerationSensor == null) sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) else null
-    private val mainHandler = Handler(Looper.getMainLooper())
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
     } else {
@@ -128,6 +132,8 @@ class InputController(context: Context) : SensorEventListener {
 
     private var started = false
     private var sensorsRegistered = false
+    private var powerSaveEnabled = false
+    private var needsMotionBaseline = true
     private var inputRateMode = InputRateMode.IDLE
     private var lastInteractionMs = 0L
 
@@ -137,6 +143,16 @@ class InputController(context: Context) : SensorEventListener {
     var onPinSet: ((port: String, pin: Int, level: Int) -> Unit)? = null
     var onPinRelease: ((port: String, pin: Int) -> Unit)? = null
     var onInputRateModeChanged: ((isActive: Boolean) -> Unit)? = null
+
+    private val idleTimeout = Runnable {
+        if (started) maybeEnterIdleMode(uptimeMs())
+    }
+
+    fun setPowerSaveEnabled(enabled: Boolean) {
+        if (powerSaveEnabled == enabled) return
+        powerSaveEnabled = enabled
+        setInputRateMode(inputRateMode, force = true)
+    }
 
     private val releaseATap = Runnable {
         if (buttonAActive) {
@@ -182,12 +198,13 @@ class InputController(context: Context) : SensorEventListener {
     fun start() {
         if (started) return
         started = true
-        lastInteractionMs = System.currentTimeMillis()
+        lastInteractionMs = uptimeMs()
         setInputRateMode(InputRateMode.IDLE)
     }
 
     fun stop() {
         started = false
+        mainHandler.removeCallbacks(idleTimeout)
         sensorManager.unregisterListener(this)
         sensorsRegistered = false
         releaseAll()
@@ -239,6 +256,8 @@ class InputController(context: Context) : SensorEventListener {
         publishDebugSnapshot(force = true)
     }
 
+    fun cancelPendingInput() { releaseAll() }
+
     private fun releaseAll() {
         dpHeld.toList().forEach { pinRelease(it.port, it.pin) }
         dpHeld.clear()
@@ -269,8 +288,23 @@ class InputController(context: Context) : SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
-        val now = System.currentTimeMillis()
+        if (!started || !sensorsRegistered) return
+        val now = uptimeMs()
         maybeEnterIdleMode(now)
+        if (!sensorsRegistered) return
+        if (event.sensor.type != Sensor.TYPE_GAME_ROTATION_VECTOR && needsMotionBaseline) {
+            needsMotionBaseline = false
+            filteredX = 0f
+            filteredY = 0f
+            filteredZ = 0f
+            linearX = 0f
+            linearY = 0f
+            linearZ = 0f
+            gravityX = event.values[0]
+            gravityY = event.values[1]
+            gravityZ = event.values[2]
+            return
+        }
         when (event.sensor.type) {
             Sensor.TYPE_GAME_ROTATION_VECTOR -> {
                 updateOrientation(event.values)
@@ -326,20 +360,23 @@ class InputController(context: Context) : SensorEventListener {
     private fun maybeEnterIdleMode(now: Long) {
         if (inputRateMode != InputRateMode.ACTIVE) return
         if (glyphPhysicalDown) return
-        if (now - lastInteractionMs <= INPUT_IDLE_AFTER_MS) return
+        if (now - lastInteractionMs < INPUT_IDLE_AFTER_MS) return
         setInputRateMode(InputRateMode.IDLE)
         clearPending()
     }
 
     private fun noteInteraction() {
-        lastInteractionMs = System.currentTimeMillis()
+        lastInteractionMs = uptimeMs()
         if (inputRateMode != InputRateMode.ACTIVE) {
             setInputRateMode(InputRateMode.ACTIVE)
         }
+        mainHandler.removeCallbacks(idleTimeout)
+        if (started) mainHandler.postDelayed(idleTimeout, INPUT_IDLE_AFTER_MS)
     }
 
-    private fun setInputRateMode(mode: InputRateMode) {
-        if (inputRateMode == mode && started && sensorsRegistered) return
+    private fun setInputRateMode(mode: InputRateMode, force: Boolean = false) {
+        if (!force && inputRateMode == mode && started &&
+            (sensorsRegistered || (powerSaveEnabled && mode == InputRateMode.IDLE))) return
         inputRateMode = mode
         if (!started) return
         if (sensorsRegistered) {
@@ -351,10 +388,14 @@ class InputController(context: Context) : SensorEventListener {
         } else {
             SensorManager.SENSOR_DELAY_NORMAL
         }
-        rotationSensor?.let { sensorManager.registerListener(this, it, delay) }
-        linearAccelerationSensor?.let { sensorManager.registerListener(this, it, delay) }
-        accelerometerFallback?.let { sensorManager.registerListener(this, it, delay) }
-        sensorsRegistered = true
+        if (!(powerSaveEnabled && mode == InputRateMode.IDLE)) {
+            needsMotionBaseline = true
+            clearPending()
+            rotationSensor?.let { sensorManager.registerListener(this, it, delay) }
+            linearAccelerationSensor?.let { sensorManager.registerListener(this, it, delay) }
+            accelerometerFallback?.let { sensorManager.registerListener(this, it, delay) }
+            sensorsRegistered = true
+        }
         onInputRateModeChanged?.invoke(mode == InputRateMode.ACTIVE)
         if (debugEnabled) {
             Log.d(TAG, "Input polling mode=$mode delay=$delay")
@@ -435,7 +476,7 @@ class InputController(context: Context) : SensorEventListener {
             if (glyphPhysicalDown) dpButton.modifierUsed()
             pulseDPower(key)
             if (axis == FlickAxis.X) lastFlickXMs = now else lastFlickZMs = now
-            lastTriggerAtMs = now
+            lastTriggerAtMs = System.currentTimeMillis()
             onUserInteraction?.invoke()
             vibrateFlickConfirm()
             publishDebugSnapshot(force = true)
@@ -458,7 +499,7 @@ class InputController(context: Context) : SensorEventListener {
             }
             FlickAxis.NONE -> return
         }
-        lastTriggerAtMs = now
+        lastTriggerAtMs = System.currentTimeMillis()
         when (axis) {
             FlickAxis.X -> lastFlickXMs = now
             FlickAxis.Z -> lastFlickZMs = now
@@ -554,7 +595,9 @@ class InputController(context: Context) : SensorEventListener {
         }
 
         if (pressA || pressB || pressC) {
+            val generation = dpGeneration
             mainHandler.postDelayed({
+                if (generation != dpGeneration) return@postDelayed
                 if (pressA && !buttonALatchedByB) {
                     releaseA()
                 }
@@ -611,7 +654,7 @@ class InputController(context: Context) : SensorEventListener {
         val now = System.currentTimeMillis()
         if (!force && now - lastDebugPushMs < DEBUG_PUSH_INTERVAL_MS) return
         lastDebugPushMs = now
-        val pendingAgeMs = if (pendingSinceMs == 0L) 0L else (now - pendingSinceMs)
+        val pendingAgeMs = if (pendingSinceMs == 0L) 0L else (uptimeMs() - pendingSinceMs)
         InputDebugState.write(
             appContext,
             InputDebugState.Snapshot(

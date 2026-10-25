@@ -40,7 +40,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
         steps.advance(cycles.toInt()) { pressed -> runtime.callAttr("pin", "CD", 1, if (pressed) 1 else -1) }
         if (++audioPoll >= 10) {
             audioPoll = 0
-            onPcm?.invoke(runtime.callAttr("drain_pcm").toJava(ByteArray::class.java))
+            onPcm?.invoke(runtime.callAttr("drain_playback_pcm").toJava(ByteArray::class.java))
             val tone = runtime.callAttr("audio").asList()
             val next = Pair(tone[0].toDouble().toInt(), tone[1].toDouble().toFloat().coerceIn(0f, 1f))
             if (next != lastTone) {

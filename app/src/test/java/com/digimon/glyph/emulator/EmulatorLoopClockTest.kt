@@ -8,6 +8,39 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EmulatorLoopClockTest {
+    @Test fun powerSaveBatchesWakeupsWithoutStoppingTheFirmwareClock() {
+        val waits = java.util.concurrent.atomic.AtomicInteger()
+        val core = TimingRom.core()
+        val loop = EmulatorLoop(core, {}, { System.nanoTime() }, parkNs = { ns ->
+            waits.incrementAndGet()
+            java.util.concurrent.locks.LockSupport.parkNanos(ns)
+        })
+        loop.setTimingMode(EmulatorLoop.TimingMode.POWER_SAVE)
+        loop.start()
+        try {
+            Thread.sleep(1200)
+            assertTrue("Power saving should need fewer than 90 waits in 1.2 seconds: ${waits.get()}", waits.get() < 90)
+            assertEquals(1, loop.executeSync(1000) { it.getState()["DBG_INT_COUNT"] })
+        } finally { loop.stop() }
+    }
+
+    @Test fun normalPacingBatchesWakeupsAndCommandsWakeTheWorker() {
+        val waits = java.util.concurrent.atomic.AtomicInteger()
+        val parked = CountDownLatch(1)
+        val loop = EmulatorLoop(TimingRom.core(), {}, { System.nanoTime() }, parkNs = { ns ->
+            waits.incrementAndGet()
+            parked.countDown()
+            java.util.concurrent.locks.LockSupport.parkNanos(ns)
+        })
+        loop.start()
+        try {
+            assertTrue(parked.await(2, TimeUnit.SECONDS))
+            Thread.sleep(1000)
+            assertTrue("Idle batching should avoid thousands of wakeups per second: ${waits.get()}", waits.get() < 250)
+            assertEquals(42, loop.executeSync(1000) { 42 })
+        } finally { loop.stop() }
+    }
+
     @Test fun actualWorkerPreservesFirmwareSecondsAcrossARenderStallAndModeChanges() {
         val core = TimingRom.core()
         val started = CountDownLatch(1)
@@ -22,6 +55,9 @@ class EmulatorLoopClockTest {
                 loop.setTimingMode(mode)
                 Thread.sleep(2000)
             }
+            // Normal pacing may intentionally owe up to one 8ms batch at the
+            // exact wall-second boundary. Cross that boundary before sampling.
+            Thread.sleep(100)
             // Read on the actual worker, after the delayed renderer has finished and debt is repaid.
             val serviced = loop.executeSync { it.getState()["DBG_INT_COUNT"] }
             assertTrue(stalled.get())

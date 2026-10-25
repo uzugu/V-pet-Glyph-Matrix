@@ -28,6 +28,8 @@ object EmulatorCommandBus {
     const val CMD_RESTART = "restart"
     const val CMD_FULL_RESET = "full_reset"
     const val CMD_PRESS_COMBO = "press_combo"
+    const val CMD_SET_FIRMWARE_CLOCK = "set_firmware_clock"
+    const val CMD_SYNC_FIRMWARE_CLOCK = "sync_firmware_clock"
     const val CMD_REFRESH_SETTINGS = "refresh_settings"
     const val CMD_BUTTON_PRESS = "button_press"
     const val CMD_BATTLE_START_HOST = "battle_start_host"

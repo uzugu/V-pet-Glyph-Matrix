@@ -66,6 +66,17 @@ class DPowerTests(unittest.TestCase):
         with self.assertRaises(ValueError): restored.restore(json.dumps(invalid))
         self.assertEqual(before, restored.snapshot())
 
+    def test_silent_playback_packets_do_not_keep_audio_device_running(self):
+        runtime = Runtime(ROM)
+        runtime.bus.advance_audio(22000)
+        self.assertEqual(b'', runtime.drain_playback_pcm())
+        runtime.bus.emit_audio(0, (1000, False, 1, 0))
+        runtime.bus.advance_audio(22000)
+        self.assertTrue(any(runtime.drain_playback_pcm()))
+        runtime.bus.emit_audio(0, None)
+        runtime.bus.advance_audio(22000)
+        self.assertEqual(b'', runtime.drain_playback_pcm())
+
     def test_every_display_segment_uses_one_bit(self):
         runtime = Runtime(ROM)
         # Upstream SVG IDs encode bit INDICES; e.g. 0_1 means mask 2, not mask 1.

@@ -8,6 +8,7 @@ import android.content.Context
 object EmulatorTimingSettings {
 
     private const val PREFS_NAME = "emulator_timing_settings"
+    private const val KEY_POWER_SAVE_ENABLED = "power_save_enabled"
     private const val KEY_FULL_ACCURACY_ENABLED = "full_accuracy_enabled"
     private const val KEY_CLOCK_CORRECTION_ENABLED = "clock_correction_enabled"
     private const val KEY_CLOCK_CORRECTION_FACTOR = "clock_correction_factor"
@@ -17,6 +18,9 @@ object EmulatorTimingSettings {
     // Legacy telemetry API: the clock now always runs at the phone's real-time rate.
     const val DEFAULT_CLOCK_CORRECTION_FACTOR = 1.0f
     const val DEFAULT_BATTLE_STEP_SLICE_MS = 10
+
+    @Volatile
+    private var powerSaveEnabled: Boolean = false
 
     @Volatile
     private var fullAccuracyEnabled: Boolean = false
@@ -36,6 +40,7 @@ object EmulatorTimingSettings {
     @Synchronized
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        powerSaveEnabled = prefs.getBoolean(KEY_POWER_SAVE_ENABLED, false)
         fullAccuracyEnabled = prefs.getBoolean(KEY_FULL_ACCURACY_ENABLED, false)
         clockCorrectionEnabled = false
         clockCorrectionFactor = 1.0f
@@ -48,6 +53,14 @@ object EmulatorTimingSettings {
         battleStepModeEnabled = prefs.getBoolean(KEY_BATTLE_STEP_MODE_ENABLED, false)
         battleStepSliceMs = prefs.getInt(KEY_BATTLE_STEP_SLICE_MS, DEFAULT_BATTLE_STEP_SLICE_MS)
             .coerceIn(4, 250)
+    }
+
+    fun isPowerSaveEnabled(): Boolean = powerSaveEnabled
+
+    fun setPowerSaveEnabled(context: Context, enabled: Boolean) {
+        powerSaveEnabled = enabled
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_POWER_SAVE_ENABLED, enabled).apply()
     }
 
     fun isFullAccuracyEnabled(): Boolean = fullAccuracyEnabled

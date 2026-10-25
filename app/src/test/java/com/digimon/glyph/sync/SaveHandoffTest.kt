@@ -7,14 +7,29 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 
 class SaveHandoffTest {
-    @Test fun actualFrameRoundtripAllClassicRevisions() {
+    @Test fun actualFrameRoundtripAllClassicRevisions() = classicFrameRoundtrip(overrideClock = false)
+
+    @Test fun firmwareClockOverrideSurvivesFrameRoundtripAndMidnight() = classicFrameRoundtrip(overrideClock = true)
+
+    private fun classicFrameRoundtrip(overrideClock: Boolean) {
         val directory = System.getenv("CLASSIC_ROM_DIR")
         val bridge = File("../V-pet-frame/tools/save-roundtrip.py").let { if(it.exists()) it else File("../../V-pet-frame/tools/save-roundtrip.py") }
         assumeTrue("Requires private ROMs and adjacent Frame checkout", directory != null && bridge.exists())
         for (profile in listOf("DigimonV1JA","DigimonV1JB","DigimonV1ES","DigimonV2J","DigimonV3J","DigimonV4J")) {
             val rom = File(directory, "$profile.bin")
             val core = E0C6200(rom.readBytes())
-            core.runForCycles(core.clockFrequency * 3.123)
+            if (overrideClock) {
+                fun press(pin: Int) {
+                    core.pinSet("K0", pin, 0); core.runForCycles(core.clockFrequency * .2)
+                    core.pinRelease("K0", pin); core.runForCycles(core.clockFrequency * .3)
+                }
+                core.runForCycles(core.clockFrequency * 2.0)
+                press(1); press(2); press(0)
+                var remaining = 100
+                while (!core.isFirmwareClockBoundary() && remaining-- > 0) core.runForCycles(core.clockFrequency * .001)
+                assertTrue("$profile safe clock boundary", core.isFirmwareClockBoundary())
+                core.overrideFirmwareClock(ClassicFirmwareClock.Time(23, 59, 59))
+            } else core.runForCycles(core.clockFrequency * 3.123)
             val sha = java.security.MessageDigest.getInstance("SHA-256").digest(rom.readBytes()).joinToString("") { "%02x".format(it) }
             val record = PortableSave.create(core, sha, profile, "test_phone", null)
             val input = File.createTempFile("vpet-in", ".json")
@@ -39,6 +54,13 @@ class SaveHandoffTest {
                 assertArrayEquals(core.getState()["RAM"] as IntArray,restored.getState()["RAM"] as IntArray)
                 assertArrayEquals(core.getVRAM(),restored.getVRAM())
                 for(key in listOf("PC","NPC","TM","PT","OSC1_COUNTER","TIMER_COUNTER")) assertEquals("$profile continued $key",core.getState()[key],restored.getState()[key])
+                if (overrideClock) {
+                    assertEquals(core.readFirmwareClock(), restored.readFirmwareClock())
+                    val time = restored.readFirmwareClock()!!
+                    assertEquals(0, time.hour)
+                    assertEquals(0, time.minute)
+                    assertTrue(time.second in 1..2)
+                }
             } finally {input.delete();output.delete()}
         }
     }

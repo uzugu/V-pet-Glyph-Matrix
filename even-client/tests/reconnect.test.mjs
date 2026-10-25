@@ -18,7 +18,7 @@ const waitFor = async (predicate) => {
     await new Promise((r) => setTimeout(r, 10));
   }
 };
-test("reconnect redraws an unchanged LCD, resets input session, and drops pre-loss queued inputs", async () => {
+for (const scenario of ["connection loss", "state replacement"]) test(`${scenario} redraws unchanged LCD and invalidates queued input`, async () => {
   const originals = {
     document: globalThis.document,
     fetch: globalThis.fetch,
@@ -70,6 +70,7 @@ test("reconnect redraws an unchanged LCD, resets input session, and drops pre-lo
       .fill("p" + ".".repeat(31))
       .join("\n"),
     romHash: "a".repeat(64),
+    inputEpoch: "12345678-1234-1234-1234-123456789abc:0",
     dpower: false,
     ready: true,
     state: "RUNNING",
@@ -90,8 +91,11 @@ test("reconnect redraws an unchanged LCD, resets input session, and drops pre-lo
       return { ok: true };
     }
     frameRequests++;
-    if (frameRequests === 2) throw new Error("temporary connection loss");
-    return { ok: true, json: async () => value };
+    if (frameRequests === 2) {
+      if (scenario === "connection loss") throw new Error("temporary connection loss");
+      value.inputEpoch = "12345678-1234-1234-1234-123456789abc:2";
+    }
+    return { ok: true, json: async () => ({ ...value }) };
   };
   const stub =
     "export class Display {active=false;async setDPower(){return false}async connect(){return false}async draw(){}}";
@@ -100,7 +104,7 @@ test("reconnect redraws an unchanged LCD, resets input session, and drops pre-lo
     .replace("./display", url(stub))
     .replace("./protocol", url(compile("../src/protocol.ts")));
   try {
-    await import(url(source));
+    await import(url(source + "\n//" + scenario));
     elements.get("token").value = "b".repeat(32);
     elements.get("connect").onclick();
     await waitFor(() => elements.get("status").textContent === "RUNNING");
@@ -110,12 +114,19 @@ test("reconnect redraws an unchanged LCD, resets input session, and drops pre-lo
     await waitFor(() => secondInputStarted);
     // This third command is behind the in-flight request and must never cross a lost connection.
     elements.get("keys").children[2].onclick();
-    await waitFor(() => elements.get("status").textContent === "RECONNECTING");
-    assert.ok(elements.get("keys").children.every((b) => b.disabled));
-    await waitFor(
-      () =>
-        frameRequests >= 3 && elements.get("status").textContent === "RUNNING",
-    );
+    if (scenario === "connection loss") {
+      await waitFor(() => elements.get("status").textContent === "RECONNECTING");
+      assert.ok(elements.get("keys").children.every((b) => b.disabled));
+      await waitFor(() => frameRequests >= 3 && elements.get("status").textContent === "RUNNING");
+    } else {
+      await waitFor(() => frameRequests >= 2 && elements.get("status").textContent === "RUNNING");
+      // Fresh inputs need not wait for the old request's timeout/acknowledgement.
+      elements.get("keys").children[0].onclick();
+      await waitFor(() => commands.length === 3);
+      assert.equal(commands[2].inputEpoch, value.inputEpoch);
+      assert.equal(commands[2].seq, 1);
+      assert.notEqual(commands[2].session, commands[0].session);
+    }
     assert.ok(
       elements.get("keys").children.every((b) => !b.disabled),
       "same LCD must restore controls",
@@ -131,11 +142,14 @@ test("reconnect redraws an unchanged LCD, resets input session, and drops pre-lo
       "RUNNING",
       "late input failure must not disconnect recovered client",
     );
-    assert.equal(commands.length, 2, "queued old command must not replay");
-    elements.get("keys").children[0].onclick();
-    await waitFor(() => commands.length === 3);
-    assert.equal(commands[2].seq, 1);
-    assert.notEqual(commands[2].session, commands[0].session);
+    assert.equal(commands.length, scenario === "connection loss" ? 2 : 3, "queued old command must not replay");
+    if (scenario === "connection loss") {
+      elements.get("keys").children[0].onclick();
+      await waitFor(() => commands.length === 3);
+      assert.equal(commands[2].seq, 1);
+      assert.notEqual(commands[2].session, commands[0].session);
+    }
+    assert.equal(commands[0].inputEpoch, "12345678-1234-1234-1234-123456789abc:0");
   } finally {
     elements.get("disconnect").onclick?.();
     // Let the current poll notice its retired generation before replacing browser globals.

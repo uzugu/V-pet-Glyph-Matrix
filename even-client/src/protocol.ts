@@ -4,6 +4,7 @@ export interface Frame {
   height: 24;
   rows: string;
   romHash: string;
+  inputEpoch: string;
   dpower: boolean;
   ready: boolean;
   state: string;
@@ -17,6 +18,8 @@ export function frame(value: unknown): Frame {
     f.height !== 24 ||
     typeof f.rows !== "string" ||
     !/^[a-f0-9]{64}$/.test(f.romHash) ||
+    typeof f.inputEpoch !== "string" ||
+    !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}:[0-9]{1,19}$/.test(f.inputEpoch) ||
     typeof f.ready !== "boolean" ||
     typeof f.dpower !== "boolean" ||
     typeof f.state !== "string" ||

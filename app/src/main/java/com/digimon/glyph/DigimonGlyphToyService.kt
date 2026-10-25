@@ -40,6 +40,8 @@ import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.EmulatorLoop
+import com.digimon.glyph.emulator.ClassicFirmwareClock
+import com.digimon.glyph.emulator.EmulatorTimingPolicy
 import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.StateManager
@@ -117,11 +119,12 @@ class DigimonGlyphToyService : Service() {
     private lateinit var stateManager: StateManager
     private val walkingInput by lazy {
         com.digimon.glyph.input.WalkingInput(this) {
-            if (!DigimonDndSettings.isFrozenNow()) runOnEmulatorAsync { core ->
+            if (!DigimonDndSettings.isFrozenNow()) runOnEmulatorInputAsync { core ->
                 (core as? com.digimon.glyph.emulator.DPowerCore)?.step()
             }
         }
     }
+    private val inputSession = com.digimon.glyph.input.InputSession()
     private var standaloneMode = false
     private val toySession = GlyphToySession()
     private val toyDisplayActive get() = toySession.active
@@ -160,7 +163,7 @@ class DigimonGlyphToyService : Service() {
     private var lastAppliedStepGateEnabled = false
     private var interactionBoostUntilMs: Long = 0L
     private var debugTelemetryEnabled = false
-    private var battleConnected = false
+    @Volatile private var battleConnected = false
     private var ioTraceCount = 0L
     private var ioTraceWindowStartMs = 0L
     private val ioTraceLastValues = HashMap<Int, Int>()
@@ -208,14 +211,16 @@ class DigimonGlyphToyService : Service() {
                     val state = EmulatorStatus.snapshot()
                     com.google.gson.Gson().toJson(mapOf("version" to 1, "width" to 32, "height" to 24,
                         "rows" to evenRows, "romHash" to state.hash, "dpower" to state.isDPower,
-                        "ready" to (state.run == EmulatorStatus.Run.RUNNING && !state.busy), "state" to state.run.name))
-                }, press = { button, hash ->
+                        "inputEpoch" to inputSession.wireEpoch(),
+                        "ready" to (state.run == EmulatorStatus.Run.RUNNING && !state.busy && !inputSession.isBlocked()), "state" to state.run.name))
+                }, press = { button, hash, epoch ->
                     val state = EmulatorStatus.snapshot()
-                    val allowed = state.hash == hash && state.run == EmulatorStatus.Run.RUNNING && !state.busy &&
+                    val ticket = inputSession.capture()
+                    val allowed = ticket != null && inputSession.acceptsWire(epoch) && state.hash == hash && state.run == EmulatorStatus.Run.RUNNING && !state.busy &&
                         (if (state.isDPower) button in setOf("left","right","up","down","step","card","a","b","c") else button in setOf("a","b","c"))
                     if (allowed) mainHandler.post {
                         val current = EmulatorStatus.snapshot()
-                        if (current.hash == hash && current.run == EmulatorStatus.Run.RUNNING && !current.busy) {
+                        if (inputSession.accepts(ticket) && current.hash == hash && current.run == EmulatorStatus.Run.RUNNING && !current.busy) {
                             if (current.isDPower) {
                                 val index = when(button) { "left","a" -> 0; "right","c" -> 1; "down" -> 2; "up","b" -> 3; "step" -> 4; else -> 5 }
                                 pressWidgetButton(20 + index)
@@ -727,6 +732,19 @@ class DigimonGlyphToyService : Service() {
         }
     }
 
+    private fun cancelPendingLocalInputs() {
+        for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
+        for (i in dpButtonReleaseTokens.indices) dpButtonReleaseTokens[i]++
+        inputController?.cancelPendingInput()
+    }
+
+    private fun releaseHandoffButtons(core: EmulatorCore) {
+        if (core is com.digimon.glyph.emulator.DPowerCore) {
+            for (pin in intArrayOf(0, 1, 2, 4)) core.pinRelease("EF", pin)
+            core.pinRelease("CD", 2)
+        } else for (pin in 0..2) core.pinRelease("K0", pin)
+    }
+
     private fun exchangeSave(intent: Intent) {
         if (!com.digimon.glyph.sync.ExchangeActions.authorized(intent)) return
         val expected = intent.getStringExtra("rom_hash")
@@ -734,40 +752,63 @@ class DigimonGlyphToyService : Service() {
         if (emulator == null || state.busy || expected != romHash || state.run == EmulatorStatus.Run.FROZEN) {
             android.widget.Toast.makeText(this, "Start the matching pet outside quiet hours first", android.widget.Toast.LENGTH_LONG).show(); return
         }
+        if (battleConnected) {
+            android.widget.Toast.makeText(this, "Stop the battle link before exchanging saves", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
         val folder = com.digimon.glyph.sync.ExchangeFolder(this)
         val profile = if (state.isDPower) "DPowerEU101" else state.name ?: return
         val importing = intent.action == "com.digimon.glyph.EXCHANGE_IMPORT"
+        if (inputSession.isBlocked()) {
+            android.widget.Toast.makeText(this, "A save import is already in progress", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        val replacement = if (importing) inputSession.beginReplacement() ?: return else null
+        if (replacement != null) cancelPendingLocalInputs()
         // The loop serialises capture/restore with CPU execution. No live state enters Syncthing.
-        runOnEmulatorAsync { core ->
+        val queued = runOnEmulatorAsync { core ->
             try {
                 check(romHash == expected && !EmulatorStatus.snapshot().busy && EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN) { "ROM changed during handoff" }
+                check(!battleConnected) { "Stop the battle link before exchanging saves" }
+                if (importing) releaseHandoffButtons(core)
+                val completedRecord: com.digimon.glyph.sync.PortableSave.Record
                 if (!importing) {
                     val record = com.digimon.glyph.sync.PortableSave.create(core, expected!!, profile, folder.origin, folder.parent(expected))
                     folder.publish(record)
+                    completedRecord = record
                 } else {
                     val record = com.digimon.glyph.sync.PortableSave.decode(folder.read(intent.data ?: error("Missing save")))
                     val incoming = com.digimon.glyph.sync.PortableSave.state(record, core, expected!!, profile)
                     val backup = com.digimon.glyph.sync.PortableSave.create(core, expected, profile, folder.origin, folder.parent(expected))
-                    val dir = java.io.File(filesDir, "handoff-backups").apply { mkdirs() }
-                    java.io.File(dir, backup.id + ".vpetsave").writeText(com.digimon.glyph.sync.PortableSave.encode(backup))
+                    com.digimon.glyph.sync.LocalSnapshotBackups.write(java.io.File(filesDir, "handoff-backups"), backup)
+                    check(!battleConnected) { "Stop the battle link before exchanging saves" }
+                    check(emulator === core && romHash == expected && !EmulatorStatus.snapshot().busy) { "ROM changed during handoff" }
                     val previous = core.getState()
                     try {
                         core.restoreState(incoming)
-                        if (core is com.digimon.glyph.emulator.DPowerCore) {
-                            for (pin in intArrayOf(0,1,2,4)) core.pinRelease("EF", pin)
-                        } else for (pin in 0..2) core.pinRelease("K0", pin)
+                        releaseHandoffButtons(core)
                         stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
                     } catch(e: Exception) {
                         core.restoreState(previous)
                         stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
                         throw e
                     }
-                    // An ancestry preference failure must not roll back a committed save.
-                    folder.mark(record)
+                    completedRecord = record
                 }
-                mainHandler.post { android.widget.Toast.makeText(this, if(importing) "Synced save resumed; previous state backed up" else "Save published to exchange folder", android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
+                // History is device-local bookkeeping. Failure cannot undo a published
+                // snapshot or roll back an already committed emulator save.
+                val historyFailure = runCatching { folder.mark(completedRecord) }.exceptionOrNull()
+                val message = (if (importing) "Synced save resumed; previous state backed up" else "Save published to exchange folder") +
+                    (if (historyFailure != null) "; handoff history could not be saved. The next snapshot may appear as a separate branch." else "")
+                mainHandler.post { android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
             } catch (e: Exception) { mainHandler.post { android.widget.Toast.makeText(this, "Save exchange failed: ${e.message}", android.widget.Toast.LENGTH_LONG).show() } }
+            finally {
+                if (replacement != null) mainHandler.post {
+                    inputSession.finishReplacement(replacement) { cancelPendingLocalInputs() }
+                }
+            }
         }
+        if (!queued && replacement != null) inputSession.finishReplacement(replacement) { cancelPendingLocalInputs() }
     }
 
     private fun handleToyMessage(msg: Message) {
@@ -926,6 +967,7 @@ class DigimonGlyphToyService : Service() {
 
     private fun startEmulator(forceDuringDnd: Boolean = false, preparedCore: EmulatorCore? = null) {
         if (emulatorLoop != null) return // Already running
+        inputSession.reset()
         DigimonDndSettings.init(this)
         if (!forceDuringDnd &&
             DigimonDndSettings.isEnabled() &&
@@ -1219,12 +1261,12 @@ class DigimonGlyphToyService : Service() {
         }
         input.onPinSet = { port, pin, level ->
             if (emu is com.digimon.glyph.emulator.DPowerCore && port == "CD" && pin == 1) {
-                if (level == 1) runOnEmulatorAsync { core -> if (core === emu) emu.step() }
+                if (level == 1) runOnEmulatorInputAsync { core -> if (core === emu) emu.step() }
             } else {
             if (port == "K0" && level == 0) {
                 onLocalBattleButtonDown(pin)
             }
-            runOnEmulatorAsync { core -> core.pinSet(port, pin, level) }
+            runOnEmulatorInputAsync { core -> core.pinSet(port, pin, level) }
             }
         }
         input.onPinRelease = { port, pin ->
@@ -1232,11 +1274,12 @@ class DigimonGlyphToyService : Service() {
                 onLocalBattleButtonUp(pin)
             }
             if (!(emu is com.digimon.glyph.emulator.DPowerCore && port == "CD" && pin == 1))
-                runOnEmulatorAsync { core -> core.pinRelease(port, pin) }
+                runOnEmulatorInputAsync { core -> core.pinRelease(port, pin) }
         }
         input.onInputRateModeChanged = { isActive ->
             overlay.onStateChanged(isActive)
         }
+        input.setPowerSaveEnabled(EmulatorTimingSettings.isPowerSaveEnabled())
         input.setDebugEnabled(debugTelemetryEnabled)
         if (toySession.interactive) input.start()
         inputController = input
@@ -1253,6 +1296,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun stopEmulator(clearFrameState: Boolean = true, preserveWidgetPreview: Boolean = false) {
+        inputSession.reset()
         if (!preserveWidgetPreview) {
             WidgetFramePusher.stop()
         }
@@ -1332,6 +1376,28 @@ class DigimonGlyphToyService : Service() {
         publishEven(bridge.renderFullDebugFrame(vram))
     }
 
+    private fun setFirmwareClock(secondsOfDay: Int?): String {
+        if (battleConnected) return "Stop the battle link before changing the clock"
+        val core = emulator as? E0C6200 ?: return "Clock override supports verified classic Digimon ROMs only"
+        if (!core.supportsFirmwareClockOverride()) return "Unsupported ROM: clock was not changed"
+        val requested = secondsOfDay?.let { ClassicFirmwareClock.fromSecondsOfDay(it) }
+        val loop = emulatorLoop ?: return "Start the emulator before changing the clock"
+        val updated = loop.executeSyncWhen(
+            timeoutMs = 1200L,
+            ready = { it === core && core.isFirmwareClockBoundary() },
+        ) {
+            val time = requested ?: java.util.Calendar.getInstance().let {
+                ClassicFirmwareClock.Time(it.get(java.util.Calendar.HOUR_OF_DAY),
+                    it.get(java.util.Calendar.MINUTE), it.get(java.util.Calendar.SECOND))
+            }
+            core.overrideFirmwareClock(time)
+            time
+        } ?: return "Clock unchanged: finish clock setup, return the pet to idle and run the emulator, then retry"
+        val saved = saveState(sync = true, reason = "firmware_clock_override")
+        return "Digimon clock set to %02d:%02d:%02d%s".format(updated.hour, updated.minute,
+            updated.second, if (saved) " (saved)" else " (autosave failed)")
+    }
+
     private fun saveState(sync: Boolean = false, reason: String = "unspecified"): Boolean {
         val name = romName ?: return false
         val result = try {
@@ -1396,7 +1462,7 @@ class DigimonGlyphToyService : Service() {
         } else {
             Log.d(TAG, "Process command id=${cmd.id} type=${cmd.type} arg=${cmd.arg}")
         }
-        val status = try { when (cmd.type) {
+        val status = try { if (inputSession.isBlocked()) "Save import in progress" else when (cmd.type) {
             EmulatorCommandBus.CMD_SAVE_AUTOSAVE -> saveAutosaveNow()
             EmulatorCommandBus.CMD_LOAD_AUTOSAVE -> loadAutosaveNow()
             EmulatorCommandBus.CMD_SAVE_SLOT -> saveSlot(cmd.arg)
@@ -1408,6 +1474,8 @@ class DigimonGlyphToyService : Service() {
                 pressWidgetButton(cmd.arg)
                 "button pressed"
             }
+            EmulatorCommandBus.CMD_SET_FIRMWARE_CLOCK -> setFirmwareClock(cmd.arg)
+            EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK -> setFirmwareClock(null)
             EmulatorCommandBus.CMD_REFRESH_SETTINGS -> {
                 DisplayRenderSettings.init(this)
                 EmulatorAudioSettings.init(this)
@@ -1515,6 +1583,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun pressCombo(combo: Int): String {
+        if (inputSession.isBlocked()) return "Input unavailable during save import"
         if (emulator?.supportsClassicLink != true) return "Classic button combos are unavailable for this device"
         val input = inputController ?: return "combo failed: input not running"
         val name = when (combo) {
@@ -1646,9 +1715,14 @@ class DigimonGlyphToyService : Service() {
         val boostActive = now < interactionBoostUntilMs
         val battleTimingLock = battleConnected
         val battleStepGateActive = battleConnected && stepModeEnabled
-        val desiredMode =
-            if (battleTimingLock || fullAccuracyEnabled || boostActive) EmulatorLoop.TimingMode.FULL_ACCURATE
-            else EmulatorLoop.TimingMode.EXACT
+        val powerSave = EmulatorTimingSettings.isPowerSaveEnabled()
+        inputController?.setPowerSaveEnabled(powerSave)
+        val desiredMode = EmulatorTimingPolicy.select(
+            powerSave = powerSave,
+            smootherDisplay = fullAccuracyEnabled,
+            interactionBoost = boostActive,
+            battleConnected = battleTimingLock,
+        )
         if (!force &&
             fullAccuracyEnabled == lastFullAccuracyEnabled &&
             desiredMode == lastAppliedTimingMode &&
@@ -1665,11 +1739,9 @@ class DigimonGlyphToyService : Service() {
                 emulatorLoop?.pulseStepBudget((stepSliceMs + BATTLE_STEP_CONNECT_PRIME_MS).coerceAtMost(1_000))
             }
         }
-        if (desiredMode == EmulatorLoop.TimingMode.EXACT || desiredMode == EmulatorLoop.TimingMode.FULL_ACCURATE) {
-            acquireCpuWakeLock()
-        } else {
-            releaseCpuWakeLock()
-        }
+        // Every mode runs the firmware in real time. Suspending the CPU here
+        // would accumulate simulation debt and stop the pet's clock.
+        acquireCpuWakeLock()
         lastAppliedTimingMode = desiredMode
         Log.d(
             TAG,
@@ -1680,7 +1752,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun handleUserInteractionForTimingBoost() {
-        if (EmulatorTimingSettings.isFullAccuracyEnabled()) return
+        if (EmulatorTimingSettings.isFullAccuracyEnabled() && !EmulatorTimingSettings.isPowerSaveEnabled()) return
         interactionBoostUntilMs = SystemClock.uptimeMillis() + INTERACTION_TIMING_BOOST_MS
         if (lastAppliedTimingMode != EmulatorLoop.TimingMode.FULL_ACCURATE) {
             applyTimingSettingIfChanged(force = true)
@@ -1786,6 +1858,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun pressWidgetButton(button: Int) {
+        val ticket = inputSession.capture() ?: return
         if (DigimonDndSettings.isFrozenNow()) {
             WidgetFramePusher.ensureRunning(this)
             WidgetFramePusher.refreshNow(this)
@@ -1795,17 +1868,17 @@ class DigimonGlyphToyService : Service() {
             val active = emulator ?: return
             if (active !is com.digimon.glyph.emulator.DPowerCore) return
             if (button == 24) {
-                runOnEmulatorAsync { core -> if (core === active) active.step() }
+                runOnEmulatorInputAsync(ticket) { core -> if (core === active) active.step() }
                 return
             }
             val ports = arrayOf("EF", "EF", "EF", "EF", "CD", "CD")
             val pins = intArrayOf(0, 1, 2, 4, 1, 2)
             val index = button - 20
             val token = ++dpButtonReleaseTokens[index]
-            runOnEmulatorAsync { core -> if (core === active) core.pinSet(ports[index], pins[index], 1) }
+            runOnEmulatorInputAsync(ticket) { core -> if (core === active) core.pinSet(ports[index], pins[index], 1) }
             mainHandler.postDelayed({
                 if (dpButtonReleaseTokens[index] != token) return@postDelayed
-                runOnEmulatorAsync { core -> if (core === active) core.pinRelease(ports[index], pins[index]) }
+                runOnEmulatorInputAsync(ticket) { core -> if (core === active) core.pinRelease(ports[index], pins[index]) }
             }, DEFAULT_BUTTON_HOLD_MS)
             return
         }
@@ -1824,11 +1897,11 @@ class DigimonGlyphToyService : Service() {
         }
         val releaseToken = ++widgetButtonReleaseTokens[pin]
         onLocalBattleButtonDown(pin)
-        runOnEmulatorAsync { core -> core.pinSet("K0", pin, 0) }
+        runOnEmulatorInputAsync(ticket) { core -> core.pinSet("K0", pin, 0) }
         mainHandler.postDelayed({
             if (widgetButtonReleaseTokens[pin] != releaseToken) return@postDelayed
             onLocalBattleButtonUp(pin)
-            runOnEmulatorAsync { core -> core.pinRelease("K0", pin) }
+            runOnEmulatorInputAsync(ticket) { core -> core.pinRelease("K0", pin) }
         }, holdMs)
     }
 
@@ -2076,6 +2149,9 @@ class DigimonGlyphToyService : Service() {
             loop.executeSync(timeoutMs, block)
         }
     }
+
+    private fun runOnEmulatorInputAsync(ticket: Long? = inputSession.capture(), block: (EmulatorCore) -> Unit): Boolean =
+        inputSession.enqueue(::runOnEmulatorAsync, ticket, block)
 
     private fun runOnEmulatorAsync(block: (EmulatorCore) -> Unit): Boolean {
         val emu = emulator ?: return false

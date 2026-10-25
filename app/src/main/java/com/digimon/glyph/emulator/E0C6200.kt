@@ -709,6 +709,27 @@ class E0C6200(
         return 13
     }
 
+    private val verifiedClassicClockId by lazy { RomCatalog.verifiedClassicId(rom) }
+
+    fun supportsFirmwareClockOverride(): Boolean = verifiedClassicClockId != null
+
+    /** Called on the emulator worker. Never patch in the middle of a timer ISR. */
+    fun isFirmwareClockBoundary(): Boolean = supportsFirmwareClockOverride() &&
+        RESET == 0 && HALT == 1 && PC == ClassicFirmwareClock.IDLE_PC &&
+        // The traced initial clock-setting mode must be confirmed by the user first.
+        RAM[0x018] and 0xC != 0xC
+
+    fun readFirmwareClock(): ClassicFirmwareClock.Time? =
+        if (supportsFirmwareClockOverride()) ClassicFirmwareClock.read(
+            RAM.copyOfRange(ClassicFirmwareClock.FIRST_ADDRESS, ClassicFirmwareClock.LAST_ADDRESS + 1)
+        ) else null
+
+    fun overrideFirmwareClock(time: ClassicFirmwareClock.Time) {
+        check(isFirmwareClockBoundary()) { "Clock override requires a verified ROM at its idle boundary" }
+        // This does not execute instructions, touch care/age RAM or reset peripheral phases.
+        time.nibbles().copyInto(RAM, ClassicFirmwareClock.FIRST_ADDRESS)
+    }
+
     // ========== Main clock ==========
 
     private fun clockInternal(): Double {

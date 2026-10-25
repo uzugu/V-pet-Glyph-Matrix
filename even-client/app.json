@@ -2,7 +2,7 @@
   "package_id": "com.digimon.vpetstream",
   "edition": "202601",
   "name": "V-pet Stream",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "min_app_version": "2.2.10",
   "min_sdk_version": "0.0.16",
   "entrypoint": "index.html",

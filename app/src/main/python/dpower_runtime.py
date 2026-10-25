@@ -71,6 +71,11 @@ class Runtime:
         self.bus.flush_audio()
         return self.bus.mixer.drain()
 
+    def drain_playback_pcm(self):
+        # Do not keep Android's audio device alive for entirely silent packets.
+        data = self.drain_pcm()
+        return data if any(data) else b''
+
     def audio(self):
         # Approximate strongest tone for haptic feedback only; speaker audio uses drain_pcm.
         tones = [v for v in self.bus.audio if v and v[0] > 0]
