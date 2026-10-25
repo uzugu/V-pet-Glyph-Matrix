@@ -40,6 +40,7 @@ import com.digimon.glyph.emulator.EmulatorAudioSettings
 import com.digimon.glyph.emulator.EmulatorCommandBus
 import com.digimon.glyph.emulator.EmulatorDebugSettings
 import com.digimon.glyph.emulator.EmulatorLoop
+import com.digimon.glyph.emulator.ClassicFirmwareClock
 import com.digimon.glyph.emulator.EmulatorTimingPolicy
 import com.digimon.glyph.emulator.EmulatorTimingSettings
 import com.digimon.glyph.emulator.FrameDebugState
@@ -1333,6 +1334,28 @@ class DigimonGlyphToyService : Service() {
         publishEven(bridge.renderFullDebugFrame(vram))
     }
 
+    private fun setFirmwareClock(secondsOfDay: Int?): String {
+        if (battleConnected) return "Stop the battle link before changing the clock"
+        val core = emulator as? E0C6200 ?: return "Clock override supports verified classic Digimon ROMs only"
+        if (!core.supportsFirmwareClockOverride()) return "Unsupported ROM: clock was not changed"
+        val requested = secondsOfDay?.let { ClassicFirmwareClock.fromSecondsOfDay(it) }
+        val loop = emulatorLoop ?: return "Start the emulator before changing the clock"
+        val updated = loop.executeSyncWhen(
+            timeoutMs = 1200L,
+            ready = { it === core && core.isFirmwareClockBoundary() },
+        ) {
+            val time = requested ?: java.util.Calendar.getInstance().let {
+                ClassicFirmwareClock.Time(it.get(java.util.Calendar.HOUR_OF_DAY),
+                    it.get(java.util.Calendar.MINUTE), it.get(java.util.Calendar.SECOND))
+            }
+            core.overrideFirmwareClock(time)
+            time
+        } ?: return "Clock unchanged: finish clock setup, return the pet to idle and run the emulator, then retry"
+        val saved = saveState(sync = true, reason = "firmware_clock_override")
+        return "Digimon clock set to %02d:%02d:%02d%s".format(updated.hour, updated.minute,
+            updated.second, if (saved) " (saved)" else " (autosave failed)")
+    }
+
     private fun saveState(sync: Boolean = false, reason: String = "unspecified"): Boolean {
         val name = romName ?: return false
         val result = try {
@@ -1409,6 +1432,8 @@ class DigimonGlyphToyService : Service() {
                 pressWidgetButton(cmd.arg)
                 "button pressed"
             }
+            EmulatorCommandBus.CMD_SET_FIRMWARE_CLOCK -> setFirmwareClock(cmd.arg)
+            EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK -> setFirmwareClock(null)
             EmulatorCommandBus.CMD_REFRESH_SETTINGS -> {
                 DisplayRenderSettings.init(this)
                 EmulatorAudioSettings.init(this)

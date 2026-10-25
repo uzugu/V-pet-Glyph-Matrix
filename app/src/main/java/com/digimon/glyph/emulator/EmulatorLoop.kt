@@ -115,11 +115,16 @@ class EmulatorLoop(
         return true
     }
 
-    fun <T> executeSync(timeoutMs: Long = 1200L, command: (EmulatorCore) -> T): T? {
+    fun <T> executeSync(timeoutMs: Long = 1200L, command: (EmulatorCore) -> T): T? =
+        executeSyncWhen(timeoutMs, { true }, command)
+
+    /** Wait for a firmware boundary without executing unbudgeted instructions or blocking the worker. */
+    fun <T> executeSyncWhen(timeoutMs: Long = 1200L, ready: (EmulatorCore) -> Boolean,
+                            command: (EmulatorCore) -> T): T? {
         val loopThread = thread ?: return null
         if (!running) return null
         if (Thread.currentThread() === loopThread) {
-            return command(emulator)
+            return if (ready(emulator)) command(emulator) else null
         }
 
         val latch = CountDownLatch(1)
@@ -128,7 +133,20 @@ class EmulatorLoop(
         // 0=queued, 1=executing, 2=cancelled. Once execution starts, wait for its
         // actual outcome rather than reporting a timeout followed by late mutation.
         val phase = AtomicInteger(0)
-        val queued: (EmulatorCore) -> Unit = { core ->
+        lateinit var queued: (EmulatorCore) -> Unit
+        queued = queued@ { core ->
+            if (phase.get() != 0) return@queued
+            val canRun = try { ready(core) } catch (failure: Throwable) {
+                if (phase.compareAndSet(0, 1)) {
+                    errorRef.set(failure)
+                    latch.countDown()
+                }
+                return@queued
+            }
+            if (!canRun) {
+                if (phase.get() == 0) commandQueue.offer(queued)
+                return@queued
+            }
             if (phase.compareAndSet(0, 1)) try {
                 resultRef.set(command(core))
             } catch (t: Throwable) {
@@ -280,8 +298,10 @@ class EmulatorLoop(
     }
 
     private fun drainCommands() {
-        while (true) {
-            val cmd = commandQueue.poll() ?: break
+        // A not-yet-ready command can requeue itself. Run each initial entry once
+        // so waiting for a firmware boundary cannot spin or starve simulation.
+        repeat(commandQueue.size) {
+            val cmd = commandQueue.poll() ?: return
             cmd(emulator)
         }
     }

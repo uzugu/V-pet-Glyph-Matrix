@@ -289,6 +289,17 @@ class RomLoaderActivity : AppCompatActivity() {
         val btnToggleAdvanced = findViewById<Button>(R.id.btn_toggle_advanced)
         val layoutAdvanced = findViewById<LinearLayout>(R.id.layout_advanced)
         val clockSyncInfo = findViewById<TextView>(R.id.clock_sync_info)
+        findViewById<Button>(R.id.btn_sync_firmware_clock).setOnClickListener {
+            sendCommand(EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK, 0, "Set Digimon clock to phone time")
+        }
+        findViewById<Button>(R.id.btn_set_firmware_clock).setOnClickListener {
+            val now = java.util.Calendar.getInstance()
+            TimePickerDialog(this, { _, hour, minute ->
+                sendCommand(EmulatorCommandBus.CMD_SET_FIRMWARE_CLOCK, hour * 3600 + minute * 60,
+                    "Set Digimon clock")
+            }, now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE), true)
+                .apply { setTitle("Classic Digimon clock"); show() }
+        }
         commandStatusText = findViewById(R.id.commandStatusText)
         val btnShareDebug = findViewById<Button>(R.id.btn_share_debug)
         val btnExportStates = findViewById<Button>(R.id.btn_export_states)
@@ -1385,6 +1396,16 @@ class RomLoaderActivity : AppCompatActivity() {
 
     private fun refreshSaveAndCommandInfo() {
         val (currentRomName, currentRomHash) = readCurrentRomIdentity()
+        val clockSupported = com.digimon.glyph.emulator.RomCatalog.isVerifiedClassicHash(currentRomHash)
+        val runtime = com.digimon.glyph.emulator.EmulatorStatus.snapshot()
+        val clockAvailable = clockSupported && runtime.hash == currentRomHash && !runtime.busy &&
+            runtime.run == com.digimon.glyph.emulator.EmulatorStatus.Run.RUNNING
+        for (id in listOf(R.id.btn_sync_firmware_clock, R.id.btn_set_firmware_clock)) {
+            findViewById<Button>(id).apply { isEnabled = clockAvailable; alpha = if (clockAvailable) 1f else .45f }
+        }
+        findViewById<TextView>(R.id.clock_sync_info).text = if (clockSupported)
+            "The Digimon clock and Glyph clock overlay are separate. Start the pet and finish clock setup before changing its time."
+        else "Clock controls are available for supported classic Digimon ROMs. The Glyph clock overlay is separate."
         val auto = stateManager.getAutosaveInfo(currentRomName, currentRomHash)
         autosaveText.text = buildSaveLine("Autosave", auto, currentRomName, currentRomHash)
         slot1Text.text = buildSaveLine("Slot 1", stateManager.getSlotInfo(1, currentRomName, currentRomHash), currentRomName, currentRomHash)

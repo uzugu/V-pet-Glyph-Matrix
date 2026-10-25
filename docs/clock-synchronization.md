@@ -28,8 +28,9 @@ catch-up. Missed display frames are skipped; firmware instructions are preserved
 The oscillator, timer, stopwatch and programmable-timer fractional phases are
 now included in save states, and the JSON codec preserves them as doubles.
 Existing saves remain readable. Intentional DND pauses and debug battle stepping
-retain their pause semantics. This does not change the ROM's selected time of day
-or invent offline progression after the process has stopped.
+retain their pause semantics. The pacing fix leaves the ROM's selected time of
+day unchanged and does not invent offline progression after the process has stopped. Explicit one-time
+clock controls are described in [the firmware clock trace](clock-traces/README.md).
 
 ## Verification
 

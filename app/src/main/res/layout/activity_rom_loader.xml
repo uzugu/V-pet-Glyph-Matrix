@@ -1239,10 +1239,30 @@
                         android:id="@+id/clock_sync_info"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="CLOCK SYNCHRONIZED TO PHONE"
+                        android:text="Emulation runs in real time. Set the classic Digimon clock below; the Glyph clock overlay is separate."
                         android:fontFamily="monospace"
                         android:textColor="@color/cyber_blue"
                         android:textSize="12sp" />
+
+                    <Button
+                        android:id="@+id/btn_sync_firmware_clock"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="SET DIGIMON CLOCK TO PHONE TIME"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg"
+                        android:layout_marginTop="10dp" />
+
+                    <Button
+                        android:id="@+id/btn_set_firmware_clock"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="CHOOSE DIGIMON CLOCK TIME"
+                        android:textColor="@color/cyber_blue"
+                        android:textAppearance="@style/TextAppearance.Cyber.Button"
+                        android:background="@drawable/cyber_button_bg"
+                        android:layout_marginTop="10dp" />
 
                     <TextView
                         android:id="@+id/commandStatusText"

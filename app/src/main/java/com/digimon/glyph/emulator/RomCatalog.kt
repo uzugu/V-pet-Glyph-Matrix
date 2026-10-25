@@ -15,6 +15,11 @@ object RomCatalog {
         "3b7eae59a7469e941b6059a3c0b03123aabb13e4e7ea20bd02fabfff2320890e" to "DigimonV4J"
     )
     fun hash(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+    fun isVerifiedClassicHash(hash: String?): Boolean = hash != null && known.containsKey(hash)
+
+    /** Matches actual bytes only; caller-supplied profile names cannot enable RAM edits. */
+    internal fun verifiedClassicId(bytes: ByteArray): String? = known[hash(bytes)]
+
     fun identify(bytes: ByteArray): Device {
         require(bytes.size in listOf(8192, 16384, MAX_ROM_BYTES)) { "Expected an 8/16 KB classic ROM or the 96 KB D-Power EU 1.01 ROM" }
         val hash = hash(bytes)

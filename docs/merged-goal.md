@@ -37,9 +37,11 @@ save exchange with the separate Steam Frame app within this same project goal.
 - D-Arc 1.1.0 adds idle batching, lower refresh, identical-save/display suppression
   and selective motion sensing. Commit `773b715` in its separate repository
   passed 108 JVM tests, debug assembly and lint. Hardware checks remain pending.
-- Clock traces across all six classic revisions verified every hour/minute
-  setting and midnight rollover, with instruction read/write addresses recorded
-  in `clock-traces/`. The Kotlin-core clock override remains unfinished.
+- Preview14 implements one-time firmware clock controls for all six classic
+  revisions. `clock-traces/` records Python and Kotlin button/rollover traces,
+  safe-boundary and unchanged-state checks, JSON save continuation, rendered
+  digits and portable phone/Kotlin–Frame/Python clock-state roundtrips.
+  Phone UI validation remains a hardware check.
 - G2/save exchange work is tracked in `even-and-save-exchange.md`; remaining
   hardware checks must not be represented as completed.
 

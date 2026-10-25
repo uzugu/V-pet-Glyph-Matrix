@@ -1,7 +1,6 @@
 package com.digimon.glyph.emulator
 
 import android.graphics.Bitmap
-import android.graphics.Color
 
 /**
  * Converts E0C6200 VRAM (160 nibbles + 8 port values) into a 25x25 Bitmap
@@ -29,10 +28,10 @@ class DisplayBridge {
         const val FULL_DEBUG_HEIGHT = 24
 
         // Green-on-black LCD aesthetic
-        private val PIXEL_ON = Color.rgb(0, 255, 80)
-        private val PIXEL_OFF = Color.BLACK
-        private val ICON_ON = Color.rgb(255, 200, 0)
-        private val ICON_OFF = Color.rgb(120, 90, 24)
+        private const val PIXEL_ON = 0xFF00FF50.toInt()
+        private const val PIXEL_OFF = 0xFF000000.toInt()
+        private const val ICON_ON = 0xFFFFC800.toInt()
+        private const val ICON_OFF = 0xFF785A18.toInt()
 
         // Vertical offset: center 16 rows in 25 (pad 4 top for icons, 5 bottom for icons)
         private const val GAME_Y_OFFSET = 4
