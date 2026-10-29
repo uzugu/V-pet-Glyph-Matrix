@@ -18,6 +18,10 @@ const bmp = ts.transpileModule(
   readFileSync(new URL("../src/BmpEncoder.ts", import.meta.url), "utf8"),
   { compilerOptions: { module: ts.ModuleKind.ESNext } },
 ).outputText;
+const i18n = ts.transpileModule(
+  readFileSync(new URL("../src/i18n.ts", import.meta.url), "utf8"),
+  { compilerOptions: { module: ts.ModuleKind.ESNext } },
+).outputText;
 let source = ts.transpileModule(
   readFileSync(new URL("../src/display.ts", import.meta.url), "utf8"),
   {
@@ -30,6 +34,7 @@ let source = ts.transpileModule(
 source = source
   .replace("@evenrealities/even_hub_sdk", url(stub))
   .replace("./BmpEncoder", url(bmp));
+source = source.replace("./i18n", url(i18n));
 const { Display } = await import(url(source));
 test("display serializes images, rebuilds once and isolates native menu input", async () => {
   let handler,

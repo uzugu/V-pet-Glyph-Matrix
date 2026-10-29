@@ -44,6 +44,7 @@
     <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
 
     <application
+        android:localeConfig="@xml/locales_config"
         android:allowBackup="true"
         android:icon="@drawable/ic_digimon_preview"
         android:roundIcon="@drawable/ic_digimon_preview"

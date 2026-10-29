@@ -16,8 +16,8 @@ class TutorialActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tutorial)
 
-        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
-        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        val teko = com.digimon.glyph.LocalizedText.typeface(this, "fonts/Teko.ttf")
+        val shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
 
         val mainTitle = findViewById<TextView>(R.id.main_title)
         val titleShadowCyan = findViewById<TextView>(R.id.title_shadow_cyan)
@@ -58,16 +58,16 @@ class TutorialActivity : AppCompatActivity() {
         btnSpoilers.setOnClickListener {
             if (layoutEvolutionSpoilers.visibility == View.VISIBLE) {
                 layoutEvolutionSpoilers.visibility = View.GONE
-                btnSpoilers.text = "SHOW EVOLUTION SPOILERS"
+                btnSpoilers.text = getString(R.string.text_show_evolution_spoilers)
                 return@setOnClickListener
             }
             AlertDialog.Builder(this)
-                .setTitle("Show Evolution Spoilers?")
-                .setMessage("This section unlocks the full monster roster and route notes for V1, V2, and V3. Continue?")
-                .setNegativeButton("Keep Hidden", null)
-                .setPositiveButton("Show") { _, _ ->
+                .setTitle(getString(R.string.text_show_evolution_spoilers_alt))
+                .setMessage(getString(R.string.text_this_section_unlocks_the_full_monster_roster_and_route_notes_for_v1_))
+                .setNegativeButton(getString(R.string.text_keep_hidden), null)
+                .setPositiveButton(getString(R.string.text_show)) { _, _ ->
                     layoutEvolutionSpoilers.visibility = View.VISIBLE
-                    btnSpoilers.text = "HIDE EVOLUTION SPOILERS"
+                    btnSpoilers.text = getString(R.string.text_hide_evolution_spoilers)
                 }
                 .show()
         }

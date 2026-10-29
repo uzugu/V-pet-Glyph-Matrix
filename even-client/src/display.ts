@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import {
   waitForEvenAppBridge,
   CreateStartUpPageContainer,
@@ -44,7 +45,7 @@ export class Display {
             () =>
               reject(
                 new Error(
-                  "Even bridge not detected — browser preview available",
+                  t("Even bridge not detected — browser preview available"),
                 ),
               ),
             7000,
@@ -101,14 +102,14 @@ export class Display {
           if (
             !(await bridge.rebuildPageContainer(new RebuildPageContainer(page)))
           )
-            throw new Error("G2 page rebuild failed");
+            throw new Error(t("G2 page rebuild failed"));
         } else {
           if (
             (await bridge.createStartUpPageContainer(
               new CreateStartUpPageContainer(page),
             )) !== StartUpPageCreateResult.success
           )
-            throw new Error("G2 page creation failed");
+            throw new Error(t("G2 page creation failed"));
           this.created.add(bridge);
         }
         if (generation !== this.generation) return false;
@@ -128,8 +129,8 @@ export class Display {
         ? {
             menuObject: new MenuContainerProperty({
               menuItems: [
-                new MenuItemProperty({ itemName: "Step", itemID: 1 }),
-                new MenuItemProperty({ itemName: "Card input", itemID: 2 }),
+                new MenuItemProperty({ itemName: t("Step"), itemID: 1 }),
+                new MenuItemProperty({ itemName: t("Card input"), itemID: 2 }),
               ],
             }),
           }
@@ -172,7 +173,7 @@ export class Display {
           new RebuildPageContainer(this.page(value)),
         ))
       )
-        throw new Error("G2 input menu rebuild failed");
+        throw new Error(t("G2 input menu rebuild failed"));
       if (generation !== this.generation) return false;
       this.appliedDPower = value;
       return true;
@@ -195,7 +196,7 @@ export class Display {
         }),
       );
       if (result !== ImageRawDataUpdateResult.success)
-        throw new Error("Glasses image update failed: " + result);
+        throw new Error(t("Glasses image update failed: ") + result);
     });
     this.serial = task.catch(() => {});
     await task;

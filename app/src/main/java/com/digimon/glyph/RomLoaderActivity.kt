@@ -76,7 +76,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 com.digimon.glyph.sync.ExchangeFolder(this).setTree(uri)
             } catch (_: SecurityException) {
-                Toast.makeText(this, "Choose a folder with persistent read and write access", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.text_choose_a_folder_with_persistent_read_and_write_access), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -158,7 +158,7 @@ class RomLoaderActivity : AppCompatActivity() {
         if (hasNearbyPermissions()) {
             action?.invoke()
         } else {
-            Toast.makeText(this, "Nearby permissions are required for battle mode", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.text_nearby_permissions_are_required_for_battle_mode), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -169,7 +169,7 @@ class RomLoaderActivity : AppCompatActivity() {
         DigimonAttentionSettings.setAttentionNotificationsEnabled(this, enabled)
         attentionNotificationsSwitch?.isChecked = enabled
         if (!enabled) {
-            Toast.makeText(this, "Notification permission is required for attention alerts", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.text_notification_permission_is_required_for_attention_alerts), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -220,8 +220,8 @@ class RomLoaderActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_rom_loader)
 
-        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
-        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        val teko = com.digimon.glyph.LocalizedText.typeface(this, "fonts/Teko.ttf")
+        val shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
 
         val mainTitle = findViewById<TextView>(R.id.main_title)
         statusText = findViewById(R.id.statusText)
@@ -290,15 +290,15 @@ class RomLoaderActivity : AppCompatActivity() {
         val layoutAdvanced = findViewById<LinearLayout>(R.id.layout_advanced)
         val clockSyncInfo = findViewById<TextView>(R.id.clock_sync_info)
         findViewById<Button>(R.id.btn_sync_firmware_clock).setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK, 0, "Set Digimon clock to phone time")
+            sendCommand(EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK, 0, getString(R.string.text_set_digimon_clock_to_phone_time))
         }
         findViewById<Button>(R.id.btn_set_firmware_clock).setOnClickListener {
             val now = java.util.Calendar.getInstance()
             TimePickerDialog(this, { _, hour, minute ->
                 sendCommand(EmulatorCommandBus.CMD_SET_FIRMWARE_CLOCK, hour * 3600 + minute * 60,
-                    "Set Digimon clock")
+                    getString(R.string.text_set_digimon_clock))
             }, now.get(java.util.Calendar.HOUR_OF_DAY), now.get(java.util.Calendar.MINUTE), true)
-                .apply { setTitle("Classic Digimon clock"); show() }
+                .apply { setTitle(getString(R.string.text_classic_digimon_clock)); show() }
         }
         commandStatusText = findViewById(R.id.commandStatusText)
         val btnShareDebug = findViewById<Button>(R.id.btn_share_debug)
@@ -380,12 +380,12 @@ class RomLoaderActivity : AppCompatActivity() {
             ))
         }
         statEmuCard.setOnClickListener {
-            if (statEmuValue.text.toString() == "ACTIVE") {
+            if (EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING) {
                 stopBackendService()
-                Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@RomLoaderActivity, getString(R.string.text_stop_requested), Toast.LENGTH_SHORT).show()
             } else {
                 startBackendService()
-                Toast.makeText(this@RomLoaderActivity, "Start requested", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@RomLoaderActivity, getString(R.string.text_start_requested), Toast.LENGTH_SHORT).show()
             }
         }
 
@@ -401,12 +401,12 @@ class RomLoaderActivity : AppCompatActivity() {
 
         btnStartEmu.setOnClickListener {
             startBackendService()
-            Toast.makeText(this@RomLoaderActivity, "Start requested", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@RomLoaderActivity, getString(R.string.text_start_requested), Toast.LENGTH_SHORT).show()
         }
 
         btnStopEmu.setOnClickListener {
             stopBackendService()
-            Toast.makeText(this@RomLoaderActivity, "Stop requested", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@RomLoaderActivity, getString(R.string.text_stop_requested), Toast.LENGTH_SHORT).show()
         }
 
         switchZoom.isChecked = DisplayRenderSettings.isTextZoomOutEnabled()
@@ -444,7 +444,7 @@ class RomLoaderActivity : AppCompatActivity() {
         updateRamProfileButton(btnRamProfile)
 
         btnSaveAuto.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, "Save autosave")
+            sendCommand(EmulatorCommandBus.CMD_SAVE_AUTOSAVE, 0, getString(R.string.l10n_save_autosave))
         }
 
         btnLoadAuto.setOnClickListener {
@@ -452,7 +452,7 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         btnRestart.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_RESTART, 0, "Restart emulator")
+            sendCommand(EmulatorCommandBus.CMD_RESTART, 0, getString(R.string.l10n_restart_emulator))
         }
 
         btnFullReset.setOnClickListener {
@@ -460,15 +460,15 @@ class RomLoaderActivity : AppCompatActivity() {
         }
 
         btnComboAb.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AB, "Combo A+B")
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AB, getString(R.string.l10n_combo_a_b))
         }
 
         btnComboAc.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AC, "Combo A+C")
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_AC, getString(R.string.l10n_combo_a_c))
         }
 
         btnComboBc.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, "Combo B+C")
+            sendCommand(EmulatorCommandBus.CMD_PRESS_COMBO, EmulatorCommandBus.COMBO_BC, getString(R.string.l10n_combo_b_c))
         }
 
         btnRamProfile.setOnClickListener {
@@ -482,20 +482,20 @@ class RomLoaderActivity : AppCompatActivity() {
             val ram = snap.ram
             val vram = snap.vram
             if (ram == null || vram == null) {
-                Toast.makeText(this, "No live emulator frame available for baseline", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.text_no_live_emulator_frame_available_for_baseline), Toast.LENGTH_SHORT).show()
             } else {
                 baselineRam = ram.copyOf()
                 baselineVram = vram.copyOf()
                 baselineAtMs = snap.updatedAtMs
                 baselineRomLabel = readCurrentRomIdentity().first
-                Toast.makeText(this, "RAM baseline marked", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.text_ram_baseline_marked), Toast.LENGTH_SHORT).show()
                 renderDebugState()
             }
         }
 
         btnRamClearBaseline.setOnClickListener {
             clearRamBaseline()
-            Toast.makeText(this, "RAM baseline cleared", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.text_ram_baseline_cleared), Toast.LENGTH_SHORT).show()
             renderDebugState()
         }
 
@@ -544,7 +544,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 else -> SimulationPreset.PURE_ECHO
             }
             BattleTransportSettings.setSimulationPreset(this@RomLoaderActivity, preset)
-            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Simulation preset")
+            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, getString(R.string.l10n_simulation_preset))
         }
 
         rgTransport.setOnCheckedChangeListener { _, checkedId ->
@@ -555,7 +555,7 @@ class RomLoaderActivity : AppCompatActivity() {
             }
             BattleTransportSettings.setTransportType(this@RomLoaderActivity, type)
             rgPreset.visibility = if (type == BattleTransportType.SIMULATION) LinearLayout.VISIBLE else LinearLayout.GONE
-            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, "Battle transport")
+            sendCommand(EmulatorCommandBus.CMD_REFRESH_SETTINGS, 0, getString(R.string.l10n_battle_transport))
         }
 
         inputTamerName.setText(BattleTransportSettings.getTamerName())
@@ -578,18 +578,18 @@ class RomLoaderActivity : AppCompatActivity() {
 
         btnBattleHost.setOnClickListener {
             runWithBattlePermissions {
-                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, "Battle host")
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_HOST, 0, getString(R.string.l10n_battle_host))
             }
         }
 
         btnBattleJoin.setOnClickListener {
             runWithBattlePermissions {
-                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, "Battle join")
+                sendCommand(EmulatorCommandBus.CMD_BATTLE_START_JOIN, 0, getString(R.string.l10n_battle_join))
             }
         }
 
         btnBattleStop.setOnClickListener {
-            sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, "Battle stop")
+            sendCommand(EmulatorCommandBus.CMD_BATTLE_STOP, 0, getString(R.string.l10n_battle_stop))
         }
 
         btnShareDebug.setOnClickListener {
@@ -620,8 +620,8 @@ class RomLoaderActivity : AppCompatActivity() {
         switchDndFreezeMode.isChecked = DigimonDndSettings.isFreezeMode()
         switchDndAutoResume.isChecked = DigimonDndSettings.isAutoResumeEnabled()
         switchDndSuppressNotifications.isChecked = DigimonDndSettings.isSuppressNotificationsEnabled()
-        btnDndStartTime.text = "START ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())}"
-        btnDndEndTime.text = "END ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
+        btnDndStartTime.text = getString(R.string.text_start_value, DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes()))
+        btnDndEndTime.text = getString(R.string.text_end_value, DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes()))
 
         switchDndEnabled.setOnCheckedChangeListener { _, isChecked ->
             DigimonDndSettings.setEnabled(this@RomLoaderActivity, isChecked)
@@ -706,16 +706,16 @@ class RomLoaderActivity : AppCompatActivity() {
     private fun checkTamerNamePrompt() {
         if (BattleTransportSettings.getTamerName().isBlank()) {
             val input = EditText(this).apply {
-                hint = "TAMER_404"
+                hint = getString(R.string.text_tamer_404)
                 inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
                 setPadding(50, 40, 50, 40)
                 textSize = 16f
             }
             AlertDialog.Builder(this)
-                .setTitle("IDENTIFY TAMER")
-                .setMessage("Enter your Tamer Alias for the System Link Lobbies.")
+                .setTitle(getString(R.string.text_identify_tamer))
+                .setMessage(getString(R.string.text_enter_your_tamer_alias_for_the_system_link_lobbies))
                 .setView(input)
-                .setPositiveButton("INITIATE") { _, _ ->
+                .setPositiveButton(getString(R.string.text_initiate)) { _, _ ->
                     val name = input.text.toString().trim()
                     if (name.isNotBlank()) {
                         BattleTransportSettings.setTamerName(this, name)
@@ -749,7 +749,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 }
             }.onFailure {
                 if (EmulatorStatus.snapshot().revision == before.revision)
-                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, "Stored ROM could not be read: ${it.message}")
+                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, getString(R.string.l10n_stored_rom_could_not_be_read_it_message, it.message))
             }
         }, "ROM-identity").start()
     }
@@ -758,15 +758,15 @@ class RomLoaderActivity : AppCompatActivity() {
         val status = EmulatorStatus.snapshot()
         if (status.revision == lastStatusRevision) return
         lastStatusRevision = status.revision
-        statusText.text = listOfNotNull(status.name?.let { "Selected device: $it" } ?: getString(R.string.rom_not_found),
-            status.message.takeIf { it.isNotBlank() }, status.error).joinToString("\n")
+        statusText.text = listOfNotNull(status.name?.let { getString(R.string.text_selected_device_value, it) } ?: getString(R.string.rom_not_found),
+            (if (status.importing == EmulatorStatus.Import.SCANNING) getString(R.string.import_scanning) else status.message).takeIf { it.isNotBlank() }, status.error).joinToString("\n")
         statRomValue.text = status.name ?: "—"
         statEmuValue.text = when (status.run) {
-            EmulatorStatus.Run.RUNNING -> "RUNNING"
-            EmulatorStatus.Run.FROZEN -> "PAUSED"
-            EmulatorStatus.Run.STARTING -> "STARTING"
-            EmulatorStatus.Run.ERROR -> "ERROR"
-            EmulatorStatus.Run.STOPPED -> "STOPPED"
+            EmulatorStatus.Run.RUNNING -> getString(R.string.text_running)
+            EmulatorStatus.Run.FROZEN -> getString(R.string.text_paused)
+            EmulatorStatus.Run.STARTING -> getString(R.string.text_starting)
+            EmulatorStatus.Run.ERROR -> getString(R.string.text_error)
+            EmulatorStatus.Run.STOPPED -> getString(R.string.text_stopped)
         }
         statEmuLabel.text = when (status.glyph) {
             EmulatorStatus.Glyph.CONNECTED -> getString(R.string.glyph_connected)
@@ -789,7 +789,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val classic = status.name != null && !status.isDPower
         findViewById<Button>(R.id.btn_toggle_battle).apply {
             isEnabled = classic
-            text = if (status.isDPower) "Battles unavailable for D-Power" else "Battles"
+            text = if (status.isDPower) getString(R.string.text_battles_unavailable_for_d_power) else getString(R.string.text_battles)
         }
         if (!classic) findViewById<View>(R.id.layout_battle).visibility = View.GONE
         (findViewById<View>(R.id.btn_combo_ab).parent as? View)?.visibility = if (classic) View.VISIBLE else View.GONE
@@ -827,37 +827,37 @@ class RomLoaderActivity : AppCompatActivity() {
             lastFrameUpdateMs = frameSnap.updatedAtMs
             val state = frameSnap.digimonState
             digimonStatsText.text = if (state != null && EmulatorStatus.snapshot().hasClassicMetadata) {
-                val name = state.info?.name ?: "UNKNOWN"
-                val stage = state.info?.stage ?: "UNKNOWN STAGE"
+                val name = state.info?.name?.let { LocalizedText.display(this, it) } ?: "?"
+                val stage = state.info?.stage?.let { LocalizedText.display(this, it) } ?: "?"
                 val showCareMistakes = DigimonAttentionSettings.isShowCareMistakesEnabled()
                 val dnd = when {
-                    DigimonDndSettings.isFrozenNow() -> "SLEEP"
-                    DigimonDndSettings.isDndActiveNow() -> if (DigimonDndSettings.isFreezeMode()) "WINDOW" else "QUIET"
-                    else -> "OFF"
+                    DigimonDndSettings.isFrozenNow() -> getString(R.string.l10n_sleepx)
+                    DigimonDndSettings.isDndActiveNow() -> if (DigimonDndSettings.isFreezeMode()) getString(R.string.l10n_window) else getString(R.string.l10n_quiet)
+                    else -> getString(R.string.l10n_off)
                 }
                 val frameAgeMs = if (frameSnap.updatedAtMs == 0L) null else (android.os.SystemClock.uptimeMillis() - frameSnap.updatedAtMs)
                 buildString {
-                    appendLine("SYS.MONITOR :: LIVE PET STREAM")
+                    appendLine(getString(R.string.l10n_sys_monitor_live_pet_stream))
                     appendLine("FRAME ${formatFrameAge(frameAgeMs)}  ATTN ${formatFlag(state.needsAttention)}")
                     appendLine("DND   $dnd")
                     appendLine("================================")
-                    appendLine("MON    $name")
-                    appendLine("STAGE  $stage")
-                    appendLine("AGE    ${state.age}D")
-                    appendLine("WEIGHT ${state.weight}G")
+                    appendLine(getString(R.string.l10n_mon_name, name))
+                    appendLine(getString(R.string.l10n_stage_stage, stage))
+                    appendLine(getString(R.string.l10n_age_state_age_d, state.age))
+                    appendLine(getString(R.string.l10n_weight_state_weight_g, state.weight))
                     appendLine("--------------------------------")
-                    appendLine("HUNGER   ${formatMeterValue(state.hunger)}")
-                    appendLine("PROTEIN  ${formatMeterValue(state.protein)}")
-                    appendLine("OVERFD   ${formatCounterValue(state.overfeed)}")
-                    appendLine("CARE     ${if (showCareMistakes) formatCounterValue(state.careMistakes) else "LOCKED"}")
-                    appendLine("CARE TMR ${formatMinutesLeft(state.careTimerMinutesLeft)}")
+                    appendLine(getString(R.string.l10n_hunger_formatmetervalue_state_hunger, formatMeterValue(state.hunger)))
+                    appendLine(getString(R.string.l10n_protein_formatmetervalue_state_protein, formatMeterValue(state.protein)))
+                    appendLine(getString(R.string.l10n_overfd_formatcountervalue_state_overfeed, formatCounterValue(state.overfeed)))
+                    appendLine(getString(R.string.pet_care_count, if (showCareMistakes) formatCounterValue(state.careMistakes) else getString(R.string.l10n_locked)))
+                    appendLine(getString(R.string.l10n_care_tmr_formatminutesleft_state_caretimerminutesleft, formatMinutesLeft(state.careTimerMinutesLeft)))
                     appendLine("--------------------------------")
-                    appendLine("TRAIN    ${formatCounterValue(state.training)}")
-                    appendLine("SHITSU   --")
-                    appendLine("SLEEP    --")
-                    appendLine("POOP     --")
-                    appendLine("WINS     ${formatCounterValue(state.wins)}   LOSES ${formatCounterValue(state.losses)}")
-                    appendLine("SHOURI   ${formatPercentValue(state.winRate)}")
+                    appendLine(getString(R.string.l10n_train_formatcountervalue_state_training, formatCounterValue(state.training)))
+                    appendLine(getString(R.string.l10n_shitsu))
+                    appendLine(getString(R.string.l10n_sleep))
+                    appendLine(getString(R.string.l10n_poop))
+                    appendLine(getString(R.string.l10n_wins_formatcountervalue_state_wins_loses_formatcountervalue_state, formatCounterValue(state.wins), formatCounterValue(state.losses)))
+                    appendLine(getString(R.string.l10n_shouri_formatpercentvalue_state_winrate, formatPercentValue(state.winRate)))
                     appendLine("--------------------------------")
                     append("RAW H=${formatNibble(state.hunger)} P=${formatNibble(state.protein)} O=${formatNibble(state.overfeed)}")
                     append(" TR=${formatCounterRaw(state.training)} C=${formatNibble(state.careMistakes)} T=${formatMinutesRaw(state.careTimerMinutesLeft)}")
@@ -865,11 +865,11 @@ class RomLoaderActivity : AppCompatActivity() {
                     append(" A=${if (state.needsAttention) "1" else "0"}")
                 }
             } else if (frameSnap.vram?.size == 128) {
-                "D-POWER EU 1.01\nPlay on the Glyph Matrix. Pet statistics are not decoded for this device."
+                getString(R.string.text_d_power_eu_1_01_nplay_on_the_glyph_matrix_pet_statistics_are_not_dec)
             } else if (EmulatorStatus.snapshot().name != null) {
-                "Pet statistics are not decoded for this ROM. Use the Glyph display to play."
+                getString(R.string.text_pet_statistics_are_not_decoded_for_this_rom_use_the_glyph_display_to)
             } else {
-                "AWAITING SIGNAL..."
+                getString(R.string.text_awaiting_signal)
             }
         }
         refreshSaveAndCommandInfo()
@@ -879,7 +879,7 @@ class RomLoaderActivity : AppCompatActivity() {
             setIndicatorState(indicatorA, "A", false, Color.parseColor("#00C853"))
             setIndicatorState(indicatorB, "B", false, Color.parseColor("#FFD600"))
             setIndicatorState(indicatorC, "C", false, Color.parseColor("#00B0FF"))
-            debugText.text = "debug telemetry disabled (open Debug and enable it to view live input diagnostics)"
+            debugText.text = getString(R.string.text_debug_telemetry_disabled_open_debug_and_enable_it_to_view_live_input)
             return
         }
 
@@ -974,7 +974,7 @@ class RomLoaderActivity : AppCompatActivity() {
         val baselineAgeText = if (baselineAtMs == 0L) "--" else formatFrameAge(System.currentTimeMillis() - baselineAtMs)
         return buildString {
             appendLine("RAW RAM WATCH :: ${profile.label}")
-            appendLine("ROM ${romName ?: "-"}  FRAME ${formatFrameAge(frameAgeMs)}  BASE ${if (baseline != null) baselineAgeText else "OFF"}")
+            appendLine("ROM ${romName ?: "-"}  FRAME ${formatFrameAge(frameAgeMs)}  BASE ${if (baseline != null) baselineAgeText else getString(R.string.l10n_off)}")
             appendLine("--------------------------------")
             append(renderProfileValues(ram, profile))
             appendLine()
@@ -1069,10 +1069,10 @@ class RomLoaderActivity : AppCompatActivity() {
                 file = outFile,
                 mimeType = "text/plain",
                 subject = "Digimon Glyph Raw Snapshot $stamp",
-                chooserTitle = "Share raw snapshot"
+                chooserTitle = getString(R.string.l10n_share_raw_snapshot)
             )
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to export raw snapshot: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.text_failed_to_export_raw_snapshot_value, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1146,7 +1146,7 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun buildIndicator(label: String): TextView {
-        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        val shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
         return TextView(this).apply {
             text = "$label: OFF"
             textSize = 14f
@@ -1171,8 +1171,8 @@ class RomLoaderActivity : AppCompatActivity() {
 
 
     private fun addSlotRow(parent: LinearLayout, slot: Int): TextView {
-        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
-        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
+        val shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
+        val teko = com.digimon.glyph.LocalizedText.typeface(this, "fonts/Teko.ttf")
         
         val row = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1182,13 +1182,13 @@ class RomLoaderActivity : AppCompatActivity() {
             textSize = 13f
             typeface = shareTech
             setTextColor(Color.WHITE)
-            text = "Slot $slot: empty"
+            text = getString(R.string.text_slot_value_empty, slot)
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             layoutParams = lp
             setPadding(0, 8, 8, 8)
         }
         val saveBtn = Button(this).apply {
-            text = "SAVE"
+            text = getString(R.string.text_save)
             typeface = teko
             textSize = 16f
             setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_blue))
@@ -1197,11 +1197,11 @@ class RomLoaderActivity : AppCompatActivity() {
             lp.marginEnd = dp(8)
             layoutParams = lp
             setOnClickListener {
-                sendCommand(EmulatorCommandBus.CMD_SAVE_SLOT, slot, "Save slot $slot")
+                sendCommand(EmulatorCommandBus.CMD_SAVE_SLOT, slot, getString(R.string.text_save_slot_value, slot))
             }
         }
         val loadBtn = Button(this).apply {
-            text = "LOAD"
+            text = getString(R.string.text_load)
             typeface = teko
             textSize = 16f
             setTextColor(ContextCompat.getColor(this@RomLoaderActivity, R.color.cyber_yellow))
@@ -1222,15 +1222,15 @@ class RomLoaderActivity : AppCompatActivity() {
     private fun sendCommand(type: String, arg: Int, label: String) {
         val status = EmulatorStatus.snapshot()
         if (status.busy || status.run == EmulatorStatus.Run.FROZEN) {
-            Toast.makeText(this, if (status.busy) "Wait for ROM import to finish" else "Resume the pet before changing its saves", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, if (status.busy) getString(R.string.text_wait_for_rom_import_to_finish) else getString(R.string.text_resume_the_pet_before_changing_its_saves), Toast.LENGTH_LONG).show()
             return
         }
         try {
             EmulatorCommandBus.post(this, type, arg)
             startBackendService()
-            Toast.makeText(this, "$label requested", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.text_value_requested, label), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, e.message ?: "Command could not be queued", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, e.message ?: getString(R.string.text_command_could_not_be_queued), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1299,7 +1299,7 @@ class RomLoaderActivity : AppCompatActivity() {
         if (DigimonDndScheduler.canScheduleExactAlarms(this)) return
         Toast.makeText(
             this,
-            "Exact alarm access is off. Quiet hours still work, but wake timing may be less precise.",
+            getString(R.string.text_exact_alarm_access_is_off_quiet_hours_still_work_but_wake_timing_may),
             Toast.LENGTH_LONG
         ).show()
     }
@@ -1329,14 +1329,14 @@ class RomLoaderActivity : AppCompatActivity() {
 
     private fun updateDndStatus(statusView: TextView, startButton: Button, endButton: Button) {
         DigimonDndSettings.init(this)
-        startButton.text = "START ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())}"
-        endButton.text = "END ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
-        val mode = if (DigimonDndSettings.isFreezeMode()) "FREEZE" else "SILENT"
+        startButton.text = getString(R.string.text_start_value, DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes()))
+        endButton.text = getString(R.string.text_end_value, DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes()))
+        val mode = if (DigimonDndSettings.isFreezeMode()) getString(R.string.text_freeze) else getString(R.string.text_silent)
         statusView.text = when {
-            !DigimonDndSettings.isEnabled() -> "DND OFF"
-            DigimonDndSettings.isFrozenNow() -> "DND ACTIVE  $mode  RESUME ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}"
-            DigimonDndSettings.isDndActiveNow() -> "DND ACTIVE  $mode"
-            else -> "NEXT DND ${DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes())} → ${DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes())}  $mode"
+            !DigimonDndSettings.isEnabled() -> getString(R.string.text_dnd_off)
+            DigimonDndSettings.isFrozenNow() -> getString(R.string.text_dnd_active_value_resume_value, mode, DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes()))
+            DigimonDndSettings.isDndActiveNow() -> getString(R.string.text_dnd_active_value, mode)
+            else -> getString(R.string.text_next_dnd_value_value_value, DigimonDndSettings.formatTime(DigimonDndSettings.getStartMinutes()), DigimonDndSettings.formatTime(DigimonDndSettings.getEndMinutes()), mode)
         }
     }
 
@@ -1404,13 +1404,13 @@ class RomLoaderActivity : AppCompatActivity() {
             findViewById<Button>(id).apply { isEnabled = clockAvailable; alpha = if (clockAvailable) 1f else .45f }
         }
         findViewById<TextView>(R.id.clock_sync_info).text = if (clockSupported)
-            "The Digimon clock and Glyph clock overlay are separate. Start the pet and finish clock setup before changing its time."
-        else "Clock controls are available for supported classic Digimon ROMs. The Glyph clock overlay is separate."
+            getString(R.string.text_the_digimon_clock_and_glyph_clock_overlay_are_separate_start_the_pet)
+        else getString(R.string.text_clock_controls_are_available_for_supported_classic_digimon_roms_the_)
         val auto = stateManager.getAutosaveInfo(currentRomName, currentRomHash)
-        autosaveText.text = buildSaveLine("Autosave", auto, currentRomName, currentRomHash)
-        slot1Text.text = buildSaveLine("Slot 1", stateManager.getSlotInfo(1, currentRomName, currentRomHash), currentRomName, currentRomHash)
-        slot2Text.text = buildSaveLine("Slot 2", stateManager.getSlotInfo(2, currentRomName, currentRomHash), currentRomName, currentRomHash)
-        slot3Text.text = buildSaveLine("Slot 3", stateManager.getSlotInfo(3, currentRomName, currentRomHash), currentRomName, currentRomHash)
+        autosaveText.text = buildSaveLine(getString(R.string.text_autosave), auto, currentRomName, currentRomHash)
+        slot1Text.text = buildSaveLine(getString(R.string.text_slot_1), stateManager.getSlotInfo(1, currentRomName, currentRomHash), currentRomName, currentRomHash)
+        slot2Text.text = buildSaveLine(getString(R.string.text_slot_2), stateManager.getSlotInfo(2, currentRomName, currentRomHash), currentRomName, currentRomHash)
+        slot3Text.text = buildSaveLine(getString(R.string.text_slot_3), stateManager.getSlotInfo(3, currentRomName, currentRomHash), currentRomName, currentRomHash)
 
         val ack = EmulatorCommandBus.readAck(this)
         if (ack != null && ack.id > lastAckId) {
@@ -1421,18 +1421,18 @@ class RomLoaderActivity : AppCompatActivity() {
         val battleAgeMs = if (battle.updatedAtMs == 0L) "-" else "${System.currentTimeMillis() - battle.updatedAtMs}ms"
         val peer = battle.peerName
         val transport = BattleTransportSettings.getTransportType()
-        battleStatusText.text = "[$transport] ${battle.status}  age=$battleAgeMs\n${battle.message}"
+        battleStatusText.text = "[$transport] ${LocalizedText.display(this, battle.status.name)}  age=$battleAgeMs\n${battle.message}"
         // Update lobby-style peer name and badge
-        battlePeerName.text = if (peer != null) peer.uppercase() else "NO ACTIVE LINK"
+        battlePeerName.text = if (peer != null) peer.uppercase() else getString(R.string.text_no_active_link)
         val badgeText = when (battle.status) {
-            BattleStateStore.Status.CONNECTED -> "BATTLING"
+            BattleStateStore.Status.CONNECTED -> getString(R.string.text_battling)
             BattleStateStore.Status.ADVERTISING,
             BattleStateStore.Status.DISCOVERING,
-            BattleStateStore.Status.CONNECTING -> "SCANNING"
-            else -> "WAITING"
+            BattleStateStore.Status.CONNECTING -> getString(R.string.text_scanning)
+            else -> getString(R.string.text_waiting)
         }
         battleBadge.text = badgeText
-        commandStatusText.text = "Last command: $lastAckText"
+        commandStatusText.text = getString(R.string.text_last_command_value, lastAckText)
     }
 
     private fun buildSaveLine(
@@ -1442,15 +1442,15 @@ class RomLoaderActivity : AppCompatActivity() {
         currentRomHash: String?
     ): String {
         val slotId = label.filter { it.isDigit() }.ifEmpty { "AUTO" }
-        if (!info.exists) return "SLT.$slotId  ──────  [EMPTY]"
+        if (!info.exists) return getString(R.string.text_slt_value_empty, slotId)
         val compact = if (info.timestampMs <= 0L) "─────────────" else
-            SimpleDateFormat("yy.MM.dd HH:mm", Locale.US).format(Date(info.timestampMs))
+            java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.SHORT, resources.configuration.locales[0]).format(Date(info.timestampMs))
         val match = when {
             currentRomHash != null && info.romHash != null -> currentRomHash == info.romHash
             currentRomName != null && info.romName != null -> currentRomName == info.romName
             else -> true
         }
-        val tag = if (match) "[OK]" else "[DIFF]"
+        val tag = if (match) getString(R.string.text_ok) else getString(R.string.text_diff)
         val romShort = (info.romName ?: "?").uppercase().take(8)
         return "SLT.$slotId  $compact  $tag · $romShort"
     }
@@ -1462,7 +1462,7 @@ class RomLoaderActivity : AppCompatActivity() {
 
     private fun formatTime(ts: Long): String {
         if (ts <= 0L) return "-"
-        val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        val fmt = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.SHORT, java.text.DateFormat.MEDIUM, resources.configuration.locales[0])
         return fmt.format(Date(ts))
     }
 
@@ -1488,7 +1488,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 chooserTitle = "Share debug report"
             )
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to share report: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.text_failed_to_share_report_value, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1539,7 +1539,7 @@ class RomLoaderActivity : AppCompatActivity() {
             }
 
             if (exportedEntries.isEmpty()) {
-                Toast.makeText(this, "No save-state files found to export", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, getString(R.string.text_no_save_state_files_found_to_export), Toast.LENGTH_LONG).show()
                 return
             }
 
@@ -1550,7 +1550,7 @@ class RomLoaderActivity : AppCompatActivity() {
                 chooserTitle = "Share save state bundle"
             )
         } catch (e: Exception) {
-            Toast.makeText(this, "Failed to export save states: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.text_failed_to_export_save_states_value, e.message), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -1688,24 +1688,24 @@ class RomLoaderActivity : AppCompatActivity() {
                 val fileName = getFileName(uri)
                 val candidates = contentResolver.openInputStream(uri)?.use {
                     com.digimon.glyph.emulator.RomImport.read(it, fileName)
-                } ?: error("Cannot open ROM")
+                } ?: error(getString(R.string.text_cannot_open_rom))
                 runOnUiThread {
                     if (!canFinishImport(request)) return@runOnUiThread
                     if (candidates.size == 1) importCandidate(candidates.single(), request)
                     else {
-                        EmulatorStatus.importResult(request, EmulatorStatus.Import.CHOOSING, "Choose a device from the archive")
+                        EmulatorStatus.importResult(request, EmulatorStatus.Import.CHOOSING, getString(R.string.text_choose_a_device_from_the_archive))
                         androidx.appcompat.app.AlertDialog.Builder(this)
-                            .setTitle("Choose a ROM")
+                            .setTitle(getString(R.string.text_choose_a_rom))
                             .setItems(candidates.map { "${it.device.id} — ${it.name}" }.toTypedArray()) { _, index ->
                                 if (canFinishImport(request)) importCandidate(candidates[index], request)
                             }
-                            .setNegativeButton("Cancel") { _, _ -> cancelImport() }
+                            .setNegativeButton(getString(R.string.text_cancel)) { _, _ -> cancelImport() }
                             .setOnCancelListener { cancelImport() }.show()
                     }
                 }
             } catch (e: Exception) {
                 runOnUiThread {
-                    if (canFinishImport(request)) EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, "Import failed: ${e.message}")
+                    if (canFinishImport(request)) EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, getString(R.string.text_import_failed_value, e.message))
                 }
             }
         }, "ROM-import").also { it.start() }
@@ -1720,14 +1720,14 @@ class RomLoaderActivity : AppCompatActivity() {
         val status = EmulatorStatus.snapshot()
         if (status.request == importRequest && status.importing in listOf(EmulatorStatus.Import.SCANNING, EmulatorStatus.Import.CHOOSING)) {
             importWorker?.interrupt()
-            EmulatorStatus.importResult(importRequest, EmulatorStatus.Import.CANCELLED, "Import cancelled; previous device kept")
+            EmulatorStatus.importResult(importRequest, EmulatorStatus.Import.CANCELLED, getString(R.string.text_import_cancelled_previous_device_kept))
         }
     }
 
     private fun importCandidate(candidate: com.digimon.glyph.emulator.RomImport.Candidate, request: Long) {
         var staged: File? = null
         try {
-            EmulatorStatus.importResult(request, EmulatorStatus.Import.SWITCHING, "Saving current pet and loading ${candidate.device.id}…")
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.SWITCHING, getString(R.string.text_saving_current_pet_and_loading_value, candidate.device.id))
             staged = File.createTempFile("rom-import-", ".bin", filesDir)
             staged.writeBytes(candidate.bytes)
             val name = if (candidate.device.id == "UnknownClassic")
@@ -1738,7 +1738,7 @@ class RomLoaderActivity : AppCompatActivity() {
             ContextCompat.startForegroundService(this, intent)
         } catch (e: Exception) {
             staged?.delete()
-            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, "Import failed: ${e.message}")
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, getString(R.string.text_import_failed_value, e.message))
         }
     }
 
@@ -1763,12 +1763,12 @@ class RomLoaderActivity : AppCompatActivity() {
         val status = EmulatorStatus.snapshot()
         val info = if (slot == 0) stateManager.getAutosaveInfo(status.name, status.hash)
             else stateManager.getSlotInfo(slot, status.name, status.hash)
-        if (!info.exists) { Toast.makeText(this, "No save in this slot", Toast.LENGTH_SHORT).show(); return }
-        val label = if (slot == 0) "Autosave" else "Slot $slot"
-        AlertDialog.Builder(this).setTitle("Load $label?")
-            .setMessage("${status.name}\n${formatTime(info.timestampMs)}\nThis replaces current progress with this save.")
+        if (!info.exists) { Toast.makeText(this, getString(R.string.text_no_save_in_this_slot), Toast.LENGTH_SHORT).show(); return }
+        val label = if (slot == 0) getString(R.string.text_autosave) else "Slot $slot"
+        AlertDialog.Builder(this).setTitle(getString(R.string.text_load_value, label))
+            .setMessage(getString(R.string.text_value_nvalue_nthis_replaces_current_progress_with_this_save, status.name, formatTime(info.timestampMs)))
             .setNegativeButton(android.R.string.cancel, null)
-            .setPositiveButton("Load") { _, _ ->
+            .setPositiveButton(getString(R.string.text_load_alt)) { _, _ ->
                 if (EmulatorStatus.snapshot().hash == status.hash)
                     sendCommand(if (slot == 0) EmulatorCommandBus.CMD_LOAD_AUTOSAVE else EmulatorCommandBus.CMD_LOAD_SLOT, slot, "Load $label")
             }.show()

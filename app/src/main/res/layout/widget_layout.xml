@@ -25,7 +25,7 @@
         android:paddingTop="4dp"
         android:paddingEnd="8dp"
         android:paddingBottom="4dp"
-        android:text="DND"
+        android:text="@string/ui_dnd"
         android:textColor="#F2FF00"
         android:textSize="11sp"
         android:textStyle="bold"
@@ -47,7 +47,7 @@
             android:background="@android:color/transparent"
             android:src="@drawable/widget_button_selector"
             android:scaleType="fitCenter"
-            android:contentDescription="A button" />
+            android:contentDescription="@string/ui_a_button" />
 
         <ImageButton
             android:id="@+id/btn_b"
@@ -57,7 +57,7 @@
             android:background="@android:color/transparent"
             android:src="@drawable/widget_button_selector"
             android:scaleType="fitCenter"
-            android:contentDescription="B button" />
+            android:contentDescription="@string/ui_b_button" />
 
         <ImageButton
             android:id="@+id/btn_c"
@@ -67,7 +67,7 @@
             android:background="@android:color/transparent"
             android:src="@drawable/widget_button_selector"
             android:scaleType="fitCenter"
-            android:contentDescription="C button" />
+            android:contentDescription="@string/ui_c_button" />
 
     </LinearLayout>
 
@@ -120,7 +120,7 @@
                 android:background="@android:color/transparent"
                 android:src="@drawable/widget_button_selector"
                 android:scaleType="fitCenter"
-                android:contentDescription="Digivice A button" />
+                android:contentDescription="@string/ui_digivice_a_button" />
 
             <ImageButton
                 android:id="@+id/btn_dv_b"
@@ -130,7 +130,7 @@
                 android:background="@android:color/transparent"
                 android:src="@drawable/widget_button_selector"
                 android:scaleType="fitCenter"
-                android:contentDescription="Digivice B button" />
+                android:contentDescription="@string/ui_digivice_b_button" />
 
             <ImageButton
                 android:id="@+id/btn_dv_c"
@@ -140,7 +140,7 @@
                 android:background="@android:color/transparent"
                 android:src="@drawable/widget_button_selector"
                 android:scaleType="fitCenter"
-                android:contentDescription="Digivice C button" />
+                android:contentDescription="@string/ui_digivice_c_button" />
 
             <!-- Bottom dead zone: ~18% (button C bottom edge ≈ 80%) -->
             <TextView

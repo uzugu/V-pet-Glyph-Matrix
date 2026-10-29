@@ -20,7 +20,7 @@
                 android:id="@+id/title_shadow_cyan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EVOLUTION\nGUIDE"
+                android:text="@string/ui_evolution_nguide"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#7700e5ff"
                 android:gravity="center"
@@ -31,7 +31,7 @@
                 android:id="@+id/title_shadow_pink"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EVOLUTION\nGUIDE"
+                android:text="@string/ui_evolution_nguide"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#77ff0055"
                 android:gravity="center"
@@ -42,7 +42,7 @@
                 android:id="@+id/main_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="EVOLUTION\nGUIDE"
+                android:text="@string/ui_evolution_nguide"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:gravity="center" />
         </FrameLayout>
@@ -51,7 +51,7 @@
             android:id="@+id/text_guide_subtitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="DIGITAL MONSTER V1"
+            android:text="@string/ui_digital_monster_v1"
             android:textAppearance="@style/TextAppearance.Cyber.Subtitle"
             android:gravity="center"
             android:layout_marginTop="8dp" />
@@ -74,7 +74,8 @@
             <Button
                 android:id="@+id/btn_v1"
                 android:layout_width="0dp"
-                android:layout_height="46dp"
+                android:layout_height="wrap_content"
+                android:minHeight="46dp"
                 android:layout_weight="1"
                 android:text="V1"
                 android:textAppearance="@style/TextAppearance.Cyber.Button"
@@ -88,7 +89,8 @@
             <Button
                 android:id="@+id/btn_v2"
                 android:layout_width="0dp"
-                android:layout_height="46dp"
+                android:layout_height="wrap_content"
+                android:minHeight="46dp"
                 android:layout_weight="1"
                 android:text="V2"
                 android:textAppearance="@style/TextAppearance.Cyber.Button"
@@ -102,7 +104,8 @@
             <Button
                 android:id="@+id/btn_v3"
                 android:layout_width="0dp"
-                android:layout_height="46dp"
+                android:layout_height="wrap_content"
+                android:minHeight="46dp"
                 android:layout_weight="1"
                 android:text="V3"
                 android:textAppearance="@style/TextAppearance.Cyber.Button"
@@ -119,9 +122,10 @@
         <Button
             android:id="@+id/btn_back"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
+            android:layout_height="wrap_content"
+            android:minHeight="52dp"
             android:layout_marginTop="18dp"
-            android:text="CLOSE GUIDE"
+            android:text="@string/ui_close_guide"
             android:textColor="@color/cyber_blue"
             android:textAppearance="@style/TextAppearance.Cyber.Button"
             android:background="@drawable/cyber_button_bg" />

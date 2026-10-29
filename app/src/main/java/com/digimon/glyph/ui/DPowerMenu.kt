@@ -40,7 +40,7 @@ class DPowerMenu(
     private val refresh = object : Runnable {
         override fun run() {
             val state = EmulatorStatus.snapshot()
-            status.text = context.getString(R.string.dp_runtime, state.run.name.lowercase().replaceFirstChar { it.uppercase() })
+            status.text = context.getString(R.string.dp_runtime, com.digimon.glyph.LocalizedText.display(context, state.run.name))
             val canPress = state.isDPower && !state.busy && state.run != EmulatorStatus.Run.FROZEN
             controls.forEach { it.isEnabled = canPress; it.alpha = if (canPress) 1f else .4f }
             handler.postDelayed(this, 500)
@@ -49,11 +49,11 @@ class DPowerMenu(
 
     init {
         panel.addView(text(context.getString(R.string.dp_console_kicker), 12f, amber).apply {
-            typeface = ResourcesCompat.getFont(context, R.font.share_tech_mono)
+            typeface = if (com.digimon.glyph.LocalizedText.isJapanese(context)) Typeface.DEFAULT else ResourcesCompat.getFont(context, R.font.share_tech_mono)
             letterSpacing = .12f
         })
         panel.addView(text(context.getString(R.string.dp_console_title), 34f).apply {
-            typeface = ResourcesCompat.getFont(context, R.font.teko)
+            typeface = if (com.digimon.glyph.LocalizedText.isJapanese(context)) Typeface.DEFAULT else ResourcesCompat.getFont(context, R.font.teko)
         })
         panel.addView(status)
 
@@ -146,7 +146,7 @@ class DPowerMenu(
             background = GradientDrawable().apply { setColor(Color.rgb(15, 32, 43)); cornerRadius = dp(12).toFloat(); setStroke(dp(1), Color.rgb(39, 83, 96)) }
         }
         panel.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(16) })
-        card.addView(text(context.getString(title), 22f, cyan).apply { typeface = ResourcesCompat.getFont(context, R.font.teko) })
+        card.addView(text(context.getString(title), 22f, cyan).apply { typeface = if (com.digimon.glyph.LocalizedText.isJapanese(context)) Typeface.DEFAULT else ResourcesCompat.getFont(context, R.font.teko) })
         return card
     }
     private fun toggle(parent: LinearLayout, label: Int, initial: Boolean, changed: (Boolean) -> Unit) {

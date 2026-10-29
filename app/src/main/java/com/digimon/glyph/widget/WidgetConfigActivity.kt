@@ -1,5 +1,6 @@
 package com.digimon.glyph.widget
 
+import com.digimon.glyph.R
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.graphics.Color
@@ -41,8 +42,8 @@ class WidgetConfigActivity : AppCompatActivity() {
     }
 
     private fun buildUI(): View {
-        val teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
-        val shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        val teko = com.digimon.glyph.LocalizedText.typeface(this, "fonts/Teko.ttf")
+        val shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
 
         val COLOR_BG       = Color.parseColor("#0A0D0F")
         val COLOR_CARD     = Color.parseColor("#111418")
@@ -73,7 +74,7 @@ class WidgetConfigActivity : AppCompatActivity() {
         }
 
         val titleLabel = TextView(this).apply {
-            text = "[ SELECT DISPLAY SKIN ]"
+            text = getString(R.string.text_select_display_skin)
             textSize = 26f
             typeface = teko
             gravity = Gravity.CENTER
@@ -83,7 +84,7 @@ class WidgetConfigActivity : AppCompatActivity() {
         headerFrame.addView(titleLabel)
 
         val subtitleLabel = TextView(this).apply {
-            text = "◈ WIDGET CONFIGURATION INTERFACE"
+            text = getString(R.string.text_widget_configuration_interface)
             textSize = 12f
             typeface = shareTech
             gravity = Gravity.CENTER
@@ -117,15 +118,15 @@ class WidgetConfigActivity : AppCompatActivity() {
         )
 
         val skins = listOf(
-            SkinEntry(WidgetPrefs.Skin.GLYPH_MATRIX,   "GLYPH MATRIX",   "Nothing Phone LED dot grid — white on black",        COLOR_CYAN),
-            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V3,    "DIGIVICE  V3",   "Orange shell — classic V3 colorway",                  Color.parseColor("#F35C00")),
-            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V1,    "DIGIVICE  V1",   "Gray/blue shell — 1997 original colorway",            Color.parseColor("#5A6070")),
-            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V2,    "DIGIVICE  V2",   "Black/red shell — V2 colorway",                       Color.parseColor("#CC2200")),
-            SkinEntry(WidgetPrefs.Skin.DIGIVICE_WHITE, "DIGIVICE  WHITE","White/gold shell — V-Tamer colorway",                 Color.parseColor("#D4A800")),
-            SkinEntry(WidgetPrefs.Skin.BRICK_V1,       "BRICK  V-PET V1","Red brick shell — faithful SVG replica of 1997 V-Pet",Color.parseColor("#B24A4A")),
-            SkinEntry(WidgetPrefs.Skin.BRICK_V3,       "BRICK  V-PET V3","Orange brick shell — SVG replica of V3 device",       Color.parseColor("#F35C00")),
-            SkinEntry(WidgetPrefs.Skin.CYBER_HUD,      "CYBER HUD",      "Terminal panel — cyber aesthetic with LCD overlay",   COLOR_CYAN),
-            SkinEntry(WidgetPrefs.Skin.DEBUG,          "DEBUG",          "Raw 32×24 LCD — uncropped pixel dump",                COLOR_DIM),
+            SkinEntry(WidgetPrefs.Skin.GLYPH_MATRIX,   "GLYPH MATRIX",   getString(R.string.text_nothing_phone_led_dot_grid_white_on_black),        COLOR_CYAN),
+            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V3,    "DIGIVICE  V3",   getString(R.string.text_orange_shell_classic_v3_colorway),                  Color.parseColor("#F35C00")),
+            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V1,    "DIGIVICE  V1",   getString(R.string.text_gray_blue_shell_1997_original_colorway),            Color.parseColor("#5A6070")),
+            SkinEntry(WidgetPrefs.Skin.DIGIVICE_V2,    "DIGIVICE  V2",   getString(R.string.text_black_red_shell_v2_colorway),                       Color.parseColor("#CC2200")),
+            SkinEntry(WidgetPrefs.Skin.DIGIVICE_WHITE, "DIGIVICE  WHITE",getString(R.string.text_white_gold_shell_v_tamer_colorway),                 Color.parseColor("#D4A800")),
+            SkinEntry(WidgetPrefs.Skin.BRICK_V1,       "BRICK  V-PET V1",getString(R.string.text_red_brick_shell_faithful_svg_replica_of_1997_v_pet),Color.parseColor("#B24A4A")),
+            SkinEntry(WidgetPrefs.Skin.BRICK_V3,       "BRICK  V-PET V3",getString(R.string.text_orange_brick_shell_svg_replica_of_v3_device),       Color.parseColor("#F35C00")),
+            SkinEntry(WidgetPrefs.Skin.CYBER_HUD,      "CYBER HUD",      getString(R.string.text_terminal_panel_cyber_aesthetic_with_lcd_overlay),   COLOR_CYAN),
+            SkinEntry(WidgetPrefs.Skin.DEBUG,          "DEBUG",          getString(R.string.text_raw_32_24_lcd_uncropped_pixel_dump),                COLOR_DIM),
         )
 
         for (entry in skins) {
@@ -181,7 +182,7 @@ class WidgetConfigActivity : AppCompatActivity() {
 
             // Select button
             val btn = Button(this).apply {
-                text = "[ INIT ]"
+                text = getString(R.string.text_init)
                 textSize = 14f
                 typeface = teko
                 setTextColor(COLOR_CYAN)
@@ -213,7 +214,7 @@ class WidgetConfigActivity : AppCompatActivity() {
         root.addView(footerDivider)
 
         val footerLabel = TextView(this).apply {
-            text = "► SELECTION PERSISTS PER-WIDGET"
+            text = getString(R.string.text_selection_persists_per_widget)
             textSize = 11f
             typeface = shareTech
             gravity = Gravity.CENTER

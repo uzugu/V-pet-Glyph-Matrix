@@ -42,8 +42,8 @@ class EvolutionGuideActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_evolution_guide)
 
-        teko = Typeface.createFromAsset(assets, "fonts/Teko.ttf")
-        shareTech = Typeface.createFromAsset(assets, "fonts/ShareTechMono-Regular.ttf")
+        teko = com.digimon.glyph.LocalizedText.typeface(this, "fonts/Teko.ttf")
+        shareTech = com.digimon.glyph.LocalizedText.typeface(this, "fonts/ShareTechMono-Regular.ttf")
 
         val mainTitle = findViewById<TextView>(R.id.main_title)
         val titleShadowCyan = findViewById<TextView>(R.id.title_shadow_cyan)
@@ -85,12 +85,12 @@ class EvolutionGuideActivity : AppCompatActivity() {
             .associateBy { it.speciesId }
         val rosterMap = roster.toMap()
 
-        textGuideSubtitle.text = "DIGITAL MONSTER $currentVersion"
+        textGuideSubtitle.text = getString(R.string.text_digital_monster_value, currentVersion)
         textGuideRules.text = buildString {
-            append("DATA VIEW. TAP A DIGIMON FOR EXACT STATS AND ROUTE NUMBERS.")
-            append("\nCARE, TRAINING, OVERFEED, SLEEP, AND BATTLE TARGETS ARE SHOWN PER ROUTE.")
+            append(getString(R.string.text_data_view_tap_a_digimon_for_exact_stats_and_route_numbers))
+            append(getString(R.string.text_ncare_training_overfeed_sleep_and_battle_targets_are_shown_per_route))
             if (currentVersion in setOf("V1", "V2", "V3")) {
-                append("\nPERFECT / ULTIMATE ROUTES SHOW THE HUMULOS HIGH-CHANCE BATTLE TARGETS.")
+                append(getString(R.string.text_nperfect_ultimate_routes_show_the_humulos_high_chance_battle_targets))
             }
         }
 
@@ -142,7 +142,7 @@ class EvolutionGuideActivity : AppCompatActivity() {
         }
 
         section.addView(TextView(this).apply {
-            text = stage.uppercase()
+            text = LocalizedText.display(this@EvolutionGuideActivity, stage).uppercase()
             setTextAppearance(R.style.TextAppearance_Cyber_SectionHeader)
             typeface = teko
         })
@@ -181,16 +181,16 @@ class EvolutionGuideActivity : AppCompatActivity() {
         details.addView(createStatGrid(dex))
         details.addView(
             createRouteSection(
-                "GET THIS FORM",
+                getString(R.string.text_get_this_form),
                 incomingRoutes,
-                dex.conditionText.ifBlank { "No incoming route data." }
+                dex.conditionText.ifBlank { getString(R.string.text_no_incoming_route_data) }
             )
         )
         details.addView(
             createRouteSection(
-                "NEXT FORMS",
+                getString(R.string.text_next_forms),
                 outgoingRoutes,
-                if (dex.evolvesToText.isEmpty()) "Final stage." else dex.evolvesToText.joinToString("\n")
+                if (dex.evolvesToText.isEmpty()) getString(R.string.text_final_stage) else dex.evolvesToText.joinToString("\n")
             )
         )
 
@@ -225,7 +225,7 @@ class EvolutionGuideActivity : AppCompatActivity() {
                 leftMargin = dp(14)
             }
             addView(TextView(this@EvolutionGuideActivity).apply {
-                text = info.name
+                text = LocalizedText.display(this@EvolutionGuideActivity, info.name)
                 setTextAppearance(R.style.TextAppearance_Cyber_SectionHeader)
                 typeface = teko
                 setTextColor(ContextCompat.getColor(this@EvolutionGuideActivity, R.color.cyber_blue))
@@ -242,7 +242,7 @@ class EvolutionGuideActivity : AppCompatActivity() {
                 }
             })
             addView(TextView(this@EvolutionGuideActivity).apply {
-                text = if (details.visibility == View.VISIBLE) "HIDE DATA" else "SHOW DATA"
+                text = if (details.visibility == View.VISIBLE) getString(R.string.text_hide_data) else getString(R.string.text_show_data)
                 tag = "toggle"
                 setTextAppearance(R.style.TextAppearance_Cyber_Muted)
                 typeface = shareTech
@@ -264,7 +264,7 @@ class EvolutionGuideActivity : AppCompatActivity() {
         card.setOnClickListener {
             details.visibility = if (details.visibility == View.VISIBLE) View.GONE else View.VISIBLE
             val toggle = metaColumn.findViewWithTag<TextView>("toggle")
-            toggle.text = if (details.visibility == View.VISIBLE) "HIDE DATA" else "SHOW DATA"
+            toggle.text = if (details.visibility == View.VISIBLE) getString(R.string.text_hide_data) else getString(R.string.text_show_data)
         }
         return card
     }
@@ -276,14 +276,14 @@ class EvolutionGuideActivity : AppCompatActivity() {
     ): List<RouteCardModel> {
         val incoming = mutableListOf<RouteCardModel>()
         profiles.forEach { (sourceId, profile) ->
-            val sourceName = rosterMap[sourceId]?.name ?: return@forEach
+            val sourceName = rosterMap[sourceId]?.name?.let { LocalizedText.display(this, it) } ?: return@forEach
             profile.evolvesTo
                 .filter { it.targetSpeciesId == speciesId }
                 .forEach { route ->
                     incoming += RouteCardModel(
-                        title = "FROM ${sourceName.uppercase()}",
-                        requirements = route.requirements,
-                        note = route.note
+                        title = getString(R.string.text_from_value, sourceName.uppercase()),
+                        requirements = route.requirements.map { LocalizedText.display(this, it) },
+                        note = route.note?.let { LocalizedText.display(this, it) }
                     )
                 }
         }
@@ -296,11 +296,12 @@ class EvolutionGuideActivity : AppCompatActivity() {
     ): List<RouteCardModel> {
         if (profile == null) return emptyList()
         return profile.evolvesTo.map { route ->
-            val targetName = rosterMap[route.targetSpeciesId]?.name ?: route.title.removeSuffix(" route")
+            val targetName = LocalizedText.display(this,
+                rosterMap[route.targetSpeciesId]?.name ?: route.title.removeSuffix(" route"))
             RouteCardModel(
-                title = "TO ${targetName.uppercase()}",
-                requirements = route.requirements,
-                note = route.note
+                title = getString(R.string.text_to_value, targetName.uppercase()),
+                requirements = route.requirements.map { LocalizedText.display(this, it) },
+                note = route.note?.let { LocalizedText.display(this, it) }
             )
         }
     }
@@ -314,13 +315,13 @@ class EvolutionGuideActivity : AppCompatActivity() {
             )
         }
         val rows = listOf(
-            "ACTIVITY" to dex.activity,
-            "LIFESPAN" to dex.lifespan,
-            "WEIGHT" to dex.weight,
-            "FULLNESS" to dex.fullness,
-            "CYCLE" to dex.cycle,
-            "STAMINA" to dex.stamina,
-            "INJURY" to dex.injury
+            getString(R.string.text_activity) to dex.activity,
+            getString(R.string.text_lifespan) to dex.lifespan,
+            getString(R.string.text_weight) to dex.weight,
+            getString(R.string.text_fullness) to dex.fullness,
+            getString(R.string.text_cycle) to dex.cycle,
+            getString(R.string.text_stamina) to dex.stamina,
+            getString(R.string.text_injury) to dex.injury
         )
         rows.chunked(2).forEach { pair ->
             val row = LinearLayout(this).apply {

@@ -10,7 +10,11 @@ const compile = (path) =>
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2022,
     },
-  }).outputText;
+  }).outputText.replace("./i18n", url(i18n));
+const i18n = ts.transpileModule(
+  readFileSync(new URL("../src/i18n.ts", import.meta.url), "utf8"),
+  { compilerOptions: { module: ts.ModuleKind.ESNext } },
+).outputText;
 const waitFor = async (predicate) => {
   const end = Date.now() + 2500;
   while (!predicate()) {
@@ -57,6 +61,9 @@ for (const scenario of ["connection loss", "state replacement"]) test(`${scenari
     putImageData: (image) => images.push(image.data.slice()),
   });
   globalThis.document = {
+    documentElement: { lang: "en" },
+    title: "V-pet · G2 link",
+    querySelectorAll: () => [],
     getElementById: (id) => elements.get(id),
     createElement: make,
   };

@@ -25,7 +25,7 @@
                 android:id="@+id/title_shadow_cyan"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:text="@string/ui_digimon_glyph_n_system_link"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#7700e5ff"
                 android:gravity="center"
@@ -37,7 +37,7 @@
                 android:id="@+id/title_shadow_pink"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:text="@string/ui_digimon_glyph_n_system_link"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:textColor="#77ff0055"
                 android:gravity="center"
@@ -49,7 +49,7 @@
                 android:id="@+id/main_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="DIGIMON GLYPH\n.::. SYSTEM LINK"
+                android:text="@string/ui_digimon_glyph_n_system_link"
                 android:textAppearance="@style/TextAppearance.Cyber.Title"
                 android:gravity="center" />
         </FrameLayout>
@@ -59,7 +59,7 @@
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="V-Pet Emulator Ready"
+            android:text="@string/ui_v_pet_emulator_ready"
             android:textAppearance="@style/TextAppearance.Cyber.Subtitle"
             android:gravity="center"
             android:layout_marginTop="6dp"
@@ -123,7 +123,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="► ROM ARCHIVE"
+                        android:text="@string/ui_rom_archive"
                         android:textAppearance="@style/TextAppearance.Cyber.StatLabel"
                         android:layout_marginTop="2dp" />
                 </LinearLayout>
@@ -172,14 +172,14 @@
                         android:id="@+id/stat_emu_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="IDLE"
+                        android:text="@string/ui_idle"
                         android:textAppearance="@style/TextAppearance.Cyber.StatValue" />
 
                     <TextView
                         android:id="@+id/stat_emu_label"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="► NO SIGNAL"
+                        android:text="@string/ui_no_signal"
                         android:textAppearance="@style/TextAppearance.Cyber.StatLabel"
                         android:layout_marginTop="2dp" />
                 </LinearLayout>
@@ -205,8 +205,9 @@
                 <Button
                     android:id="@+id/btn_pick_rom"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="Load ROM"
+                    android:layout_height="wrap_content"
+                    android:minHeight="52dp"
+                    android:text="@string/ui_load_rom"
                     android:textColor="@color/cyber_blue"
                     android:textAppearance="@style/TextAppearance.Cyber.Button"
                     android:background="@drawable/cyber_button_bg" />
@@ -214,7 +215,8 @@
                 <Button
                     android:id="@+id/btn_cancel_import"
                     android:layout_width="match_parent"
-                    android:layout_height="48dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
                     android:text="@string/cancel_import"
                     android:visibility="gone" />
 
@@ -229,9 +231,10 @@
                     <Button
                         android:id="@+id/btn_start_emu"
                         android:layout_width="0dp"
-                        android:layout_height="52dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="52dp"
                         android:layout_weight="1"
-                        android:text="Start"
+                        android:text="@string/ui_start"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -240,9 +243,10 @@
                     <Button
                         android:id="@+id/btn_stop_emu"
                         android:layout_width="0dp"
-                        android:layout_height="52dp"
+                        android:layout_height="wrap_content"
+                        android:minHeight="52dp"
                         android:layout_weight="1"
-                        android:text="Stop"
+                        android:text="@string/ui_stop"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -253,7 +257,8 @@
                 <Button
                     android:id="@+id/btn_dpower_controls"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
+                    android:layout_height="wrap_content"
+                    android:minHeight="52dp"
                     android:layout_marginTop="10dp"
                     android:text="@string/dpower_controls"
                     android:textColor="@color/cyber_blue"
@@ -284,7 +289,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="LIVE VISUAL STREAM"
+                            android:text="@string/ui_live_visual_stream"
                             android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
                     </LinearLayout>
 
@@ -309,7 +314,7 @@
                         android:background="@drawable/cyber_panel_bg"
                         android:padding="18dp"
                         android:lineSpacingExtra="3dp"
-                        android:text="AWAITING SIGNAL..."
+                        android:text="@string/ui_awaiting_signal"
                         android:textAppearance="@style/TextAppearance.Cyber.Body"
                         android:textColor="@color/cyber_blue"
                         android:textSize="15sp"
@@ -340,7 +345,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="SYSTEM CONFIG"
+                            android:text="@string/ui_system_config"
                             android:textAppearance="@style/TextAppearance.Cyber.SectionHeader" />
                     </LinearLayout>
 
@@ -355,7 +360,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="EMULATOR RUNTIME"
+                    android:text="@string/ui_emulator_runtime"
                     android:textAppearance="@style/TextAppearance.Cyber.Muted" />
 
                 <Switch
@@ -376,7 +381,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="EMULATOR AUDIO ENGINE"
+                    android:text="@string/ui_emulator_audio_engine"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -389,7 +394,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Power saving (4 FPS idle; overrides smoother display)"
+                    android:text="@string/ui_power_saving_4_fps_idle_overrides_smoother_display"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -402,7 +407,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="Smoother display (30 FPS instead of 15)"
+                    android:text="@string/ui_smoother_display_30_fps_instead_of_15"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -415,7 +420,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="HAPTIC PULSE SYNTHESIS"
+                    android:text="@string/ui_haptic_pulse_synthesis"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -434,7 +439,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="PET ASSISTANT"
+                    android:text="@string/ui_pet_assistant"
                     android:textAppearance="@style/TextAppearance.Cyber.Muted" />
 
                 <Switch
@@ -442,7 +447,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="NEEDS ATTENTION NOTIFICATIONS"
+                    android:text="@string/ui_needs_attention_notifications"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -455,7 +460,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="SHOW CARE MISTAKE COUNT"
+                    android:text="@string/ui_show_care_mistake_count"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -467,7 +472,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Notifications use Android alerts. Care mistakes stay hidden unless you opt in."
+                    android:text="@string/ui_notifications_use_android_alerts_care_mistakes_stay_hid"
                     android:textAppearance="@style/TextAppearance.Cyber.Muted" />
 
                 <View
@@ -481,7 +486,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="DO NOT DISTURB"
+                    android:text="@string/ui_do_not_disturb"
                     android:textAppearance="@style/TextAppearance.Cyber.Muted" />
 
                 <Switch
@@ -489,7 +494,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="ENABLE QUIET HOURS"
+                    android:text="@string/ui_enable_quiet_hours"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -502,7 +507,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="FREEZE EMULATION DURING DND"
+                    android:text="@string/ui_freeze_emulation_during_dnd"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -522,7 +527,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:background="@drawable/cyber_button_bg"
-                        android:text="START 23:00"
+                        android:text="@string/ui_start_23_00"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button" />
 
@@ -536,7 +541,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:background="@drawable/cyber_button_bg"
-                        android:text="END 07:00"
+                        android:text="@string/ui_end_07_00"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button" />
                 </LinearLayout>
@@ -546,7 +551,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="AUTO RESUME AFTER QUIET HOURS"
+                    android:text="@string/ui_auto_resume_after_quiet_hours"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -559,7 +564,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
-                    android:text="SUPPRESS ALERTS DURING DND"
+                    android:text="@string/ui_suppress_alerts_during_dnd"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_main"
                     android:thumb="@drawable/cyber_switch_thumb"
@@ -572,7 +577,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="DND OFF"
+                    android:text="@string/ui_dnd_off"
                     android:textAppearance="@style/TextAppearance.Cyber.Muted" />
 
                 <!-- ─── MEMORY STATES ─── -->
@@ -628,7 +633,7 @@
                         android:paddingEnd="66dp"
                         android:gravity="center"
                         android:background="@android:color/transparent"
-                        android:text="MEMORY STATES AND MACROS"
+                        android:text="@string/ui_memory_states_and_macros"
                         android:textColor="@color/cyber_blue"
                         android:textSize="15sp"
                         android:textAppearance="@style/TextAppearance.Cyber.Button" />
@@ -659,9 +664,10 @@
                         <Button
                             android:id="@+id/btn_save_auto"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="FORCE AUTOSAVE"
+                            android:text="@string/ui_force_autosave"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -670,9 +676,10 @@
                         <Button
                             android:id="@+id/btn_load_auto"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="LOAD AUTOSAVE"
+                            android:text="@string/ui_load_autosave"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -703,7 +710,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="MANUAL ARCHIVES"
+                                android:text="@string/ui_manual_archives"
                                 android:textAppearance="@style/TextAppearance.Cyber.Muted"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.1" />
@@ -726,9 +733,10 @@
                         <Button
                             android:id="@+id/btn_restart"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="Restart"
+                            android:text="@string/ui_restart"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -737,7 +745,8 @@
                         <Button
                             android:id="@+id/btn_full_reset"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:text="@string/reset_pet"
                             android:textColor="@color/cyber_blue"
@@ -770,7 +779,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="MACRO INPUTS"
+                                android:text="@string/ui_macro_inputs"
                                 android:textAppearance="@style/TextAppearance.Cyber.Muted"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.1" />
@@ -787,7 +796,8 @@
                         <Button
                             android:id="@+id/btn_combo_ab"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:text="A + B"
                             android:textColor="@color/cyber_blue"
@@ -798,7 +808,8 @@
                         <Button
                             android:id="@+id/btn_combo_ac"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:text="A + C"
                             android:textColor="@color/cyber_blue"
@@ -810,7 +821,8 @@
                         <Button
                             android:id="@+id/btn_combo_bc"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:text="B + C"
                             android:textColor="@color/cyber_blue"
@@ -875,7 +887,7 @@
                         android:paddingEnd="66dp"
                         android:gravity="center"
                         android:background="@android:color/transparent"
-                        android:text="MULTIPLAYER BATTLE SUITE"
+                        android:text="@string/ui_multiplayer_battle_suite"
                         android:textColor="@color/cyber_blue"
                         android:textSize="15sp"
                         android:textAppearance="@style/TextAppearance.Cyber.Button" />
@@ -913,7 +925,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="TAMER IDENTITY"
+                                android:text="@string/ui_tamer_identity"
                                 android:textAppearance="@style/TextAppearance.Cyber.Muted"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.1" />
@@ -924,7 +936,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:hint="TAMER_404"
+                            android:hint="@string/ui_tamer_404"
                             android:textColor="@color/cyber_yellow"
                             android:textColorHint="@color/text_muted"
                             android:backgroundTint="@color/border_tech"
@@ -957,7 +969,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="TRANSPORT PROTOCOL"
+                                android:text="@string/ui_transport_protocol"
                                 android:textAppearance="@style/TextAppearance.Cyber.Muted"
                                 android:textAllCaps="true"
                                 android:letterSpacing="0.1" />
@@ -974,7 +986,7 @@
                             android:id="@+id/rb_nearby"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Local Network Proxy"
+                            android:text="@string/ui_local_network_proxy"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_main" />
 
@@ -982,7 +994,7 @@
                             android:id="@+id/rb_internet"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Online Server Mode"
+                            android:text="@string/ui_online_server_mode"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_main" />
 
@@ -990,7 +1002,7 @@
                             android:id="@+id/rb_sim"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Local Simulation AI"
+                            android:text="@string/ui_local_simulation_ai"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_main" />
                     </RadioGroup>
@@ -1006,7 +1018,7 @@
                             android:id="@+id/rb_pure_echo"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Echo Vector (100% Tie)"
+                            android:text="@string/ui_echo_vector_100_tie"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_muted" />
 
@@ -1014,7 +1026,7 @@
                             android:id="@+id/rb_xor"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="XOR Entropy Checksum"
+                            android:text="@string/ui_xor_entropy_checksum"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_muted" />
 
@@ -1022,7 +1034,7 @@
                             android:id="@+id/rb_global"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Global State Parity"
+                            android:text="@string/ui_global_state_parity"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_muted" />
                     </RadioGroup>
@@ -1037,7 +1049,8 @@
                         <Button
                             android:id="@+id/btn_battle_host"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:autoSizeTextType="uniform"
                             android:autoSizeMinTextSize="8sp"
@@ -1046,7 +1059,7 @@
                             android:maxLines="1"
                             android:paddingStart="6dp"
                             android:paddingEnd="6dp"
-                            android:text="HOST"
+                            android:text="@string/ui_host"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1055,7 +1068,8 @@
                         <Button
                             android:id="@+id/btn_battle_join"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:autoSizeTextType="uniform"
                             android:autoSizeMinTextSize="8sp"
@@ -1064,7 +1078,7 @@
                             android:maxLines="1"
                             android:paddingStart="6dp"
                             android:paddingEnd="6dp"
-                            android:text="SCAN"
+                            android:text="@string/ui_scan"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1074,7 +1088,8 @@
                         <Button
                             android:id="@+id/btn_battle_stop"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:autoSizeTextType="uniform"
                             android:autoSizeMinTextSize="8sp"
@@ -1083,7 +1098,7 @@
                             android:maxLines="1"
                             android:paddingStart="6dp"
                             android:paddingEnd="6dp"
-                            android:text="STOP"
+                            android:text="@string/ui_stop_48"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1121,7 +1136,7 @@
                                 android:id="@+id/battlePeerName"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="NO ACTIVE LINK"
+                                android:text="@string/ui_no_active_link"
                                 android:textAppearance="@style/TextAppearance.Cyber.Body"
                                 android:letterSpacing="0.05" />
 
@@ -1138,7 +1153,7 @@
                             android:id="@+id/battleBadge"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="WAITING"
+                            android:text="@string/ui_waiting"
                             android:fontFamily="monospace"
                             android:textSize="11sp"
                             android:textColor="@color/cyber_yellow"
@@ -1206,7 +1221,7 @@
                         android:paddingEnd="66dp"
                         android:gravity="center"
                         android:background="@android:color/transparent"
-                        android:text="EMULATOR OPERATIONS MANUAL"
+                        android:text="@string/ui_emulator_operations_manual"
                         android:textColor="@color/cyber_blue"
                         android:textSize="15sp"
                         android:textAppearance="@style/TextAppearance.Cyber.Button" />
@@ -1217,8 +1232,9 @@
                 <Button
                     android:id="@+id/btn_toggle_advanced"
                     android:layout_width="match_parent"
-                    android:layout_height="52dp"
-                    android:text="ADVANCED DIAGNOSTICS"
+                    android:layout_height="wrap_content"
+                    android:minHeight="52dp"
+                    android:text="@string/ui_advanced_diagnostics"
                     android:fontFamily="monospace"
                     android:textColor="@color/text_muted"
                     android:textSize="12sp"
@@ -1239,7 +1255,7 @@
                         android:id="@+id/clock_sync_info"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Emulation runs in real time. Set the classic Digimon clock below; the Glyph clock overlay is separate."
+                        android:text="@string/ui_emulation_runs_in_real_time_set_the_classic_digimon_clo"
                         android:fontFamily="monospace"
                         android:textColor="@color/cyber_blue"
                         android:textSize="12sp" />
@@ -1247,8 +1263,9 @@
                     <Button
                         android:id="@+id/btn_sync_firmware_clock"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="SET DIGIMON CLOCK TO PHONE TIME"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/ui_set_digimon_clock_to_phone_time"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -1257,8 +1274,9 @@
                     <Button
                         android:id="@+id/btn_set_firmware_clock"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="CHOOSE DIGIMON CLOCK TIME"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/ui_choose_digimon_clock_time"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -1274,8 +1292,9 @@
                     <Button
                         android:id="@+id/btn_share_debug"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="EXPORT TELEMETRY"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/ui_export_telemetry"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -1284,8 +1303,9 @@
                     <Button
                         android:id="@+id/btn_export_states"
                         android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:text="EXPORT SAVE STATES"
+                        android:layout_height="wrap_content"
+                        android:minHeight="48dp"
+                        android:text="@string/ui_export_save_states"
                         android:textColor="@color/cyber_blue"
                         android:textAppearance="@style/TextAppearance.Cyber.Button"
                         android:background="@drawable/cyber_button_bg"
@@ -1300,9 +1320,10 @@
                         <Button
                             android:id="@+id/btn_ram_profile"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="WATCH CORE"
+                            android:text="@string/ui_watch_core"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1311,9 +1332,10 @@
                         <Button
                             android:id="@+id/btn_ram_baseline"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="MARK BASELINE"
+                            android:text="@string/ui_mark_baseline"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1329,9 +1351,10 @@
                         <Button
                             android:id="@+id/btn_ram_clear_baseline"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="CLEAR BASELINE"
+                            android:text="@string/ui_clear_baseline"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1340,9 +1363,10 @@
                         <Button
                             android:id="@+id/btn_export_raw_snapshot"
                             android:layout_width="0dp"
-                            android:layout_height="48dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
-                            android:text="EXPORT RAW SNAPSHOT"
+                            android:text="@string/ui_export_raw_snapshot"
                             android:textColor="@color/cyber_blue"
                             android:textAppearance="@style/TextAppearance.Cyber.Button"
                             android:background="@drawable/cyber_button_bg"
@@ -1356,7 +1380,7 @@
                         android:layout_marginTop="14dp"
                         android:background="@drawable/cyber_panel_bg"
                         android:padding="16dp"
-                        android:text="RAW RAM WATCH"
+                        android:text="@string/ui_raw_ram_watch"
                         android:fontFamily="monospace"
                         android:textColor="@color/cyber_blue"
                         android:textSize="12sp"
@@ -1373,7 +1397,7 @@
                             android:id="@+id/switch_debug_telemetry"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="ENABLE DEBUG PIN OUT"
+                            android:text="@string/ui_enable_debug_pin_out"
                             android:fontFamily="monospace"
                             android:textColor="@color/text_main"
                             android:thumb="@drawable/cyber_switch_thumb"

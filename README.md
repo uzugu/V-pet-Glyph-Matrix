@@ -194,6 +194,19 @@ adb shell dumpsys batterystats com.digimon.glyph
 - Android SDK / Gradle
 - Nothing Glyph Matrix SDK 2.0 (download with `python3 tools/fetch_glyph_sdk.py`)
 
+## Language / 言語
+
+The Android interface supports English and Japanese and follows the device language.
+On Android 13 and newer, Japanese can also be selected in Android's per-app language
+settings. The Even companion follows its host browser's primary language.
+Localization changes the interface and guides; the loaded ROM keeps its original language.
+
+日本語の端末では、画面や育成・進化ガイドが日本語で表示されます。
+Android 13以降では、Androidのアプリごとの言語設定でも日本語を選択できます。
+ROM内の言語は変更されません。
+
+Scope, checks and device review: [Japanese localization](docs/localization/japanese.md).
+
 ## Native OWL widget (preview)
 
 Install the matching Omalauncher Hermes OWL preview and this app's OWL preview,

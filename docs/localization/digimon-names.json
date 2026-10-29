@@ -1,0 +1,342 @@
+{
+  "verifiedOn": "2026-10-29",
+  "authority": "Bandai Digimon Encyclopedia (Japanese)",
+  "species": [
+    {
+      "version": "V1",
+      "englishId": "Botamon",
+      "japanese": "ボタモン",
+      "resource": "species_botamon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=botamon",
+      "sourceHeading": "ボタモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Koromon",
+      "japanese": "コロモン",
+      "resource": "species_koromon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=koromon",
+      "sourceHeading": "コロモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Agumon",
+      "japanese": "アグモン",
+      "resource": "species_agumon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=agumon",
+      "sourceHeading": "アグモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Betamon",
+      "japanese": "ベタモン",
+      "resource": "species_betamon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=betamon",
+      "sourceHeading": "ベタモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Greymon",
+      "japanese": "グレイモン",
+      "resource": "species_greymon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=greymon-first",
+      "sourceHeading": "グレイモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Tyranomon",
+      "japanese": "ティラノモン",
+      "resource": "species_tyranomon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=tyranomon",
+      "sourceHeading": "ティラノモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Devimon",
+      "japanese": "デビモン",
+      "resource": "species_devimon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=devimon",
+      "sourceHeading": "デビモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Meramon",
+      "japanese": "メラモン",
+      "resource": "species_meramon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=meramon",
+      "sourceHeading": "メラモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Airdramon",
+      "japanese": "エアドラモン",
+      "resource": "species_airdramon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=airdramon",
+      "sourceHeading": "エアドラモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Seadramon",
+      "japanese": "シードラモン",
+      "resource": "species_seadramon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=seadramon",
+      "sourceHeading": "シードラモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Numemon",
+      "japanese": "ヌメモン",
+      "resource": "species_numemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=numemon",
+      "sourceHeading": "ヌメモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "MetalGreymon",
+      "japanese": "メタルグレイモン",
+      "resource": "species_metalgreymon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=metalgreymon-web",
+      "sourceHeading": "メタルグレイモン（ウィルス種）"
+    },
+    {
+      "version": "V1",
+      "englishId": "Mamemon",
+      "japanese": "マメモン",
+      "resource": "species_mamemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=mamemon",
+      "sourceHeading": "マメモン"
+    },
+    {
+      "version": "V1",
+      "englishId": "Monzaemon",
+      "japanese": "もんざえモン",
+      "resource": "species_monzaemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=monzaemon",
+      "sourceHeading": "もんざえモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Punimon",
+      "japanese": "プニモン",
+      "resource": "species_punimon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=punimon",
+      "sourceHeading": "プニモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Tsunomon",
+      "japanese": "ツノモン",
+      "resource": "species_tsunomon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=tunomon",
+      "sourceHeading": "ツノモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Gabumon",
+      "japanese": "ガブモン",
+      "resource": "species_gabumon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=gabumon",
+      "sourceHeading": "ガブモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Elecmon",
+      "japanese": "エレキモン",
+      "resource": "species_elecmon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=elecmon",
+      "sourceHeading": "エレキモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Kabuterimon",
+      "japanese": "カブテリモン",
+      "resource": "species_kabuterimon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=kabuterimon",
+      "sourceHeading": "カブテリモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Garurumon",
+      "japanese": "ガルルモン",
+      "resource": "species_garurumon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=garurumon",
+      "sourceHeading": "ガルルモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Angemon",
+      "japanese": "エンジェモン",
+      "resource": "species_angemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=angemon",
+      "sourceHeading": "エンジェモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Frigimon",
+      "japanese": "ユキダルモン",
+      "resource": "species_frigimon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=yukidarumon",
+      "sourceHeading": "ユキダルモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Birdramon",
+      "japanese": "バードラモン",
+      "resource": "species_birdramon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=birdramon",
+      "sourceHeading": "バードラモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Whamon",
+      "japanese": "ホエーモン",
+      "resource": "species_whamon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=whamon",
+      "sourceHeading": "ホエーモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Vegiemon",
+      "japanese": "ベジーモン",
+      "resource": "species_vegiemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=vegimon",
+      "sourceHeading": "ベジーモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "SkullGreymon",
+      "japanese": "スカルグレイモン",
+      "resource": "species_skullgreymon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=skullgreymon",
+      "sourceHeading": "スカルグレイモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "MetalMamemon",
+      "japanese": "メタルマメモン",
+      "resource": "species_metalmamemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=metalmamemon",
+      "sourceHeading": "メタルマメモン"
+    },
+    {
+      "version": "V2",
+      "englishId": "Vademon",
+      "japanese": "ベーダモン",
+      "resource": "species_vademon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=vademon",
+      "sourceHeading": "ベーダモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Poyomon",
+      "japanese": "ポヨモン",
+      "resource": "species_poyomon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=poyomon",
+      "sourceHeading": "ポヨモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Tokomon",
+      "japanese": "トコモン",
+      "resource": "species_tokomon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=tokomon",
+      "sourceHeading": "トコモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Patamon",
+      "japanese": "パタモン",
+      "resource": "species_patamon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=patamon",
+      "sourceHeading": "パタモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Kunemon",
+      "japanese": "クネモン",
+      "resource": "species_kunemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=kunemon",
+      "sourceHeading": "クネモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Unimon",
+      "japanese": "ユニモン",
+      "resource": "species_unimon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=yunimon",
+      "sourceHeading": "ユニモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Centarumon",
+      "japanese": "ケンタルモン",
+      "resource": "species_centarumon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=centalmon",
+      "sourceHeading": "ケンタルモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Ogremon",
+      "japanese": "オーガモン",
+      "resource": "species_ogremon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=orgemon",
+      "sourceHeading": "オーガモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Bakemon",
+      "japanese": "バケモン",
+      "resource": "species_bakemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=bakemon",
+      "sourceHeading": "バケモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Shellmon",
+      "japanese": "シェルモン",
+      "resource": "species_shellmon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=shellmon",
+      "sourceHeading": "シェルモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Drimogemon",
+      "japanese": "ドリモゲモン",
+      "resource": "species_drimogemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=drimogemon",
+      "sourceHeading": "ドリモゲモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Scumon",
+      "japanese": "スカモン",
+      "resource": "species_scumon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=scumon",
+      "sourceHeading": "スカモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Andromon",
+      "japanese": "アンドロモン",
+      "resource": "species_andromon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=andromon",
+      "sourceHeading": "アンドロモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Giromon",
+      "japanese": "ギロモン",
+      "resource": "species_giromon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=giromon",
+      "sourceHeading": "ギロモン"
+    },
+    {
+      "version": "V3",
+      "englishId": "Etemon",
+      "japanese": "エテモン",
+      "resource": "species_etemon",
+      "source": "https://digimon.net/reference/detail.php?directory_name=etemon",
+      "sourceHeading": "エテモン"
+    }
+  ]
+}

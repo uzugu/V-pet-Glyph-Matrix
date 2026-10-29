@@ -195,3 +195,23 @@ footer {
     flex-direction: column;
   }
 }
+
+/* Use the host's Japanese font and natural line metrics for CJK text. */
+:root:lang(ja) {
+  font-family: "Noto Sans JP", "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+:lang(ja) h1 {
+  font-family: inherit;
+  font-size: clamp(32px, 7vw, 56px);
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+:lang(ja) .eyebrow,
+:lang(ja) footer,
+:lang(ja) .readout {
+  letter-spacing: 0;
+}
+:lang(ja) button,
+:lang(ja) input {
+  font-family: inherit;
+}

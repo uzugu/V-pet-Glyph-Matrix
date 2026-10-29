@@ -1,8 +1,10 @@
+import { t, localizePage } from "./i18n";
 import "./style.css";
 import { Display } from "./display";
 import { frame, imagePixels, gesture, type Frame } from "./protocol";
 const $ = <T extends HTMLElement>(id: string) =>
   document.getElementById(id) as T;
+localizePage();
 const display = new Display(),
   canvas = $<HTMLCanvasElement>("screen"),
   ctx = canvas.getContext("2d")!;
@@ -20,7 +22,7 @@ const error = (message: string) => {
   $("error").textContent = message;
 };
 const status = (message: string) => {
-  $("status").textContent = message;
+  $("status").textContent = t(message);
 };
 function paint(pixels: Uint8Array) {
   const image = ctx.createImageData(200, 100);
@@ -53,8 +55,8 @@ function keys() {
         ["▲", "up"],
         ["▶", "right"],
         ["▼", "down"],
-        ["Step", "step"],
-        ["Card", "card"],
+        [t("Step"), "step"],
+        [t("Card"), "card"],
       ]
     : [
         ["A", "a"],
@@ -68,8 +70,8 @@ function keys() {
     panel.append(button);
   }
   $("gestures").textContent = current?.dpower
-    ? "Press → Up · swipe → Left / Right · double press → Down"
-    : "Press → A · swipe up → B · swipe down → C · double press → B";
+    ? t("Press → Up · swipe → Left / Right · double press → Down")
+    : t("Press → A · swipe up → B · swipe down → C · double press → B");
 }
 function press(button: string) {
   const captured = current,
@@ -96,7 +98,7 @@ function press(button: string) {
           inputEpoch: captured.inputEpoch,
         }),
       });
-      if (!res.ok) throw new Error("Input rejected; reconnect before playing");
+      if (!res.ok) throw new Error(t("Input rejected; reconnect before playing"));
     })
     .catch((e) => {
       if (epoch === generation && revision === inputRevision) {
@@ -121,7 +123,7 @@ async function poll(epoch: number) {
   while (running && generation === epoch) {
     try {
       const response = await request("frame");
-      if (!response.ok) throw new Error("Phone returned " + response.status);
+      if (!response.ok) throw new Error(t("Phone returned ") + response.status);
       const value = frame(await response.json());
       if (generation !== epoch) return;
       const changed = JSON.stringify(value);
@@ -176,7 +178,7 @@ $("connect").onclick = () => {
   disconnect();
   key = $<HTMLInputElement>("token").value.trim();
   if (!/^[a-f0-9]{32}$/.test(key)) {
-    error("Paste the 32-character key from the phone app");
+    error(t("Paste the 32-character key from the phone app"));
     return;
   }
   running = true;
@@ -198,7 +200,7 @@ $("glasses").onclick = async () => {
       },
     );
     glassesLast = "";
-    error(display.active ? "" : "Even bridge unavailable");
+    error(display.active ? "" : t("Even bridge unavailable"));
   } catch (e) {
     error(String(e));
   }

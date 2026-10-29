@@ -24,15 +24,17 @@ data class EvolutionDexEntry(
 
 object EvolutionDexRepository {
 
-    private var cached: Map<String, List<EvolutionDexEntry>>? = null
+    private val cached = mutableMapOf<String, Map<String, List<EvolutionDexEntry>>>()
 
     fun getVersionEntries(context: Context, version: String): List<EvolutionDexEntry> {
-        val data = cached ?: load(context).also { cached = it }
+        val asset = if (com.digimon.glyph.LocalizedText.isJapanese(context))
+            "evolution_dex.json" else "evolution_dex_en.json"
+        val data = synchronized(cached) { cached.getOrPut(asset) { load(context, asset) } }
         return data[version.uppercase()] ?: emptyList()
     }
 
-    private fun load(context: Context): Map<String, List<EvolutionDexEntry>> {
-        val json = context.assets.open("evolution_dex_en.json").bufferedReader().use { it.readText() }
+    private fun load(context: Context, asset: String): Map<String, List<EvolutionDexEntry>> {
+        val json = context.assets.open(asset).bufferedReader().use { it.readText() }
         val type = object : TypeToken<Map<String, List<EvolutionDexEntry>>>() {}.type
         return Gson().fromJson(json, type)
     }
