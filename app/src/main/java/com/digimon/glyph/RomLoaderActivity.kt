@@ -287,6 +287,9 @@ class RomLoaderActivity : AppCompatActivity() {
         val statRomCard = findViewById<android.widget.FrameLayout>(R.id.stat_rom_card)
         val statEmuCard = findViewById<android.widget.FrameLayout>(R.id.stat_emu_card)
         val btnToggleAdvanced = findViewById<Button>(R.id.btn_toggle_advanced)
+        val languageButton = findViewById<Button>(R.id.btn_language)
+        languageButton.text = getString(R.string.language_current, LanguageSettings.currentLabel(this))
+        languageButton.setOnClickListener { LanguageSettings.showPicker(this) }
         val layoutAdvanced = findViewById<LinearLayout>(R.id.layout_advanced)
         val clockSyncInfo = findViewById<TextView>(R.id.clock_sync_info)
         findViewById<Button>(R.id.btn_sync_firmware_clock).setOnClickListener {
@@ -773,6 +776,7 @@ class RomLoaderActivity : AppCompatActivity() {
             EmulatorStatus.Glyph.DISCONNECTED -> getString(R.string.glyph_disconnected)
             EmulatorStatus.Glyph.OUTPUT_ERROR -> getString(R.string.glyph_output_error)
         }
+        findViewById<Button>(R.id.btn_language).isEnabled = !status.busy
         findViewById<Button>(R.id.btn_pick_rom).isEnabled = !status.busy
         findViewById<Button>(R.id.btn_start_emu).isEnabled = status.name != null && !status.busy
         findViewById<Button>(R.id.btn_stop_emu).isEnabled = status.run != EmulatorStatus.Run.STOPPED && !status.busy

@@ -483,4 +483,7 @@
     <string name="species_death">Death</string>
     <string name="stage_dead">Dead</string>
     <string name="import_scanning">Scanning ROM…</string>
+    <string name="language_title">Language / 言語</string>
+    <string name="language_follow_system">Follow system</string>
+    <string name="language_current">Language / 言語: %1$s</string>
 </resources>

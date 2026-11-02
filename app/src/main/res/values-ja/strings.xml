@@ -483,4 +483,7 @@
     <string name="species_death">死亡</string>
     <string name="stage_dead">死亡</string>
     <string name="import_scanning">ROMを確認しています…</string>
+    <string name="language_title">言語 / Language</string>
+    <string name="language_follow_system">システム設定に従う</string>
+    <string name="language_current">言語 / Language：%1$s</string>
 </resources>

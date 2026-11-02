@@ -379,7 +379,7 @@ class DigimonGlyphToyService : Service() {
             ACTION_STOP -> {
                 Log.d(TAG, "Stop requested")
                 if (emulator != null && !saveState(sync = true, reason = "stop_action")) {
-                    EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, getString(R.string.l10n_stop_cancelled_could_not_save_the_pet))
+                    EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, localizedString(R.string.l10n_stop_cancelled_could_not_save_the_pet))
                     return START_NOT_STICKY
                 }
                 stopEmulator()
@@ -397,7 +397,7 @@ class DigimonGlyphToyService : Service() {
         }
         } catch (failure: Exception) {
             Log.e(TAG, "Service action failed", failure)
-            EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, getString(R.string.l10n_action_failed_failure_message, failure.message))
+            EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, localizedString(R.string.l10n_action_failed_failure_message, failure.message))
         }
         return START_NOT_STICKY
     }
@@ -429,7 +429,7 @@ class DigimonGlyphToyService : Service() {
             writeRomAtomically(bytes)
             nameFile.writeText(name)
             ensureWidgetRuntimeStarted(prepared)
-            EmulatorStatus.importResult(request, EmulatorStatus.Import.COMPLETE, getString(R.string.l10n_loaded_name, name))
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.COMPLETE, localizedString(R.string.l10n_loaded_name, name))
         } catch (e: Exception) {
             Log.e(TAG, "ROM switch failed", e)
             if (stopped) try {
@@ -439,9 +439,9 @@ class DigimonGlyphToyService : Service() {
                 EmulatorStatus.device(oldName, oldBytes?.let { sha256(it) })
                 if (wasRunning) ensureWidgetRuntimeStarted()
             } catch (rollback: Exception) {
-                EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, getString(R.string.l10n_could_not_restart_previous_pet_rollback_message, rollback.message))
+                EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, localizedString(R.string.l10n_could_not_restart_previous_pet_rollback_message, rollback.message))
             }
-            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, getString(R.string.l10n_import_failed_e_message, e.message))
+            EmulatorStatus.importResult(request, EmulatorStatus.Import.FAILED, localizedString(R.string.l10n_import_failed_e_message, e.message))
         } finally { staged.delete() }
     }
 
@@ -505,7 +505,7 @@ class DigimonGlyphToyService : Service() {
         }
         val shouldResume = emulatorLoop != null
         if (shouldResume && !saveState(sync = true, reason = "dnd_start_$trigger")) {
-            EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, getString(R.string.l10n_quiet_hours_freeze_cancelled_save_failed))
+            EmulatorStatus.runtime(EmulatorStatus.Run.RUNNING, localizedString(R.string.l10n_quiet_hours_freeze_cancelled_save_failed))
             return
         }
         DigimonDndSettings.setFrozenState(
@@ -750,17 +750,17 @@ class DigimonGlyphToyService : Service() {
         val expected = intent.getStringExtra("rom_hash")
         val state = EmulatorStatus.snapshot()
         if (emulator == null || state.busy || expected != romHash || state.run == EmulatorStatus.Run.FROZEN) {
-            android.widget.Toast.makeText(this, getString(R.string.l10n_start_the_matching_pet_outside_quiet_hours_first), android.widget.Toast.LENGTH_LONG).show(); return
+            android.widget.Toast.makeText(this, localizedString(R.string.l10n_start_the_matching_pet_outside_quiet_hours_first), android.widget.Toast.LENGTH_LONG).show(); return
         }
         if (battleConnected) {
-            android.widget.Toast.makeText(this, getString(R.string.l10n_stop_the_battle_link_before_exchanging_saves), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this, localizedString(R.string.l10n_stop_the_battle_link_before_exchanging_saves), android.widget.Toast.LENGTH_LONG).show()
             return
         }
         val folder = com.digimon.glyph.sync.ExchangeFolder(this)
         val profile = if (state.isDPower) "DPowerEU101" else state.name ?: return
         val importing = intent.action == "com.digimon.glyph.EXCHANGE_IMPORT"
         if (inputSession.isBlocked()) {
-            android.widget.Toast.makeText(this, getString(R.string.l10n_a_save_import_is_already_in_progress), android.widget.Toast.LENGTH_LONG).show()
+            android.widget.Toast.makeText(this, localizedString(R.string.l10n_a_save_import_is_already_in_progress), android.widget.Toast.LENGTH_LONG).show()
             return
         }
         val replacement = if (importing) inputSession.beginReplacement() ?: return else null
@@ -768,8 +768,8 @@ class DigimonGlyphToyService : Service() {
         // The loop serialises capture/restore with CPU execution. No live state enters Syncthing.
         val queued = runOnEmulatorAsync { core ->
             try {
-                check(romHash == expected && !EmulatorStatus.snapshot().busy && EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN) { getString(R.string.l10n_rom_changed_during_handoff) }
-                check(!battleConnected) { getString(R.string.l10n_stop_the_battle_link_before_exchanging_saves) }
+                check(romHash == expected && !EmulatorStatus.snapshot().busy && EmulatorStatus.snapshot().run != EmulatorStatus.Run.FROZEN) { localizedString(R.string.l10n_rom_changed_during_handoff) }
+                check(!battleConnected) { localizedString(R.string.l10n_stop_the_battle_link_before_exchanging_saves) }
                 if (importing) releaseHandoffButtons(core)
                 val completedRecord: com.digimon.glyph.sync.PortableSave.Record
                 if (!importing) {
@@ -777,12 +777,12 @@ class DigimonGlyphToyService : Service() {
                     folder.publish(record)
                     completedRecord = record
                 } else {
-                    val record = com.digimon.glyph.sync.PortableSave.decode(folder.read(intent.data ?: error(getString(R.string.l10n_missing_save))))
+                    val record = com.digimon.glyph.sync.PortableSave.decode(folder.read(intent.data ?: error(localizedString(R.string.l10n_missing_save))))
                     val incoming = com.digimon.glyph.sync.PortableSave.state(record, core, expected!!, profile)
                     val backup = com.digimon.glyph.sync.PortableSave.create(core, expected, profile, folder.origin, folder.parent(expected))
                     com.digimon.glyph.sync.LocalSnapshotBackups.write(java.io.File(filesDir, "handoff-backups"), backup)
-                    check(!battleConnected) { getString(R.string.l10n_stop_the_battle_link_before_exchanging_saves) }
-                    check(emulator === core && romHash == expected && !EmulatorStatus.snapshot().busy) { getString(R.string.l10n_rom_changed_during_handoff) }
+                    check(!battleConnected) { localizedString(R.string.l10n_stop_the_battle_link_before_exchanging_saves) }
+                    check(emulator === core && romHash == expected && !EmulatorStatus.snapshot().busy) { localizedString(R.string.l10n_rom_changed_during_handoff) }
                     val previous = core.getState()
                     try {
                         core.restoreState(incoming)
@@ -798,10 +798,10 @@ class DigimonGlyphToyService : Service() {
                 // History is device-local bookkeeping. Failure cannot undo a published
                 // snapshot or roll back an already committed emulator save.
                 val historyFailure = runCatching { folder.mark(completedRecord) }.exceptionOrNull()
-                val message = (if (importing) getString(R.string.l10n_synced_save_resumed_previous_state_backed_up) else getString(R.string.l10n_save_published_to_exchange_folder)) +
-                    (if (historyFailure != null) getString(R.string.l10n_handoff_history_could_not_be_saved_the_next_snapshot_may_appear_a) else "")
+                val message = (if (importing) localizedString(R.string.l10n_synced_save_resumed_previous_state_backed_up) else localizedString(R.string.l10n_save_published_to_exchange_folder)) +
+                    (if (historyFailure != null) localizedString(R.string.l10n_handoff_history_could_not_be_saved_the_next_snapshot_may_appear_a) else "")
                 mainHandler.post { android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_LONG).show(); pushStaticFrame() }
-            } catch (e: Exception) { mainHandler.post { android.widget.Toast.makeText(this, getString(R.string.l10n_save_exchange_failed_e_message, e.message), android.widget.Toast.LENGTH_LONG).show() } }
+            } catch (e: Exception) { mainHandler.post { android.widget.Toast.makeText(this, localizedString(R.string.l10n_save_exchange_failed_e_message, e.message), android.widget.Toast.LENGTH_LONG).show() } }
             finally {
                 if (replacement != null) mainHandler.post {
                     inputSession.finishReplacement(replacement) { cancelPendingLocalInputs() }
@@ -987,7 +987,7 @@ class DigimonGlyphToyService : Service() {
         stateManager = StateManager(this)
         val romData = loadRom()
         if (romData == null) {
-            EmulatorStatus.runtime(EmulatorStatus.Run.STOPPED, getString(R.string.l10n_load_a_rom_to_start))
+            EmulatorStatus.runtime(EmulatorStatus.Run.STOPPED, localizedString(R.string.l10n_load_a_rom_to_start))
             Log.e(TAG, "No ROM loaded, cannot start emulator")
             return
         }
@@ -1243,7 +1243,7 @@ class DigimonGlyphToyService : Service() {
             mainHandler.post {
                 if (emulatorLoop === loop) {
                     stopEmulator()
-                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, getString(R.string.l10n_emulator_stopped_failure_message, failure.message))
+                    EmulatorStatus.runtime(EmulatorStatus.Run.ERROR, localizedString(R.string.l10n_emulator_stopped_failure_message, failure.message))
                 }
             }
         }
@@ -1377,11 +1377,11 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun setFirmwareClock(secondsOfDay: Int?): String {
-        if (battleConnected) return getString(R.string.l10n_stop_the_battle_link_before_changing_the_clock)
-        val core = emulator as? E0C6200 ?: return getString(R.string.l10n_clock_override_supports_verified_classic_digimon_roms_only)
-        if (!core.supportsFirmwareClockOverride()) return getString(R.string.l10n_unsupported_rom_clock_was_not_changed)
+        if (battleConnected) return localizedString(R.string.l10n_stop_the_battle_link_before_changing_the_clock)
+        val core = emulator as? E0C6200 ?: return localizedString(R.string.l10n_clock_override_supports_verified_classic_digimon_roms_only)
+        if (!core.supportsFirmwareClockOverride()) return localizedString(R.string.l10n_unsupported_rom_clock_was_not_changed)
         val requested = secondsOfDay?.let { ClassicFirmwareClock.fromSecondsOfDay(it) }
-        val loop = emulatorLoop ?: return getString(R.string.l10n_start_the_emulator_before_changing_the_clock)
+        val loop = emulatorLoop ?: return localizedString(R.string.l10n_start_the_emulator_before_changing_the_clock)
         val updated = loop.executeSyncWhen(
             timeoutMs = 1200L,
             ready = { it === core && core.isFirmwareClockBoundary() },
@@ -1392,10 +1392,10 @@ class DigimonGlyphToyService : Service() {
             }
             core.overrideFirmwareClock(time)
             time
-        } ?: return getString(R.string.l10n_clock_unchanged_finish_clock_setup_return_the_pet_to_idle_and_run)
+        } ?: return localizedString(R.string.l10n_clock_unchanged_finish_clock_setup_return_the_pet_to_idle_and_run)
         val saved = saveState(sync = true, reason = "firmware_clock_override")
-        return getString(R.string.l10n_digimon_clock_set_to_02d_02d_02d_s, updated.hour, updated.minute,
-            updated.second, if (saved) getString(R.string.l10n_saved) else getString(R.string.l10n_autosave_failed))
+        return localizedString(R.string.l10n_digimon_clock_set_to_02d_02d_02d_s, updated.hour, updated.minute,
+            updated.second, if (saved) localizedString(R.string.l10n_saved) else localizedString(R.string.l10n_autosave_failed))
     }
 
     private fun saveState(sync: Boolean = false, reason: String = "unspecified"): Boolean {
@@ -1510,51 +1510,51 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun saveAutosaveNow(): String {
-        val name = romName ?: return getString(R.string.l10n_save_failed_rom_missing)
+        val name = romName ?: return localizedString(R.string.l10n_save_failed_rom_missing)
         val result = runOnEmulatorSync { core ->
             val pc = core.getState()["PC"] as? Int
             val seq = stateManager.saveAutosave(core, name, romHash, sync = true)
             Pair(seq, pc)
-        } ?: return getString(R.string.l10n_save_failed_emulator_not_running)
+        } ?: return localizedString(R.string.l10n_save_failed_emulator_not_running)
         val seq = result.first
         val pc = result.second
         Log.d(TAG, "Manual autosave seq=$seq pc=$pc")
-        return getString(R.string.l10n_autosave_saved)
+        return localizedString(R.string.l10n_autosave_saved)
     }
 
     private fun loadAutosaveNow(): String {
         val ok = runOnEmulatorSync { core ->
             stateManager.restoreAutosave(core, romName, romHash)
-        } ?: return getString(R.string.l10n_load_failed_emulator_not_running)
-        return if (ok) getString(R.string.l10n_autosave_loaded) else getString(R.string.l10n_load_failed_no_compatible_autosave)
+        } ?: return localizedString(R.string.l10n_load_failed_emulator_not_running)
+        return if (ok) localizedString(R.string.l10n_autosave_loaded) else localizedString(R.string.l10n_load_failed_no_compatible_autosave)
     }
 
     private fun saveSlot(slot: Int): String {
-        val name = romName ?: return getString(R.string.l10n_slot_slot_save_failed_rom_missing, slot)
+        val name = romName ?: return localizedString(R.string.l10n_slot_slot_save_failed_rom_missing, slot)
         val result = runOnEmulatorSync { core ->
             val pc = core.getState()["PC"] as? Int
             val seq = stateManager.saveSlot(slot, core, name, romHash, sync = true)
             Pair(seq, pc)
-        } ?: return getString(R.string.l10n_slot_slot_save_failed_emulator_not_running, slot)
+        } ?: return localizedString(R.string.l10n_slot_slot_save_failed_emulator_not_running, slot)
         val seq = result.first
         val pc = result.second
         Log.d(TAG, "Manual slot save slot=$slot seq=$seq pc=$pc")
-        return getString(R.string.l10n_slot_slot_saved, slot)
+        return localizedString(R.string.l10n_slot_slot_saved, slot)
     }
 
     private fun loadSlot(slot: Int): String {
         val ok = runOnEmulatorSync { core ->
             stateManager.restoreSlot(slot, core, romName, romHash)
-        } ?: return getString(R.string.l10n_slot_slot_load_failed_emulator_not_running, slot)
-        return if (ok) getString(R.string.l10n_slot_slot_loaded, slot) else getString(R.string.l10n_slot_slot_load_failed_no_compatible_save, slot)
+        } ?: return localizedString(R.string.l10n_slot_slot_load_failed_emulator_not_running, slot)
+        return if (ok) localizedString(R.string.l10n_slot_slot_loaded, slot) else localizedString(R.string.l10n_slot_slot_load_failed_no_compatible_save, slot)
     }
 
     private fun restartEmulator(): String {
-        if (emulatorLoop == null) return getString(R.string.l10n_restart_skipped_emulator_not_running)
-        if (!saveState(sync = true, reason = "restart_command")) return getString(R.string.l10n_restart_cancelled_save_failed)
+        if (emulatorLoop == null) return localizedString(R.string.l10n_restart_skipped_emulator_not_running)
+        if (!saveState(sync = true, reason = "restart_command")) return localizedString(R.string.l10n_restart_cancelled_save_failed)
         stopEmulator()
         startEmulator()
-        return getString(R.string.l10n_emulator_restarted)
+        return localizedString(R.string.l10n_emulator_restarted)
     }
 
     private fun fullResetEmulator(): String {
@@ -1569,28 +1569,28 @@ class DigimonGlyphToyService : Service() {
                     core.restoreState(before)
                     throw failure
                 }
-            } ?: return getString(R.string.l10n_reset_failed_emulator_not_running)
+            } ?: return localizedString(R.string.l10n_reset_failed_emulator_not_running)
             Log.d(TAG, "Full reset autosave seq=$seq")
         } else {
             val ok = runOnEmulatorSync { core ->
                 core.resetCpu()
                 true
-            } ?: return getString(R.string.l10n_reset_failed_emulator_not_running)
-            if (!ok) return getString(R.string.l10n_reset_failed_emulator_not_running)
+            } ?: return localizedString(R.string.l10n_reset_failed_emulator_not_running)
+            if (!ok) return localizedString(R.string.l10n_reset_failed_emulator_not_running)
             stateManager.clearAutosave(romName, romHash)
         }
-        return getString(R.string.l10n_full_reset_complete)
+        return localizedString(R.string.l10n_full_reset_complete)
     }
 
     private fun pressCombo(combo: Int): String {
-        if (inputSession.isBlocked()) return getString(R.string.l10n_input_unavailable_during_save_import)
-        if (emulator?.supportsClassicLink != true) return getString(R.string.l10n_classic_button_combos_are_unavailable_for_this_device)
-        val input = inputController ?: return getString(R.string.l10n_combo_failed_input_not_running)
+        if (inputSession.isBlocked()) return localizedString(R.string.l10n_input_unavailable_during_save_import)
+        if (emulator?.supportsClassicLink != true) return localizedString(R.string.l10n_classic_button_combos_are_unavailable_for_this_device)
+        val input = inputController ?: return localizedString(R.string.l10n_combo_failed_input_not_running)
         val name = when (combo) {
             EmulatorCommandBus.COMBO_AB -> "A+B"
             EmulatorCommandBus.COMBO_AC -> "A+C"
             EmulatorCommandBus.COMBO_BC -> "B+C"
-            else -> return getString(R.string.l10n_combo_failed_unknown_combo)
+            else -> return localizedString(R.string.l10n_combo_failed_unknown_combo)
         }
         val ok = input.triggerComboTap(combo)
         return if (ok) "combo $name triggered" else "combo $name failed"
@@ -1606,7 +1606,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun startBattleHost(): String {
-        if (emulator?.supportsClassicLink != true) return getString(R.string.l10n_battle_unavailable_for_this_device)
+        if (emulator?.supportsClassicLink != true) return localizedString(R.string.l10n_battle_unavailable_for_this_device)
         BattleTransportSettings.init(this)
         refreshBattleTransportIfNeeded()
         val manager = ensureBattleTransport()
@@ -1615,7 +1615,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun startBattleJoin(): String {
-        if (emulator?.supportsClassicLink != true) return getString(R.string.l10n_battle_unavailable_for_this_device)
+        if (emulator?.supportsClassicLink != true) return localizedString(R.string.l10n_battle_unavailable_for_this_device)
         BattleTransportSettings.init(this)
         refreshBattleTransportIfNeeded()
         val manager = ensureBattleTransport()
@@ -1624,7 +1624,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun stopBattleLink(): String {
-        val manager = battleTransport ?: return getString(R.string.l10n_battle_link_stopped)
+        val manager = battleTransport ?: return localizedString(R.string.l10n_battle_link_stopped)
         battleConnected = false
         battleConnectedAtMs = 0L
         battleAssistActiveButtons = 0
@@ -1654,7 +1654,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun sendBattlePing(): String {
-        val manager = battleTransport ?: return getString(R.string.l10n_battle_ping_failed_not_connected)
+        val manager = battleTransport ?: return localizedString(R.string.l10n_battle_ping_failed_not_connected)
         return manager.sendPing()
     }
 
@@ -1759,6 +1759,13 @@ class DigimonGlyphToyService : Service() {
         }
     }
 
+    // Resolve per-app locales for service messages too on Android 12 and earlier.
+    // Called only for user-facing events, never from the emulation/render loops.
+    private fun localizedString(@androidx.annotation.StringRes id: Int, vararg args: Any?): String {
+        val context = ContextCompat.getContextForLanguage(this)
+        return if (args.isEmpty()) context.getString(id) else context.getString(id, *args)
+    }
+
     private fun tryStartForeground() {
         ensureNotificationChannels()
         val openIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
@@ -1776,11 +1783,11 @@ class DigimonGlyphToyService : Service() {
             Notification.Builder(this)
         }
             .setSmallIcon(R.drawable.ic_digimon_preview)
-            .setContentTitle(getString(R.string.text_digimon_emulator))
-            .setContentText(getString(R.string.text_virtual_pet_is_running))
+            .setContentTitle(localizedString(R.string.text_digimon_emulator))
+            .setContentText(localizedString(R.string.text_virtual_pet_is_running))
             .setContentIntent(openIntent)
             .addAction(Notification.Action.Builder(
-                null, getString(R.string.text_stop), stopIntent
+                null, localizedString(R.string.text_stop), stopIntent
             ).build())
             .setOngoing(true)
             .build()
@@ -1808,9 +1815,9 @@ class DigimonGlyphToyService : Service() {
         val openIntent = packageManager.getLaunchIntentForPackage(packageName)?.let {
             PendingIntent.getActivity(this, 2, it, PendingIntent.FLAG_IMMUTABLE)
         }
-        val digimonName = state?.info?.name?.let { LocalizedText.display(this, it) } ?: getString(R.string.text_your_digimon)
-        val timerSuffix = state?.careTimerMinutesLeft?.let { getString(R.string.text_valuem_left, it) } ?: ""
-        val contentText = getString(R.string.text_value_needs_attention_value, digimonName, timerSuffix)
+        val digimonName = state?.info?.name?.let { LocalizedText.display(ContextCompat.getContextForLanguage(this), it) } ?: localizedString(R.string.text_your_digimon)
+        val timerSuffix = state?.careTimerMinutesLeft?.let { localizedString(R.string.text_valuem_left, it) } ?: ""
+        val contentText = localizedString(R.string.text_value_needs_attention_value, digimonName, timerSuffix)
         val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             Notification.Builder(this, ATTENTION_NOTIF_CHANNEL_ID)
         } else {
@@ -1818,7 +1825,7 @@ class DigimonGlyphToyService : Service() {
             Notification.Builder(this)
         }
             .setSmallIcon(R.drawable.ic_digimon_preview)
-            .setContentTitle(getString(R.string.text_needs_attention))
+            .setContentTitle(localizedString(R.string.text_needs_attention))
             .setContentText(contentText)
             .setContentIntent(openIntent)
             .setAutoCancel(true)
@@ -1831,18 +1838,18 @@ class DigimonGlyphToyService : Service() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         val serviceChannel = NotificationChannel(
             NOTIF_CHANNEL_ID,
-            getString(R.string.text_digimon_emulator),
+            localizedString(R.string.text_digimon_emulator),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = getString(R.string.text_running_the_digimon_virtual_pet)
+            description = localizedString(R.string.text_running_the_digimon_virtual_pet)
             setShowBadge(false)
         }
         val attentionChannel = NotificationChannel(
             ATTENTION_NOTIF_CHANNEL_ID,
-            getString(R.string.text_digimon_needs_attention),
+            localizedString(R.string.text_digimon_needs_attention),
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-            description = getString(R.string.text_alerts_when_your_digimon_needs_attention)
+            description = localizedString(R.string.text_alerts_when_your_digimon_needs_attention)
             setShowBadge(true)
         }
         nm.createNotificationChannel(serviceChannel)

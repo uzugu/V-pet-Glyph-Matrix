@@ -29,14 +29,21 @@ language detection and Japanese glyph support in the glasses' native input menu.
 
 ## Implemented
 
-- 479 translated Android string/array values, including layout accessibility labels.
+- Translated Android string/array values, including layout accessibility labels.
 - Japanese Digimon names and stages in the live monitor and evolution cards.
   Requirements retain their numeric thresholds and alternative conditions.
   All 42 existing roster names were checked against official Bandai Japanese
   headings; see the [species-name audit](digimon-names.md) and its linked sources.
 - Locale-specific dex selection with a cache per asset, so changing language
   cannot reuse the other language's data. Sprite lookup uses the original names.
-- Android 13+ per-app language settings through `locales_config.xml`.
+- A discreet language picker inside collapsed Advanced / diagnostics: Follow system
+  (default), English, or 日本語. AppCompat persists overrides on Android 12 and
+  earlier; Android 13+ shares the framework per-app language setting declared in
+  `locales_config.xml`. Changing language recreates the screen without restarting
+  the emulator service; selection is disabled during ROM import.
+- Service messages resolve the app locale on demand, including on older Android;
+  this adds no locale lookup to the emulator or render loops. Existing posted
+  notifications receive new text when next rebuilt.
 - System Japanese typography, natural CJK line spacing, locale-aware save dates,
   and content-sized action buttons that can grow when labels wrap.
 - Even setup, connection states, gestures, errors, accessibility labels and native
