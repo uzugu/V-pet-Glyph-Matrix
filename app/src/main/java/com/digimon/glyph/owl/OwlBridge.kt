@@ -16,8 +16,8 @@ import java.util.concurrent.atomic.AtomicReference
 class OwlBridge(
     private val context: Context,
     private val start: () -> Unit,
-    private val button: (String) -> Unit,
-    private val status: () -> Pair<Boolean, Boolean>,
+    private val button: (Int) -> Unit,
+    private val status: () -> OwlState,
 ) {
     private data class Client(val messenger: Messenger, val uid: Int, val death: IBinder.DeathRecipient, var sent: Long = -1, var waiting: Boolean = false)
     private val handler = Handler(Looper.getMainLooper())
@@ -31,6 +31,8 @@ class OwlBridge(
         putInt("version", OwlProtocol.VERSION)
         putBoolean("ready", false)
         putBoolean("frozen", false)
+        putBoolean("dpower", false)
+        putString("inputEpoch", "")
         putInt("width", 32)
         putInt("height", 24)
         putStringArrayList("rows", arrayListOf())
@@ -72,7 +74,8 @@ class OwlBridge(
                 }
                 OwlProtocol.BUTTON -> {
                     val key = msg.data.getString("button") ?: return
-                    if (key in setOf("a", "b", "c")) button(key)
+                    val epoch = msg.data.getString("inputEpoch").orEmpty()
+                    status().button(key, epoch)?.let(button)
                 }
             }
         }
@@ -91,7 +94,9 @@ class OwlBridge(
         if (!observed) return
         val pixels = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val state = status()
         pending.set(Bundle().apply {
+            putState(state)
             putInt("version", OwlProtocol.VERSION)
             putInt("width", bitmap.width)
             putInt("height", bitmap.height)
@@ -103,24 +108,32 @@ class OwlBridge(
     private val deliver = object : Runnable {
         override fun run() {
             pending.getAndSet(null)?.let { frame ->
-                latest = frame
-                val (ready, frozen) = status()
-                latest.putBoolean("ready", ready)
-                latest.putBoolean("frozen", frozen)
-                sequence++
-                clients.values.toList().forEach(::send)
+                val state = status()
+                if (frame.getString("inputEpoch") == state.inputEpoch && frame.getBoolean("dpower") == state.dpower) {
+                    latest = frame.apply { putState(state) }
+                    sequence++
+                    clients.values.toList().forEach(::send)
+                } else updateStatus()
             }
             scheduled.set(false)
             if (pending.get() != null && scheduled.compareAndSet(false, true)) handler.post(this)
         }
     }
 
+    private fun Bundle.putState(state: OwlState) {
+        putBoolean("ready", state.ready)
+        putBoolean("frozen", state.frozen)
+        putBoolean("dpower", state.dpower)
+        putString("inputEpoch", state.inputEpoch)
+    }
+
     private fun updateStatus() {
-        val (ready, frozen) = status()
-        if (ready == latest.getBoolean("ready") && frozen == latest.getBoolean("frozen")) return
+        val state = status()
+        val replaced = state.inputEpoch != latest.getString("inputEpoch") || state.dpower != latest.getBoolean("dpower")
+        if (!replaced && state.ready == latest.getBoolean("ready") && state.frozen == latest.getBoolean("frozen")) return
         latest = Bundle(latest).apply {
-            putBoolean("ready", ready)
-            putBoolean("frozen", frozen)
+            putState(state)
+            if (replaced) putStringArrayList("rows", arrayListOf())
         }
         sequence++
         clients.values.toList().forEach(::send)

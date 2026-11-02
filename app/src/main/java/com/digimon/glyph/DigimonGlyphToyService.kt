@@ -135,12 +135,17 @@ class DigimonGlyphToyService : Service() {
                 ensureWidgetRuntimeStarted()
                 FrameDebugState.snapshot().fullFrame?.let { owlBridge.publish(it) }
             },
-            button = { key -> pressWidgetButton(when (key) {
-                "a" -> EmulatorCommandBus.BUTTON_A
-                "b" -> EmulatorCommandBus.BUTTON_B
-                else -> EmulatorCommandBus.BUTTON_C
-            }) },
-            status = { (emulatorLoop != null) to DigimonDndSettings.isFrozenNow() },
+            button = ::pressWidgetButton,
+            status = {
+                val state = EmulatorStatus.snapshot()
+                com.digimon.glyph.owl.OwlState(
+                    ready = emulator != null && !state.busy && !inputSession.isBlocked() &&
+                        (state.run == EmulatorStatus.Run.RUNNING || state.run == EmulatorStatus.Run.FROZEN),
+                    frozen = DigimonDndSettings.isFrozenNow() || state.run == EmulatorStatus.Run.FROZEN,
+                    dpower = state.isDPower,
+                    inputEpoch = inputSession.wireEpoch(),
+                )
+            },
         )
     }
     private var emulator: EmulatorCore? = null
@@ -194,7 +199,6 @@ class DigimonGlyphToyService : Service() {
     private var battleRdBridgeLastTxAtMs = 0L
     private var lastNeedsAttention: Boolean? = null
     private val widgetButtonReleaseTokens = IntArray(3)
-    private val dpButtonReleaseTokens = IntArray(6)
 
     private var virtualDCom: com.digimon.glyph.battle.VirtualDCom? = null
 
@@ -733,8 +737,8 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun cancelPendingLocalInputs() {
+        emulatorLoop?.cancelButtonTaps()
         for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
-        for (i in dpButtonReleaseTokens.indices) dpButtonReleaseTokens[i]++
         inputController?.cancelPendingInput()
     }
 
@@ -1303,7 +1307,6 @@ class DigimonGlyphToyService : Service() {
         mainHandler.removeCallbacks(autosaveRunnable)
         walkingInput.stop()
         for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
-        for (i in dpButtonReleaseTokens.indices) dpButtonReleaseTokens[i]++
         emulatorLoop?.stop()
         emulatorLoop = null
         emulator?.onBuzzerChange = null
@@ -1871,6 +1874,7 @@ class DigimonGlyphToyService : Service() {
             WidgetFramePusher.refreshNow(this)
             return
         }
+        handleUserInteractionForTimingBoost()
         if (button in 20..25) {
             val active = emulator ?: return
             if (active !is com.digimon.glyph.emulator.DPowerCore) return
@@ -1881,12 +1885,9 @@ class DigimonGlyphToyService : Service() {
             val ports = arrayOf("EF", "EF", "EF", "EF", "CD", "CD")
             val pins = intArrayOf(0, 1, 2, 4, 1, 2)
             val index = button - 20
-            val token = ++dpButtonReleaseTokens[index]
-            runOnEmulatorInputAsync(ticket) { core -> if (core === active) core.pinSet(ports[index], pins[index], 1) }
-            mainHandler.postDelayed({
-                if (dpButtonReleaseTokens[index] != token) return@postDelayed
-                runOnEmulatorInputAsync(ticket) { core -> if (core === active) core.pinRelease(ports[index], pins[index]) }
-            }, DEFAULT_BUTTON_HOLD_MS)
+            emulatorLoop?.tapButton(ports[index], pins[index], 1) {
+                inputSession.accepts(ticket) && emulator === active && !DigimonDndSettings.isFrozenNow()
+            }
             return
         }
         // K0 port pins: A=2, B=1, C=0 (matches InputController)
@@ -1896,7 +1897,13 @@ class DigimonGlyphToyService : Service() {
             EmulatorCommandBus.BUTTON_C -> 0
             else -> return
         }
-        handleUserInteractionForTimingBoost()
+        if (!battleConnected) {
+            val active = emulator ?: return
+            emulatorLoop?.tapButton("K0", pin, 0) {
+                inputSession.accepts(ticket) && emulator === active && !DigimonDndSettings.isFrozenNow()
+            }
+            return
+        }
         val holdMs = if (battleConnected && button == EmulatorCommandBus.BUTTON_B) {
             BATTLE_LINK_B_HOLD_MS
         } else {

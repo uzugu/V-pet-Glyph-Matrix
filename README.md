@@ -196,13 +196,15 @@ adb shell dumpsys batterystats com.digimon.glyph
 
 ## Language / 言語
 
-The Android interface supports English and Japanese and follows the device language.
-On Android 13 and newer, Japanese can also be selected in Android's per-app language
-settings. The Even companion follows its host browser's primary language.
+The Android interface supports English and Japanese and follows the device language
+by default. Open **Advanced diagnostics → Language / 言語** to choose **Follow
+system**, **English**, or **日本語**. Overrides are saved for future launches. On
+Android 13 and newer, Android's per-app language settings control the same choice. The Even companion follows its host browser's primary language.
 Localization changes the interface and guides; the loaded ROM keeps its original language.
 
 日本語の端末では、画面や育成・進化ガイドが日本語で表示されます。
-Android 13以降では、Androidのアプリごとの言語設定でも日本語を選択できます。
+「詳細診断」内の「言語 / Language」で、システム設定・English・日本語を選択できます。
+選択は保存されます。Android 13以降では、Androidのアプリごとの言語設定でも変更できます。
 ROM内の言語は変更されません。
 
 Scope, checks and device review: [Japanese localization](docs/localization/japanese.md).
@@ -211,21 +213,27 @@ Scope, checks and device review: [Japanese localization](docs/localization/japan
 
 Install the matching Omalauncher Hermes OWL preview and this app's OWL preview,
 then load your existing ROM in V-pet. The launcher's bundled `digivice` widget
-is on home page 2. Tap its LCD to open the larger native OWL screen.
+is on home page 2. The home tile is entirely the LCD; tap it for controls in the
+larger native OWL screen (Omalauncher Hermes 0.4.0-hermes.7+).
 
 The LCD pixels and indicators use the current launcher theme; A/B/C buttons
-control this app's existing emulator. Frames are pushed through an explicit
+control this app's existing emulator. D-Power instead shows directions, Step and
+Card. Widget labels follow the launcher language (English/Japanese). Frames are pushed through an explicit
 Android Messenger service at the emulator's selected frame rate, without HTTP,
 Linux, a NAS, or a separate emulator. The phone app retains all ROMs and saves.
 DND freezes are respected. The launcher stops listening when no active V-pet
 widget needs frames, and slow receivers skip stale frames rather than queueing.
 
-Bridge protocol 1: bind action `com.digimon.glyph.OWL_BIND` on
+Bridge protocol 2: bind action `com.digimon.glyph.OWL_BIND` on
 `com.digimon.glyph.DigimonGlyphToyService`. Only `dev.omalauncher.hermes` and
 `dev.omalauncher` are accepted. Versioned `SUBSCRIBE`, `UNSUBSCRIBE`, `BUTTON`
 and frame `ACK` messages use a reply Messenger. Frame payloads contain bounded
 ASCII pixel rows (`p` LCD, `i` active indicator, `d` inactive indicator), display
-size and ready/frozen state. ROM, RAM and saved-game data are not exposed.
+size and ready/frozen state, device type and an input-session identifier. Every button
+request includes that identifier; stale taps after save replacement or restart
+are rejected. ROM, RAM and saved-game data are not exposed.
+
+Install and device checks: [Omalauncher widget](docs/omalauncher-widget.md).
 
 ## Clock synchronization
 

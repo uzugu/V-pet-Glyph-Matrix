@@ -55,6 +55,7 @@ class EmulatorLoop(
     @Volatile private var stepGateEnabled = false
     private var thread: Thread? = null
     private val commandQueue = ConcurrentLinkedQueue<(EmulatorCore) -> Unit>()
+    private val buttonPulses = com.digimon.glyph.input.FirmwareButtonQueue(emulator.clockFrequency)
     private val stepGateLock = Any()
     private var stepGateBudgetNs: Long = 0L
     private var stepGateResetAnchorRequested = false
@@ -114,6 +115,18 @@ class EmulatorLoop(
         LockSupport.unpark(thread)
         return true
     }
+
+    /** Called by remote/widget buttons; queued contacts retain real firmware time even under host load. */
+    fun tapButton(port: String, pin: Int, level: Int, valid: () -> Boolean): Boolean = enqueue { core ->
+        if (valid()) {
+            buttonPulses.enqueue(valid = valid) { down ->
+                if (down) core.pinSet(port, pin, level) else core.pinRelease(port, pin)
+            }
+            buttonPulses.advance(0.0)
+        }
+    }
+
+    fun cancelButtonTaps() { enqueue { buttonPulses.clear() } }
 
     fun <T> executeSync(timeoutMs: Long = 1200L, command: (EmulatorCore) -> T): T? =
         executeSyncWhen(timeoutMs, { true }, command)
@@ -178,6 +191,7 @@ class EmulatorLoop(
         } catch (failure: Throwable) {
             onFailure?.invoke(failure)
         } finally {
+            buttonPulses.clear()
             running = false
             commandQueue.clear()
         }
@@ -219,6 +233,7 @@ class EmulatorLoop(
                 val cycles = emulator.clock()
                 if (cycles <= 0) break
                 pacer.advance(cycles)
+                buttonPulses.advance(cycles)
                 val advanceNs = cycles * cycleNs
                 if (stepGateActive) {
                     stepRemainingNs -= advanceNs
