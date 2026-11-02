@@ -420,6 +420,17 @@ class RomLoaderActivity : AppCompatActivity() {
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
+        findViewById<Switch>(R.id.switch_glyph_awake).apply {
+            visibility = if (GlyphAvailability.isAvailable) View.VISIBLE else View.GONE
+            isChecked = DisplayRenderSettings.isGlyphAwakeEnabled()
+            setOnCheckedChangeListener { _, checked ->
+                DisplayRenderSettings.setGlyphAwakeEnabled(this@RomLoaderActivity, checked)
+                EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+        }
+        findViewById<View>(R.id.glyph_awake_help).visibility =
+            if (GlyphAvailability.isAvailable) View.VISIBLE else View.GONE
+
         switchAudio.isChecked = EmulatorAudioSettings.isAudioEnabled()
         switchAudio.setOnCheckedChangeListener { _, isChecked ->
             EmulatorAudioSettings.setAudioEnabled(this@RomLoaderActivity, isChecked)
@@ -1808,6 +1819,7 @@ class RomLoaderActivity : AppCompatActivity() {
             nfcCardScanner.stop()
             dpowerMenu = null
             walkingButton = null
+            findViewById<Switch>(R.id.switch_glyph_awake).isChecked = DisplayRenderSettings.isGlyphAwakeEnabled()
             findViewById<Switch>(R.id.switch_audio).isChecked = EmulatorAudioSettings.isAudioEnabled()
             findViewById<Switch>(R.id.switch_haptic).isChecked = EmulatorAudioSettings.isHapticAudioEnabled()
             findViewById<Switch>(R.id.switch_power_save).isChecked = EmulatorTimingSettings.isPowerSaveEnabled()

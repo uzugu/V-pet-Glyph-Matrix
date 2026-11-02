@@ -194,6 +194,17 @@ adb shell dumpsys batterystats com.digimon.glyph
 - Android SDK / Gradle
 - Nothing Glyph Matrix SDK 2.0 (download with `python3 tools/fetch_glyph_sdk.py`)
 
+## Keep the Glyph display awake
+
+On Phone (3), enable **Emulator runtime → Keep Glyph display awake
+(experimental)**, or the same option under **D-Power console → Glyph Display**.
+It requests no Glyph timeout while playing; leaving the toy, AOD, Stop and DND
+Freeze restore normal timeout. The choice persists and defaults off. Nothing OS
+behavior still needs device verification; see [Glyph timeout and AOD](docs/glyph/always-on.md).
+
+This is independent of the launcher's option to keep the phone screen on.
+Neither option changes the ROM's own LCD blanking or the pet's sleep.
+
 ## Language / 言語
 
 The Android interface supports English and Japanese and follows the device language

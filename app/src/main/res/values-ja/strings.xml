@@ -486,4 +486,6 @@
     <string name="language_title">言語 / Language</string>
     <string name="language_follow_system">システム設定に従う</string>
     <string name="language_current">言語 / Language：%1$s</string>
+    <string name="glyph_keep_awake">Glyphの表示を維持（試験機能）</string>
+    <string name="glyph_keep_awake_help">Glyphで操作中は表示のタイムアウトを無効にするよう要求します。Nothing OSによって動作が異なります。トイを離れるかペットを停止すると通常に戻ります。ペット自体の睡眠は変更しません。</string>
 </resources>

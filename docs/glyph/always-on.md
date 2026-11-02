@@ -13,3 +13,31 @@ The manifest already declares AOD support. This fix does not override system tim
 ## Device check
 
 Verify V-Pet is selected as the **Always-on Glyph Toy** in Nothing's Glyph settings, in addition to being an enabled interactive toy. Menu names can vary by firmware. Note the Nothing OS build and whether the failure is a black display or fallback to the system clock. Capture bind/start/end/AOD/reconnect messages in logcat if a phone is available.
+
+## Optional interactive timeout request — preview20
+
+**Emulator runtime → Keep Glyph display awake (experimental)**, also available
+under **D-Power console → Glyph Display**, saves an opt-in preference. While the
+emulator is running and V-pet owns an interactive toy session, SDK 2.0's exposed
+`setGlyphMatrixTimeout(false)` requests disabling display timeout. Turning the
+option off, END, AOD, actual unbind, emulator stop and DND Freeze restore timeout
+with `true` before SDK release. Reconnection reapplies the preference only for a
+running interactive session. The default-off path makes no timeout call.
+
+This API exists in the pinned, unmodified SDK binary but is absent from Nothing's
+published API reference. The SDK bytecode names its boolean parameter `needTimeout` (false disables the request); no attached
+Phone (3) was available to verify firmware behavior, duration, pocket policy or
+restoration. Treat it as a compatibility experiment, not a guarantee of always-on
+LEDs. No app-owned output or simulated button presses are used. Other toys retain
+display ownership after unbind.
+
+The launcher widget's “Keep Digivice awake” option is separate: it keeps the
+**phone screen** on only while its expanded view is open. Neither option changes
+the ROM's own LCD blanking or the pet's sleep/care rules. Nothing's Always-on Glyph
+Toy selection remains the supported path for system-controlled AOD.
+
+Tests cover default/background isolation, one request per transition, restoration
+on END/AOD/stop/disable, reconnection and failed-request retries. Hardware behavior
+must still be checked on the phone.
+
+Preview20 validation: 102 executed unit tests passed, 39 optional tests skipped. Debug assembly and lint passed with no errors. No Android device was attached.

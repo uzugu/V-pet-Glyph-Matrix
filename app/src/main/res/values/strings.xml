@@ -486,4 +486,6 @@
     <string name="language_title">Language / 言語</string>
     <string name="language_follow_system">Follow system</string>
     <string name="language_current">Language / 言語: %1$s</string>
+    <string name="glyph_keep_awake">Keep Glyph display awake (experimental)</string>
+    <string name="glyph_keep_awake_help">Request no display timeout while playing V-pet on Glyph. Nothing OS support varies. Leaving the toy or stopping the pet restores normal timeout. This does not change the pet’s sleep.</string>
 </resources>

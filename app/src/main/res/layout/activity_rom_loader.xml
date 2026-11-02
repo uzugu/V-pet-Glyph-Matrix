@@ -377,6 +377,25 @@
                     android:layout_marginTop="8dp" />
 
                 <Switch
+                    android:id="@+id/switch_glyph_awake"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="48dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/glyph_keep_awake"
+                    android:textColor="@color/text_main"
+                    android:thumb="@drawable/cyber_switch_thumb"
+                    android:track="@drawable/cyber_switch_track"
+                    android:thumbTint="@null"
+                    android:trackTint="@null" />
+                <TextView
+                    android:id="@+id/glyph_awake_help"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/glyph_keep_awake_help"
+                    android:textAppearance="@style/TextAppearance.Cyber.Muted" />
+
+                <Switch
                     android:id="@+id/switch_audio"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -92,6 +92,13 @@ class DPowerMenu(
         steps.addView(text(context.getString(if (WalkingInput.available(context)) R.string.walking_help else R.string.walking_unavailable), 14f, muted))
 
         val display = section(R.string.dp_display_section)
+        if (com.digimon.glyph.GlyphAvailability.isAvailable) {
+            toggle(display, R.string.glyph_keep_awake, DisplayRenderSettings.isGlyphAwakeEnabled()) {
+                DisplayRenderSettings.setGlyphAwakeEnabled(context, it)
+                EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+            }
+            display.addView(text(context.getString(R.string.glyph_keep_awake_help), 14f, muted))
+        }
         toggle(display, R.string.dpower_clock, DisplayRenderSettings.isDPowerClockEnabled()) { DisplayRenderSettings.setDPowerClockEnabled(context, it) }
         display.addView(text(context.getString(R.string.dpower_clock_help), 14f, muted))
         toggle(display, R.string.dpower_fit, DisplayRenderSettings.isDPowerFitEnabled()) { DisplayRenderSettings.setDPowerFitEnabled(context, it) }

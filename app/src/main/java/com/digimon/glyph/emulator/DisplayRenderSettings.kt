@@ -27,10 +27,18 @@ object DisplayRenderSettings {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean("dpower_clock", enabled).apply()
     }
 
+    @Volatile private var glyphAwakeEnabled = false
+    fun isGlyphAwakeEnabled() = glyphAwakeEnabled
+    fun setGlyphAwakeEnabled(context: Context, enabled: Boolean) {
+        glyphAwakeEnabled = enabled
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean("glyph_awake", enabled).apply()
+    }
+
     @Synchronized
     fun init(context: Context) {
         DPowerOptions.init(context)
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        glyphAwakeEnabled = prefs.getBoolean("glyph_awake", false)
         dpowerFitEnabled = prefs.getBoolean("dpower_fit", false)
         dpowerClockEnabled = prefs.getBoolean("dpower_clock", false)
         textZoomOutEnabled = prefs.getBoolean(KEY_TEXT_ZOOM_OUT, false)

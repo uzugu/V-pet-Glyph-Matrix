@@ -127,6 +127,7 @@ class DigimonGlyphToyService : Service() {
     private val inputSession = com.digimon.glyph.input.InputSession()
     private var standaloneMode = false
     private val toySession = GlyphToySession()
+    private val glyphDisplayAwake = GlyphDisplayAwake()
     private val toyDisplayActive get() = toySession.active
     private val owlBridge: OwlBridge by lazy {
         OwlBridge(this,
@@ -830,6 +831,7 @@ class DigimonGlyphToyService : Service() {
                 initGlyphManager()
                 startEmulator()
                 inputController?.start()
+                applyGlyphAwakeSetting()
                 pushStaticFrame()
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_END) -> {
@@ -856,6 +858,7 @@ class DigimonGlyphToyService : Service() {
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_AOD -> {
                 if (!toySession.aod()) return
+                applyGlyphAwakeSetting()
                 Log.d(TAG, "Toy AOD: restoring display session")
                 mainHandler.removeCallbacks(delayedShutdownRunnable)
                 inputController?.stop()
@@ -886,6 +889,8 @@ class DigimonGlyphToyService : Service() {
                     return
                 }
                 glyphRegistered = true
+                glyphDisplayAwake.disconnected()
+                applyGlyphAwakeSetting()
                 EmulatorStatus.glyph(EmulatorStatus.Glyph.CONNECTED)
                 Log.d(TAG, "Glyph manager registered with target=$targetDevice")
                 
@@ -902,6 +907,7 @@ class DigimonGlyphToyService : Service() {
             override fun onServiceDisconnected(name: ComponentName?) {
                 if (generation != glyphConnectionGeneration) return
                 glyphRegistered = false
+                glyphDisplayAwake.disconnected()
                 EmulatorStatus.glyph(EmulatorStatus.Glyph.DISCONNECTED)
                 glyphRenderer?.release()
                 glyphRenderer = null
@@ -911,7 +917,28 @@ class DigimonGlyphToyService : Service() {
         glyphManagerInited = true
     }
 
+    private fun applyGlyphAwakeSetting(releasing: Boolean = false) {
+        if (!glyphRegistered) return
+        val mgr = glyphManager as? com.nothing.ketchum.GlyphMatrixManager ?: return
+        try {
+            glyphDisplayAwake.update(
+                enabled = !releasing && DisplayRenderSettings.isGlyphAwakeEnabled(),
+                interactive = toySession.interactive,
+                running = emulatorLoop != null && !DigimonDndSettings.isFrozenNow(),
+            ) { timeoutEnabled ->
+                // Exposed by SDK 2.0, but undocumented by Nothing; firmware support must be tested.
+                mgr.setGlyphMatrixTimeout(timeoutEnabled)
+                Log.d(TAG, "Glyph timeout requested enabled=$timeoutEnabled")
+            }
+        } catch (failure: Exception) {
+            Log.w(TAG, "Glyph timeout request failed", failure)
+        } catch (failure: LinkageError) {
+            Log.w(TAG, "Glyph timeout is unavailable on this firmware", failure)
+        }
+    }
+
     private fun releaseGlyphManager() {
+        applyGlyphAwakeSetting(releasing = true)
         glyphConnectionGeneration++
         glyphRegistered = false
         EmulatorStatus.glyph(EmulatorStatus.Glyph.DISCONNECTED)
@@ -920,6 +947,7 @@ class DigimonGlyphToyService : Service() {
         glyphRenderer = null
         safeGlyphManagerUninit("release")
         glyphManagerInited = false
+        glyphDisplayAwake.disconnected()
     }
 
     private fun safeGlyphManagerUninit(stage: String) {
@@ -1296,6 +1324,7 @@ class DigimonGlyphToyService : Service() {
             WidgetFramePusher.ensureRunning(this)
         }
 
+        applyGlyphAwakeSetting()
         Log.d(TAG, "Emulator started with ROM: $romName standaloneMode=$standaloneMode")
     }
 
@@ -1309,6 +1338,7 @@ class DigimonGlyphToyService : Service() {
         for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
         emulatorLoop?.stop()
         emulatorLoop = null
+        applyGlyphAwakeSetting()
         emulator?.onBuzzerChange = null
         emulator?.onSerialTx = null
         emulator?.onPortDriveChange = null
@@ -1481,6 +1511,7 @@ class DigimonGlyphToyService : Service() {
             EmulatorCommandBus.CMD_SYNC_FIRMWARE_CLOCK -> setFirmwareClock(null)
             EmulatorCommandBus.CMD_REFRESH_SETTINGS -> {
                 DisplayRenderSettings.init(this)
+                applyGlyphAwakeSetting()
                 EmulatorAudioSettings.init(this)
                 EmulatorDebugSettings.init(this)
                 EmulatorTimingSettings.init(this)
