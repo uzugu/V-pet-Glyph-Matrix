@@ -1,4 +1,4 @@
-import { t } from "./i18n";
+import { t, language } from "./i18n";
 import {
   waitForEvenAppBridge,
   CreateStartUpPageContainer,
@@ -24,6 +24,7 @@ export class Display {
   private menuOpen = false;
   private dpower = false;
   private appliedDPower: boolean | null = null;
+  private appliedLanguage = language;
   get active() {
     return this.ready && !this.menuOpen;
   }
@@ -97,6 +98,7 @@ export class Display {
       const task = this.serial.then(async () => {
         if (generation !== this.generation) return false;
         const mode = this.dpower,
+          menuLanguage = language,
           page = this.page(mode);
         if (this.created.has(bridge)) {
           if (
@@ -114,6 +116,7 @@ export class Display {
         }
         if (generation !== this.generation) return false;
         this.appliedDPower = mode;
+        this.appliedLanguage = menuLanguage;
         return (this.ready = true);
       });
       this.serial = task.catch(() => {});
@@ -165,9 +168,10 @@ export class Display {
     this.dpower = value;
     const bridge = this.bridge,
       generation = this.generation;
-    if (!bridge || !this.ready || this.appliedDPower === value) return false;
+    if (!bridge || !this.ready || (this.appliedDPower === value && this.appliedLanguage === language)) return false;
     const task = this.serial.then(async () => {
       if (generation !== this.generation || !this.ready) return false;
+      const menuLanguage = language;
       if (
         !(await bridge.rebuildPageContainer(
           new RebuildPageContainer(this.page(value)),
@@ -176,6 +180,7 @@ export class Display {
         throw new Error(t("G2 input menu rebuild failed"));
       if (generation !== this.generation) return false;
       this.appliedDPower = value;
+      this.appliedLanguage = menuLanguage;
       return true;
     });
     this.serial = task.catch(() => {});

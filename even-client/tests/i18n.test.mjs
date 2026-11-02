@@ -88,3 +88,51 @@ test("Japanese host translates the page and accessibility labels without changin
     else delete globalThis.navigator;
   }
 });
+
+
+test("saved overrides survive launch and live switching preserves the pairing form", async () => {
+  const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  const originalDocument = globalThis.document;
+  const values = new Map([["vpet.stream.language", "ja"]]);
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: {
+    getItem: (key) => values.get(key) ?? null,
+    setItem: (key, value) => values.set(key, value),
+    removeItem: (key) => values.delete(key),
+  }});
+  const label = { textContent: "Connect phone" };
+  const input = {
+    value: "c".repeat(32), dataset: { i18nAttribute: "placeholder" },
+    placeholder: "Paste key from V-pet Glyph",
+    getAttribute(name) { return this[name]; },
+    setAttribute(name, value) { this[name] = value; },
+  };
+  globalThis.document = {
+    documentElement: { lang: "en" }, title: "V-pet · G2 link",
+    querySelectorAll: (selector) => selector === "[data-i18n]" ? [label] : [input],
+  };
+  try {
+    const app = await import("data:text/javascript;base64," + Buffer.from(source + "\n// saved override test").toString("base64"));
+    assert.equal(app.language, "ja");
+    app.localizePage();
+    assert.equal(label.textContent, "スマートフォンに接続");
+    app.setPreference("en");
+    app.localizePage();
+    assert.equal(label.textContent, "Connect phone");
+    assert.equal(input.placeholder, "Paste key from V-pet Glyph");
+    assert.equal(document.title, "V-pet · G2 link");
+    assert.equal(values.get("vpet.stream.language"), "en");
+    assert.equal(input.value, "c".repeat(32));
+    app.setPreference("auto");
+    assert.equal(values.has("vpet.stream.language"), false);
+    values.set("vpet.stream.language", "unsupported");
+    assert.equal(app.readPreference(), "auto");
+    Object.defineProperty(globalThis, "localStorage", { configurable: true, get() { throw new Error("Storage blocked"); }});
+    assert.equal(app.readPreference(), "auto");
+    app.setPreference("ja");
+    assert.equal(app.language, "ja");
+  } finally {
+    globalThis.document = originalDocument;
+    if (originalStorage) Object.defineProperty(globalThis, "localStorage", originalStorage);
+    else delete globalThis.localStorage;
+  }
+});

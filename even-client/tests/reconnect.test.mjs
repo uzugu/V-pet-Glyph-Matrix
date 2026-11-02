@@ -54,6 +54,7 @@ for (const scenario of ["connection loss", "state replacement"]) test(`${scenari
     "disconnect",
     "glasses",
     "token",
+    "language",
   ])
     elements.set(id, make());
   elements.get("screen").getContext = () => ({

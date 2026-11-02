@@ -1,4 +1,4 @@
-import { t, localizePage } from "./i18n";
+import { t, localizePage, preference, setPreference, type LanguagePreference } from "./i18n";
 import "./style.css";
 import { Display } from "./display";
 import { frame, imagePixels, gesture, type Frame } from "./protocol";
@@ -124,7 +124,10 @@ async function poll(epoch: number) {
     try {
       const response = await request("frame");
       if (!response.ok) throw new Error(t("Phone returned ") + response.status);
-      const value = frame(await response.json());
+      const payload = await response.json();
+      let value: Frame;
+      try { value = frame(payload); }
+      catch { throw new Error(t("Host has no compatible frame yet")); }
       if (generation !== epoch) return;
       const changed = JSON.stringify(value);
       if (current && current.inputEpoch !== value.inputEpoch) {
@@ -174,6 +177,16 @@ async function poll(epoch: number) {
     await new Promise((r) => setTimeout(r, 200));
   }
 }
+const languagePicker = $<HTMLSelectElement>("language");
+languagePicker.value = preference;
+languagePicker.onchange = () => {
+  setPreference(languagePicker.value as LanguagePreference);
+  localizePage();
+  keys();
+  status(current?.state ?? (running ? "CONNECTING" : "DISCONNECTED"));
+  error("");
+  // The next frame refreshes the native menu without breaking the input session.
+};
 $("connect").onclick = () => {
   disconnect();
   key = $<HTMLInputElement>("token").value.trim();

@@ -36,6 +36,7 @@ source = source
   .replace("./BmpEncoder", url(bmp));
 source = source.replace("./i18n", url(i18n));
 const { Display } = await import(url(source));
+const locale = await import(url(i18n));
 test("display serializes images, rebuilds once and isolates native menu input", async () => {
   let handler,
     created = 0,
@@ -106,6 +107,13 @@ test("display serializes images, rebuilds once and isolates native menu input", 
     pages.at(-1).menuObject.menuItems.map((x) => x.itemName),
     ["Step", "Card input"],
   );
+  locale.setPreference("ja");
+  assert.equal(await d.setDPower(true), true);
+  assert.deepEqual(pages.at(-1).menuObject.menuItems.map((x) => x.itemName), ["歩数", "カード入力"]);
+  assert.equal(await d.setDPower(true), false, "unchanged language must not rebuild");
+  locale.setPreference("en");
+  assert.equal(await d.setDPower(true), true);
+  assert.deepEqual(pages.at(-1).menuObject.menuItems.map((x) => x.itemName), ["Step", "Card input"]);
   handler({ sysEvent: { eventType: 4 } });
   handler({ menuItemClickEvent: { itemID: 1 } });
   handler({ menuItemClickEvent: { itemID: 2 } });

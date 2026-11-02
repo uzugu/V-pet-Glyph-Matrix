@@ -215,3 +215,27 @@ footer {
 :lang(ja) input {
   font-family: inherit;
 }
+
+.language-settings {
+  margin-top: 28px;
+  color: var(--dim);
+  font-size: 12px;
+}
+.language-settings summary {
+  cursor: pointer;
+  padding: 12px 0;
+}
+.language-settings select {
+  min-height: 44px;
+  max-width: 100%;
+  padding: 8px 12px;
+  font: inherit;
+  color: inherit;
+  background: #152126;
+  border: 1px solid #3a5c57;
+  border-radius: 5px;
+}
+.language-settings select:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 3px;
+}

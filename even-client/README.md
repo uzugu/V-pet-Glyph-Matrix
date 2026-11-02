@@ -2,6 +2,14 @@
 
 Companion LCD/gamepad for V-pet Glyph preview17+ (EHPK 0.1.2). The phone runs emulation; the EHPK streams a monochrome LCD and returns pulse inputs. No firmware bundled.
 
+The interface follows the Even host's primary browser language automatically
+(English or Japanese; other languages fall back to English). Expand **Language /
+言語** near the bottom to override it with **English** or **日本語**, or return to
+**Follow system**. The choice persists when host storage is available. Switching
+keeps the connection and pairing key, and refreshes D-Power's native glasses menu
+on the next frame. This preference is independent of Android's app-language setting.
+ROM screen pixels retain their original language.
+
 Requires Even App2.2.10+ and SDK0.0.16. Build: `npm ci && npm test && npm run build && npm run pack`. Package output: `vpet-stream.ehpk`.
 
 Enable streaming in the phone app's **Even G2 & save sync** menu, start your pet, copy the pairing key here, connect phone, then connect glasses. The phone and Even App must be on the same Android device. The host binds only `127.0.0.1:8766`.

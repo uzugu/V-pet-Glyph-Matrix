@@ -3,12 +3,31 @@ export function resolveLanguage(languages: readonly string[]): "en" | "ja" {
   // Follow the host's primary language, matching Android's English fallback.
   return /^ja(?:-|$)/i.test(languages[0] ?? "") ? "ja" : "en";
 }
-export const language = resolveLanguage(
-  globalThis.navigator?.languages?.length
-    ? globalThis.navigator.languages
-    : [globalThis.navigator?.language ?? "en"],
-);
+export type LanguagePreference = "auto" | "en" | "ja";
+const storageKey = "vpet.stream.language";
+export function readPreference(): LanguagePreference {
+  try {
+    const stored = globalThis.localStorage?.getItem(storageKey);
+    return stored === "en" || stored === "ja" ? stored : "auto";
+  } catch { return "auto"; }
+}
+function hostLanguage(): "en" | "ja" {
+  return resolveLanguage(globalThis.navigator?.languages?.length
+    ? globalThis.navigator.languages : [globalThis.navigator?.language ?? "en"]);
+}
+export let preference = readPreference();
+export let language = preference === "auto" ? hostLanguage() : preference;
+export function setPreference(value: LanguagePreference): void {
+  preference = value;
+  language = value === "auto" ? hostLanguage() : value;
+  try {
+    if (value === "auto") globalThis.localStorage?.removeItem(storageKey);
+    else globalThis.localStorage?.setItem(storageKey, value);
+  } catch { /* The current session still works when storage is unavailable. */ }
+}
 const japanese: Record<string, string> = {
+  "Follow system": "システム設定に従う",
+  "Host has no compatible frame yet": "スマートフォンから対応する画面をまだ受信していません",
   "V-pet · G2 link": "Vペット · G2接続",
   "DIGITAL MONSTER / REMOTE TERMINAL": "デジタルモンスター / リモート端末",
   "Your pet.": "あなたのデジモンを。",
@@ -51,15 +70,22 @@ const japanese: Record<string, string> = {
 export function t(text: string, locale: "en" | "ja" = language): string {
   return locale === "ja" ? japanese[text] ?? text : text;
 }
+const originalText = new WeakMap<HTMLElement, string>();
+const originalAttributes = new WeakMap<HTMLElement, string>();
+let originalTitle: string | undefined;
 export function localizePage(): void {
   document.documentElement.lang = language;
-  document.title = t(document.title);
+  originalTitle ??= document.title;
+  document.title = t(originalTitle);
   document.querySelectorAll<HTMLElement>("[data-i18n]").forEach((element) => {
-    const key = element.textContent?.trim().replace(/\s+/g, " ") ?? "";
+    const key = originalText.get(element) ?? element.textContent?.trim().replace(/\s+/g, " ") ?? "";
+    originalText.set(element, key);
     element.textContent = t(key);
   });
   document.querySelectorAll<HTMLElement>("[data-i18n-attribute]").forEach((element) => {
     const attribute = element.dataset.i18nAttribute!;
-    element.setAttribute(attribute, t(element.getAttribute(attribute) ?? ""));
+    const key = originalAttributes.get(element) ?? element.getAttribute(attribute) ?? "";
+    originalAttributes.set(element, key);
+    element.setAttribute(attribute, t(key));
   });
 }
