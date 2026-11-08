@@ -768,6 +768,41 @@ class E0C6200(
 
     override fun clock(): Double = clockInternal()
 
+    /** Skip only complete seven-cycle HALT slots containing no peripheral edge.
+     * The slot containing an edge still takes clockInternal(), preserving the
+     * reference's interrupt-check-before-peripherals ordering and wake latency.
+     */
+    var idleSkippingEnabled = true
+    override fun clock(budgetCycles: Double): Double {
+        if (!idleSkippingEnabled || RESET != 0 || HALT != 1 || ifDelay ||
+            (IF != 0 && ((IPT and EIPT) != 0 || (ISIO and EISIO) != 0 || IK1 != 0 || IK0 != 0 ||
+                (ISW and EISW) != 0 || (IT and EIT) != 0))) return clockInternal()
+        var next = minOf(timerCounter, stopwatchCounter)
+        if ((PTC and IO_PTC) > 1) next = minOf(next, ptimerCounter)
+        if (buzzerEnvelopeCounter > 0) next = minOf(next, buzzerEnvelopeCounter.toDouble())
+        if (buzzerOneShotCounter > 0) next = minOf(next, buzzerOneShotCounter.toDouble())
+        val silentTicks = kotlin.math.ceil(next).toLong() - 1
+        if (silentTicks < 1) return clockInternal()
+        val scale = if (CTRL_OSC and IO_CLKCHG == 0) osc1ClockDiv else 1.0
+        val slot = 7 * scale
+        val bound = osc1Counter + silentTicks * osc1ClockDiv
+        val slots = minOf(kotlin.math.floor(budgetCycles / slot), kotlin.math.floor(Math.nextDown(bound) / slot)).toInt()
+        if (slots < 2) return clockInternal()
+        val elapsed = slots * slot
+        val ticks = if (elapsed < osc1Counter) 0 else kotlin.math.floor((elapsed - osc1Counter) / osc1ClockDiv).toInt() + 1
+        check(ticks <= silentTicks)
+        osc1Counter = osc1Counter - elapsed + ticks * osc1ClockDiv
+        timerCounter -= ticks; stopwatchCounter -= ticks
+        if ((PTC and IO_PTC) > 1) ptimerCounter -= ticks
+        if (buzzerEnvelopeCounter > 0) buzzerEnvelopeCounter -= ticks
+        if (buzzerOneShotCounter > 0) buzzerOneShotCounter -= ticks
+        diagOsc1Ticks += ticks
+        diagClockCalls += slots; diagHaltCycles += slots
+        diagTotalExecCycles += slots * 7
+        diagTotalElapsedCycles += elapsed
+        return elapsed
+    }
+
     /**
      * Execute until at least [targetCycles] have elapsed and return actual executed cycles.
      * This batches monitor acquisition and lowers hot-path overhead versus repeated clock() calls.
@@ -776,7 +811,7 @@ class E0C6200(
         if (targetCycles <= 0.0) return 0.0
         var elapsed = 0.0
         while (elapsed < targetCycles) {
-            elapsed += clockInternal()
+            elapsed += clock(targetCycles - elapsed)
         }
         return elapsed
     }

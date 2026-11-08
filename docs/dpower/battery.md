@@ -169,3 +169,24 @@ baseline: 0.057615 CPU seconds / 600.000153 emulated seconds (0.00960%). Values
 use per-thread CPU time for Kotlin and process CPU time for single-threaded
 Python, include regular PCM drains, and exclude warmup. They do not establish
 real-ROM throughput, Android scheduler overhead or phone battery savings.
+
+### Phase 2: budgeted conservative idle skipping
+
+Classic HALT batches only complete seven-cycle reference slots whose OSC1 ticks
+cannot hit any timer, stopwatch, programmable-timer or buzzer edge. The edge's
+slot uses the original instruction path, preserving interrupt sampling order,
+latency, phase and elapsed cycles. Pending interrupts/keys, RESET and delayed IF
+fall back to the reference. `idleSkippingEnabled=false` retains that reference
+path for differential tests. No deprecated oscillator-only fast-forward is used.
+
+D-Power's experimental, persisted debug option recognizes only an absolute jump
+to itself in ROM, with no pending enabled IRQ, and stops before the earliest
+peripheral event. Register-changing or port-reading polling loops are deliberately
+not classified without a proven real-ROM trace. This narrower optimization is
+off by default. The private 30-second trace comparison runs it both on and off.
+
+The worker passes owed/step-gate/button-edge budgets to cores. Instructions remain
+atomic (so they may exceed a fractional budget), but idle skips cannot cross it.
+Non-link sessions do not call the virtual battle clock callback per instruction.
+Tests compare three synthetic classic hours, tiny budgets/key inputs and D-Power
+self-jump timer state, with six-ROM/midnight checks gated by `CLASSIC_ROM_DIR`.

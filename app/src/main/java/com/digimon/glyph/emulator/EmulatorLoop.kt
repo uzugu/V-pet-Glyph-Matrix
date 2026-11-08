@@ -30,6 +30,7 @@ class EmulatorLoop(
 ) {
     var onPauseChanged: ((Boolean) -> Unit)? = null
     var onFailure: ((Throwable) -> Unit)? = null
+    @Volatile var virtualTickEnabled = true
     var onVirtualTick: ((Double) -> Unit)? = null
     enum class TimingMode { EXACT, FULL_ACCURATE, POWER_SAVE }
 
@@ -273,7 +274,8 @@ class EmulatorLoop(
             var stepRemainingNs = if (stepGateActive) snapshotStepGateBudgetNs().toDouble() else 0.0
             var stepUsedNs = 0.0
             while (running && !backgroundPaused && if (stepGateActive) stepRemainingNs > 0 else pacer.debtCycles(nowNs) > 0) {
-                val cycles = emulator.clock()
+                val owed = if (stepGateActive) stepRemainingNs / cycleNs else pacer.debtCycles(nowNs)
+                val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge()).coerceAtLeast(1.0))
                 if (cycles <= 0) break
                 pacer.advance(cycles)
                 buttonPulses.advance(cycles)
@@ -282,7 +284,7 @@ class EmulatorLoop(
                     stepRemainingNs -= advanceNs
                     stepUsedNs += advanceNs
                 }
-                onVirtualTick?.invoke(pacer.virtualNs)
+                if (virtualTickEnabled) onVirtualTick?.invoke(pacer.virtualNs)
                 if (++instructions % profile.timeCheckBatch == 0) {
                     drainCommands()
                     nowNs = elapsedNs()

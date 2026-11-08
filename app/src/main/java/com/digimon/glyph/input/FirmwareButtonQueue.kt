@@ -15,6 +15,12 @@ class FirmwareButtonQueue(private val clockFrequency: Int) {
         return true
     }
 
+    fun cyclesUntilEdge(): Double = when {
+        active != null -> remaining.coerceAtLeast(0.0)
+        releasedGap > 0 -> releasedGap
+        else -> Double.POSITIVE_INFINITY
+    }
+
     fun advance(cycles: Double) {
         require(cycles >= 0 && cycles.isFinite())
         val held = active

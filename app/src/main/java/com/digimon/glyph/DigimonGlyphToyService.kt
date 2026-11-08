@@ -1288,6 +1288,7 @@ class DigimonGlyphToyService : Service() {
         lastAppliedStepGateEnabled = false
         emulatorLoop = loop
 
+        loop.virtualTickEnabled = battleConnected
         loop.onVirtualTick = { totalNs ->
             if (battleConnected) {
                 val rawUs = (totalNs / 1000).toLong()
@@ -1786,6 +1787,7 @@ class DigimonGlyphToyService : Service() {
         val stepSliceMs = EmulatorTimingSettings.getBattleStepSliceMs()
         val now = SystemClock.uptimeMillis()
         val boostActive = now < interactionBoostUntilMs
+        emulatorLoop?.virtualTickEnabled = battleConnected
         val battleTimingLock = battleConnected
         val battleStepGateActive = battleConnected && stepModeEnabled
         val powerSave = EmulatorTimingSettings.isPowerSaveEnabled()

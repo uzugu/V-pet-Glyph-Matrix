@@ -11,6 +11,8 @@ interface EmulatorCore {
     /** Only non-clock pet cores may opt into stopping when their firmware LCD sleeps. */
     fun isDisplaySleeping(): Boolean = false
     fun clock(): Double
+    /** Atomic instructions may cross the budget; idle skips must never do so. */
+    fun clock(budgetCycles: Double): Double = clock()
     fun getVRAM(): IntArray
     fun getRAM(): IntArray
     fun getRawVRAM(): IntArray

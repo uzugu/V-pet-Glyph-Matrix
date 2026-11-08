@@ -49,8 +49,8 @@ class DPowerPortTest {
             same("opcode $op seed $seed",e["state"],JsonParser.parseString(r.snapshot()))
         }
     }
-    private fun compare(rom: ByteArray, trace: JsonObject, seconds: Int) {
-        val r=DPowerRuntime(rom);var cycles=0.0
+    private fun compare(rom: ByteArray, trace: JsonObject, seconds: Int, idleSkip: Boolean = false) {
+        val r=DPowerRuntime(rom);r.core.idleSkippingEnabled=idleSkip;var cycles=0.0
         val events=JsonArray()
         // Event timestamps exclude the current instruction, matching the Python bus.
         r.sound.onEvent={ channel,tone -> events.add(JsonArray().also { a -> a.add(r.sound.totalCycles); a.add(channel); a.add(tone?.json() ?: JsonNull.INSTANCE) }) }
@@ -78,7 +78,9 @@ class DPowerPortTest {
         val path=System.getenv("DPOWER_ROM");assumeTrue("Set DPOWER_ROM",path!=null)
         val rom=File(path).readBytes()
         assertEquals(DPowerRuntime.ROM_SHA256,MessageDigest.getInstance("SHA-256").digest(rom).joinToString("") { "%02x".format(it.toInt() and 255) })
-        compare(rom,golden("--seconds","30"),30)
+        val trace=golden("--seconds","30")
+        compare(rom,trace,30)
+        compare(rom,trace,30,idleSkip=true)
     }
     @Test fun toneMixerPcmAndFractionalStateMatchPython() {
         val trace=golden("--mixer")

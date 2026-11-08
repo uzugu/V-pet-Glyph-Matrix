@@ -2300,9 +2300,34 @@ class Spl61xCore(rom: ByteArray, val sound: DPowerSound) {
         return cycles
     }
     private fun _dummy() = 2
+    var idleSkippingEnabled = false
+    private fun skipInertJump(budget: Double): Double {
+        if (!idleSkippingEnabled || _CPU_ENBL == 0 || _PC < 0x400 ||
+            (_IF == 0 && (_IREQ and _INT_CTRL) != 0)) return 0.0
+        val physical = ((_PC and 0x7FFF) or (_BANK * (_PC and 0x8000))) % _mem_size
+        if (_mem[physical] != 0x4C) return 0.0
+        val destination = _read_mem((_PC + 1) and 0xFFFF) or (_read_mem((_PC + 2) and 0xFFFF) shl 8)
+        if (destination != _PC) return 0.0
+        var event = minOf(_T64HZ_counter, _T128HZ_counter, _T2K_counter)
+        if (_TIMER_CTRL and 128 != 0) {
+            if (_TM0_div != 0.0) event = minOf(event, _TM0_counter)
+            event = minOf(event, _TM1_counter)
+        }
+        val instruction = 3.0 * _CPU_DIV
+        val count = kotlin.math.floor(minOf(budget, Math.nextDown(event)) / instruction).toInt()
+        if (count < 2) return 0.0
+        val cycles = count * instruction
+        _instr_counter += count
+        _timers_clock(cycles)
+        sound.advanceAudio(cycles)
+        return cycles
+    }
     fun runCycles(target: Double): Double {
         var elapsed = 0.0
-        while (elapsed < target) elapsed += clock()
+        while (elapsed < target) {
+            val skipped = skipInertJump(target - elapsed)
+            elapsed += if (skipped > 0) skipped else clock()
+        }
         return elapsed
     }
 }

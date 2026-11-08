@@ -29,8 +29,11 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
         DPowerOptions.init(context)
         runtime = DPowerRuntime(rom)
     }
-    @Synchronized override fun clock(): Double {
-        val cycles = runtime.advance()
+    @Synchronized override fun clock(): Double = clock(2200.0)
+    @Synchronized override fun clock(budgetCycles: Double): Double {
+        runtime.core.idleSkippingEnabled = EmulatorDebugSettings.isDPowerIdleSkippingEnabled()
+        val edge = if (steps.phase != 0 && steps.remaining > 0) steps.remaining.toDouble() else 2200.0
+        val cycles = runtime.advance(minOf(2200.0, budgetCycles, edge).coerceAtLeast(1.0))
         if (autoStepper.advance(cycles, DPowerOptions.autoStepEnabled, DPowerOptions.halfStepsPerSecond)
             && steps.pending == 0 && steps.phase != 1) steps.enqueue()
         steps.advance(cycles.toInt()) { pressed -> runtime.pin("CD", 1, if (pressed) 1 else -1) }

@@ -91,6 +91,11 @@ class DPowerMenu(
         steps.addView(walkingButton)
         steps.addView(text(context.getString(if (WalkingInput.available(context)) R.string.walking_help else R.string.walking_unavailable), 14f, muted))
 
+        if (EmulatorDebugSettings.isDebugEnabled()) {
+            toggle(steps, R.string.dp_idle_skip, EmulatorDebugSettings.isDPowerIdleSkippingEnabled()) {
+                EmulatorDebugSettings.setDPowerIdleSkippingEnabled(context, it)
+            }
+        }
         val display = section(R.string.dp_display_section)
         if (com.digimon.glyph.GlyphAvailability.isAvailable) {
             toggle(display, R.string.glyph_keep_awake, DisplayRenderSettings.isGlyphAwakeEnabled()) {

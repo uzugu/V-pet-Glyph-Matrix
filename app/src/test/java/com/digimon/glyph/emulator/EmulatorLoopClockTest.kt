@@ -16,6 +16,7 @@ class EmulatorLoopClockTest {
         var clocks = 0
         val edges = mutableListOf<Boolean>()
         val core = object : EmulatorCore by base {
+            override fun clock(budgetCycles: Double): Double = clock()
             override val clockFrequency = 2_200_000
             override fun clock(): Double {
                 clocks++
@@ -52,6 +53,7 @@ class EmulatorLoopClockTest {
         var clocks = 0
         var cycles = 0.0
         val core = object : EmulatorCore by base {
+            override fun clock(budgetCycles: Double): Double = clock()
             override fun clock(): Double = base.clock().also { clocks++; cycles += it }
         }
         val parked = CountDownLatch(1)
@@ -83,6 +85,7 @@ class EmulatorLoopClockTest {
         var cycles = 0.0
         val edges = mutableListOf<Boolean>()
         val core = object : EmulatorCore by base {
+            override fun clock(budgetCycles: Double): Double = clock()
             override fun clock(): Double = base.clock().also { cycles += it }
             override fun isDisplaySleeping() = sleeping.get()
             override fun pinSet(port: String, pin: Int, level: Int) { edges += true }
@@ -115,6 +118,7 @@ class EmulatorLoopClockTest {
         val edges = mutableListOf<Pair<Boolean, Double>>()
         val finished = CountDownLatch(4)
         val core = object : EmulatorCore by base {
+            override fun clock(budgetCycles: Double): Double = clock()
             override fun clock(): Double = base.clock().also { cycles += it }
             override fun pinSet(port: String, pin: Int, level: Int) {
                 edges += true to cycles

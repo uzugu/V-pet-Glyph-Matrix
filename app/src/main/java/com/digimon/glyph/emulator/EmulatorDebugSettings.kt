@@ -13,9 +13,17 @@ object EmulatorDebugSettings {
     @Volatile
     private var debugEnabled: Boolean = false
 
+    @Volatile private var dpowerIdleSkipping = false
+    fun isDPowerIdleSkippingEnabled() = dpowerIdleSkipping
+    fun setDPowerIdleSkippingEnabled(context: Context, enabled: Boolean) {
+        dpowerIdleSkipping = enabled
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().putBoolean("dpower_idle_skip", enabled).apply()
+    }
+
     @Synchronized
     fun init(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        dpowerIdleSkipping = prefs.getBoolean("dpower_idle_skip", false)
         debugEnabled = prefs.getBoolean(KEY_DEBUG_ENABLED, false)
     }
 
