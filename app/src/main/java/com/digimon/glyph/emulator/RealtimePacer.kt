@@ -15,7 +15,7 @@ class RealtimePacer(private val frequency: Int, startNs: Long) {
         require(executedCycles.isFinite() && executedCycles > 0)
         cycles += executedCycles
     }
-    /** Used only for intentional debug stepping; display mode changes never rebase the clock. */
+    /** Used for intentional debug stepping or non-clock device suspension; display mode changes never rebase the clock. */
     fun rebase(nowNs: Long) {
         wallAnchorNs = nowNs
         cycleAnchor = cycles

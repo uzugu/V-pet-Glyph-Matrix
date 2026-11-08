@@ -8,6 +8,8 @@ interface EmulatorCore {
     var onSerialTx: ((Int) -> Unit)?
     var onPortDriveChange: ((String, Int?) -> Unit)?
     var onIoAccess: ((Boolean, Int, Int) -> Unit)?
+    /** Only non-clock pet cores may opt into stopping when their firmware LCD sleeps. */
+    fun isDisplaySleeping(): Boolean = false
     fun clock(): Double
     fun getVRAM(): IntArray
     fun getRAM(): IntArray

@@ -65,3 +65,9 @@ The matching launcher passed 232 unit tests with 2 optional integration tests
 skipped, plus debug assembly and lint (0 errors).
 No Android device was attached; screen timeout and physical touch accuracy
 still need device verification.
+
+Preview21 updates the V-pet backend only: the Digivice core now parks while its
+firmware LCD sleeps, or while the phone screen is off with no interactive Glyph
+toy. Press a real control to wake LCD sleep. Loaded state is kept in memory and
+sleep time is not simulated on return. Classic pets keep their existing clock.
+See [battery behavior](dpower/battery.md#preview21-stop-the-digivice-core-during-standby).

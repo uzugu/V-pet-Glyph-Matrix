@@ -10,6 +10,21 @@ from brickemu.GPL191X import GPL191X
 
 ROM = os.environ.get('DPOWER_ROM')
 
+class DPowerLcdGateTests(unittest.TestCase):
+    def test_lcd_sleep_uses_hardware_enable_not_pixel_content(self):
+        from types import SimpleNamespace
+        runtime = Runtime.__new__(Runtime)
+        runtime.core = SimpleNamespace(_CLK32K_ENABLE=1, _LCD_CTRL=2,
+                                       get_VRAM=lambda: [0] * 128)
+        self.assertTrue(runtime.display_enabled())
+        self.assertFalse(any(runtime.display()))
+        runtime.core._LCD_CTRL = 0
+        self.assertFalse(runtime.display_enabled())
+        runtime.core._LCD_CTRL = 2
+        runtime.core._CLK32K_ENABLE = 0
+        self.assertFalse(runtime.display_enabled())
+
+
 @unittest.skipUnless(ROM, 'Set DPOWER_ROM to the private EU 1.01 dump')
 class DPowerTests(unittest.TestCase):
     def test_batched_core_matches_upstream_and_lcd(self):

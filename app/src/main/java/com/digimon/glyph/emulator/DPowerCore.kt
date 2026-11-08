@@ -16,6 +16,9 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     private val autoStepper = com.digimon.glyph.input.AutoStepper()
     private val steps = com.digimon.glyph.input.StepPulses()
     @Synchronized fun step(): Boolean = steps.enqueue()
+    private var hasShownLcd = false
+    private var displaySleeping = false
+    override fun isDisplaySleeping() = displaySleeping
     private var generation = 0L
     private var previous = IntArray(0)
     var onPcm: ((ByteArray) -> Unit)? = null
@@ -54,6 +57,10 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     @Synchronized override fun getRAM(): IntArray = runtime.callAttr("ram").toJava(IntArray::class.java)
     @Synchronized override fun getRawVRAM(): IntArray = runtime.callAttr("raw_lcd").toJava(IntArray::class.java)
     @Synchronized override fun getDisplaySnapshot(lastGeneration: Long): E0C6200.DisplaySnapshot? {
+        val lcdEnabled = runtime.callAttr("display_enabled").toBoolean()
+        if (lcdEnabled) hasShownLcd = true
+        // A cold/reset core starts with LCD disabled: allow its boot sequence to run.
+        displaySleeping = hasShownLcd && !lcdEnabled
         val pixels = getVRAM()
         if (!pixels.contentEquals(previous)) { previous = pixels; generation++ }
         return if (lastGeneration == generation) null else E0C6200.DisplaySnapshot(generation, pixels)
@@ -77,7 +84,7 @@ class DPowerCore(context: Context, rom: ByteArray) : EmulatorCore {
     }
     override fun getDiagnostics(): Map<String, Any> = mapOf("core" to "SPL61X")
     override fun getCurrentDigimonState(romName: String?): DigimonState? = null
-    @Synchronized override fun resetCpu() { runtime.callAttr("reset"); autoStepper.reset(); onAudioReset?.invoke(); audioPoll = 0; steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
+    @Synchronized override fun resetCpu() { hasShownLcd = false; displaySleeping = false; runtime.callAttr("reset"); autoStepper.reset(); onAudioReset?.invoke(); audioPoll = 0; steps.restore(0, 0, 0); previous = IntArray(0); lastTone = Pair(-1, -1f) }
     @Synchronized override fun pinSet(port: String, pin: Int, level: Int) {
         // Existing three-button Glyph surface: A=left, B=up, C=right.
         if (port == "K0") {

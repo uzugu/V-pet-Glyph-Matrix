@@ -8,6 +8,69 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EmulatorLoopClockTest {
+    @Test fun backgroundPauseRunsNoFirmwareAndDoesNotCatchUpHiddenHours() {
+        val now = java.util.concurrent.atomic.AtomicLong(0)
+        val base = TimingRom.core()
+        var clocks = 0
+        var cycles = 0.0
+        val core = object : EmulatorCore by base {
+            override fun clock(): Double = base.clock().also { clocks++; cycles += it }
+        }
+        val parked = CountDownLatch(1)
+        val resumed = CountDownLatch(1)
+        val loop = EmulatorLoop(core, {}, now::get, parkNs = {
+            parked.countDown()
+            java.util.concurrent.locks.LockSupport.parkNanos(it)
+        })
+        loop.onPauseChanged = { if (!it) resumed.countDown() }
+        loop.setBackgroundPaused(true)
+        loop.start()
+        try {
+            assertTrue(parked.await(2, TimeUnit.SECONDS))
+            now.set(TimeUnit.HOURS.toNanos(12))
+            assertEquals(0, loop.executeSync { clocks })
+            loop.setBackgroundPaused(false)
+            assertTrue(resumed.await(2, TimeUnit.SECONDS))
+            now.addAndGet(TimeUnit.MILLISECONDS.toNanos(100))
+            assertTrue(loop.executeSyncWhen(2000, { cycles >= core.clockFrequency * 0.099 }) { true } == true)
+            val virtualMs = loop.executeSync { cycles / core.clockFrequency * 1000 }!!
+            assertTrue("Resumed firmware must owe only the visible 100ms: $virtualMs", virtualMs in 99.0..101.0)
+        } finally { loop.stop() }
+    }
+
+    @Test fun sleepingLcdStaysParkedForMaintenanceAndRealInputWakesIt() {
+        val now = java.util.concurrent.atomic.AtomicLong(0)
+        val sleeping = AtomicBoolean(true)
+        val base = TimingRom.core()
+        var cycles = 0.0
+        val edges = mutableListOf<Boolean>()
+        val core = object : EmulatorCore by base {
+            override fun clock(): Double = base.clock().also { cycles += it }
+            override fun isDisplaySleeping() = sleeping.get()
+            override fun pinSet(port: String, pin: Int, level: Int) { edges += true }
+            override fun pinRelease(port: String, pin: Int) { edges += false }
+        }
+        val paused = CountDownLatch(1)
+        val resumed = CountDownLatch(1)
+        val loop = EmulatorLoop(core, {}, now::get)
+        loop.onPauseChanged = { if (it) paused.countDown() else resumed.countDown() }
+        loop.start()
+        try {
+            assertTrue(paused.await(2, TimeUnit.SECONDS))
+            now.set(TimeUnit.HOURS.toNanos(12))
+            assertEquals(0.0, loop.executeSync { cycles }!!, 0.0)
+            assertTrue(loop.isPaused)
+            sleeping.set(false)
+            assertTrue(loop.tapButton("K0", 2, 0) { true })
+            assertTrue(resumed.await(2, TimeUnit.SECONDS))
+            now.addAndGet(TimeUnit.MILLISECONDS.toNanos(130))
+            assertTrue(loop.executeSyncWhen(2000, { edges.size == 2 }) { true } == true)
+            assertEquals(listOf(true, false), loop.executeSync { edges.toList() })
+            val virtualMs = loop.executeSync { cycles / core.clockFrequency * 1000 }!!
+            assertTrue("Wake must not catch up sleep time: $virtualMs", virtualMs in 120.0..131.0)
+        } finally { loop.stop() }
+    }
+
     @Test fun queuedWidgetTapsSurviveAStalledWorkerWithFirmwareHoldAndReleaseTimes() {
         val base = TimingRom.core()
         var cycles = 0.0

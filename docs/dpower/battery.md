@@ -64,3 +64,51 @@ phone sensor power draw and gesture latency still require hardware measurement.
 Preview15 gate: 117 JVM tests, 116 passed, one opt-in Frame hardware test
 skipped. All six private classic ROMs were supplied; versioned debug packaging
 and lint passed. No Android device was connected.
+
+## Preview21: stop the Digivice core during standby
+
+This change belongs to **V-pet Glyph Matrix** (`com.digimon.glyph`), specifically
+its D-Power EU 1.01 / SPL61X core. The separate reconstructed D-Arc app is not
+required for this update.
+
+As requested, this Digivice mode may deliberately stop firmware time while
+asleep. Classic Digimon cores retain continuous real-time emulation. Digivice
+standby starts when the phone screen is off and no interactive Glyph toy is
+selected, or when the running firmware disables its LCD. LCD sleep uses the
+hardware enable bits, not an all-zero picture; cold boot is allowed to run before
+the LCD first turns on.
+
+The worker parks without clocking, rendering or running firmware timers. Save
+and status commands can still execute without advancing the core. Background
+pause releases the CPU wake lock and stops walking/gesture sensors, PCM playback,
+haptics and the legacy widget frame pusher. The service's maintenance polling is
+reduced to once per second while paused and uses non-wakeup Handler callbacks.
+An autosave is requested on entering standby. The optional Glyph timeout request
+is released while paused.
+
+Phone screen-on or interactive Glyph play removes background suspension. A
+sleeping firmware LCD requires actual user input: widget/phone buttons or Glyph
+interaction wake the worker, with a short firmware-time window for the wake input
+to be serviced. Maintenance checks do not wake a sleeping LCD. On resume the
+pacer rebases deliberately, preserving core/RAM state and avoiding hours of
+catch-up work. Walking/automatic steps do not progress during standby.
+DND Freeze remains independent.
+
+The emulator status stays RUNNING because the core remains loaded and accepts
+wake inputs; this standby is not STOP or a DND freeze. No save format or OWL
+protocol change is involved. Widget settings, Japanese localization, Hermes
+launcher compatibility and the preview20 Glyph option remain available.
+
+Tests run the actual worker across twelve paused hours, check that maintenance
+does not execute firmware, verify return without catch-up and a complete button
+press/release after waking LCD sleep. A ROM-free Python test checks the LCD
+hardware gate, including an enabled but blank screen. Existing classic clock,
+stall and mode-change tests remain part of the gate.
+
+No phone is connected for battery measurements, physical Glyph wake checks or
+Nothing OS screen-event verification. CPU parking is verified in software;
+battery-percentage savings are not measured.
+
+Preview21 validation: 143 JVM tests (104 passed, 39 skipped), debug APK assembly
+and lint passed (zero lint errors). Python tests: 11 passed, six private-ROM
+integration tests skipped because `DPOWER_ROM` was unavailable.

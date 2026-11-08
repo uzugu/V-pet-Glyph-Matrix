@@ -6,6 +6,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -178,6 +181,11 @@ class DigimonGlyphToyService : Service() {
     private var glyphRegistered = false
     private var frameHeartbeatCount: Long = 0L
     private var lastFrameHeartbeatLogMs: Long = 0L
+    private var appliedRuntimePause: Boolean? = null
+    private val screenStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) { applyDisplaySuspension() }
+    }
+
     private var cpuWakeLock: PowerManager.WakeLock? = null
     private var battleTransport: BattleTransport? = null
     private var battleTransportType: BattleTransportType = BattleTransportType.NEARBY
@@ -252,12 +260,13 @@ class DigimonGlyphToyService : Service() {
     }
     private val commandPollRunnable = object : Runnable {
         override fun run() {
-            walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore && EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING)
+            applyDisplaySuspension()
+            walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore && emulatorLoop?.isPaused != true && EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING)
             updateEvenStream()
             processPendingCommands()
             applyAudioHapticSettingsIfChanged()
             applyTimingSettingIfChanged()
-            mainHandler.postDelayed(this, 150L)
+            mainHandler.postDelayed(this, if (emulatorLoop?.isPaused == true) 1000L else 150L)
         }
     }
     private val delayedShutdownRunnable = Runnable {
@@ -294,6 +303,10 @@ class DigimonGlyphToyService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        ContextCompat.registerReceiver(this, screenStateReceiver, IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }, ContextCompat.RECEIVER_NOT_EXPORTED)
         BattleStateStore.init(this)
         BattleTransportSettings.init(this)
         DigimonAttentionSettings.init(this)
@@ -306,8 +319,9 @@ class DigimonGlyphToyService : Service() {
     override fun onBind(intent: Intent?): IBinder? {
         if (intent?.action == OwlProtocol.ACTION_BIND) return owlBridge.messenger.binder
         toySession.bind()
+        applyDisplaySuspension()
         Log.d(TAG, "onBind glyphAvailable=${GlyphAvailability.isAvailable}")
-        inputController?.start()
+        if (emulatorLoop?.isPaused != true) inputController?.start()
         ensureServiceStarted()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
@@ -335,6 +349,7 @@ class DigimonGlyphToyService : Service() {
         }
         Log.d(TAG, "onUnbind")
         toySession.unbind()
+        applyDisplaySuspension()
         inputController?.stop()
         releaseGlyphManager()
         // Display binding is independent of an explicitly started pet's lifetime.
@@ -349,8 +364,9 @@ class DigimonGlyphToyService : Service() {
     override fun onRebind(intent: Intent?) {
         if (intent?.action == OwlProtocol.ACTION_BIND) return
         toySession.bind()
+        applyDisplaySuspension()
         Log.d(TAG, "onRebind")
-        inputController?.start()
+        if (emulatorLoop?.isPaused != true) inputController?.start()
         mainHandler.removeCallbacks(delayedShutdownRunnable)
         mainHandler.removeCallbacks(commandPollRunnable)
         mainHandler.post(commandPollRunnable)
@@ -547,6 +563,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     override fun onDestroy() {
+        unregisterReceiver(screenStateReceiver)
         evenStream?.close(); evenStream = null
         owlBridge.disconnect()
         super.onDestroy()
@@ -828,15 +845,17 @@ class DigimonGlyphToyService : Service() {
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_START) -> {
                 Log.d(TAG, "Toy start")
                 if (!toySession.start()) return
+                applyDisplaySuspension()
                 initGlyphManager()
                 startEmulator()
-                inputController?.start()
+                if (emulatorLoop?.isPaused != true) inputController?.start()
                 applyGlyphAwakeSetting()
                 pushStaticFrame()
             }
             event.startsWith(com.nothing.ketchum.GlyphToy.STATUS_END) -> {
                 Log.d(TAG, "Toy end")
                 toySession.end()
+                applyDisplaySuspension()
                 inputController?.stop()
                 releaseGlyphManager()
                 mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -851,13 +870,18 @@ class DigimonGlyphToyService : Service() {
                 stopSelf()
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_ACTION_DOWN -> {
-                if (toySession.interactive) inputController?.onGlyphButtonDown()
+                if (toySession.interactive) {
+                    emulatorLoop?.wakeForInput()
+                    inputController?.start()
+                    inputController?.onGlyphButtonDown()
+                }
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_ACTION_UP -> {
                 if (toySession.interactive) inputController?.onGlyphButtonUp()
             }
             event == com.nothing.ketchum.GlyphToy.EVENT_AOD -> {
                 if (!toySession.aod()) return
+                applyDisplaySuspension()
                 applyGlyphAwakeSetting()
                 Log.d(TAG, "Toy AOD: restoring display session")
                 mainHandler.removeCallbacks(delayedShutdownRunnable)
@@ -924,7 +948,7 @@ class DigimonGlyphToyService : Service() {
             glyphDisplayAwake.update(
                 enabled = !releasing && DisplayRenderSettings.isGlyphAwakeEnabled(),
                 interactive = toySession.interactive,
-                running = emulatorLoop != null && !DigimonDndSettings.isFrozenNow(),
+                running = emulatorLoop != null && emulatorLoop?.isPaused != true && !DigimonDndSettings.isFrozenNow(),
             ) { timeoutEnabled ->
                 // Exposed by SDK 2.0, but undocumented by Nothing; firmware support must be tested.
                 mgr.setGlyphMatrixTimeout(timeoutEnabled)
@@ -1271,6 +1295,17 @@ class DigimonGlyphToyService : Service() {
             }
         }
 
+        loop.onPauseChanged = {
+            mainHandler.post {
+                if (emulatorLoop === loop) {
+                    syncRuntimePauseResources()
+                    if (loop.isPaused) saveState(sync = false, reason = "digivice_standby")
+                    applyAudioHapticSettingsIfChanged(force = true)
+                }
+            }
+        }
+        applyDisplaySuspension()
+
         loop.onFailure = { failure ->
             mainHandler.post {
                 if (emulatorLoop === loop) {
@@ -1313,7 +1348,7 @@ class DigimonGlyphToyService : Service() {
         }
         input.setPowerSaveEnabled(EmulatorTimingSettings.isPowerSaveEnabled())
         input.setDebugEnabled(debugTelemetryEnabled)
-        if (toySession.interactive) input.start()
+        if (toySession.interactive && !loop.isPaused) input.start()
         inputController = input
 
         // Start autosave
@@ -1324,6 +1359,8 @@ class DigimonGlyphToyService : Service() {
             WidgetFramePusher.ensureRunning(this)
         }
 
+        appliedRuntimePause = null
+        applyDisplaySuspension()
         applyGlyphAwakeSetting()
         Log.d(TAG, "Emulator started with ROM: $romName standaloneMode=$standaloneMode")
     }
@@ -1338,6 +1375,7 @@ class DigimonGlyphToyService : Service() {
         for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
         emulatorLoop?.stop()
         emulatorLoop = null
+        appliedRuntimePause = null
         applyGlyphAwakeSetting()
         emulator?.onBuzzerChange = null
         emulator?.onSerialTx = null
@@ -1716,8 +1754,9 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun applyAudioHapticSettingsIfChanged(force: Boolean = false) {
-        val hapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
-        val audioEnabled = EmulatorAudioSettings.isAudioEnabled()
+        val paused = emulatorLoop?.isPaused == true
+        val hapticEnabled = !paused && EmulatorAudioSettings.isHapticAudioEnabled()
+        val audioEnabled = !paused && EmulatorAudioSettings.isAudioEnabled()
         if (!force && audioEnabled == lastAudioEnabled && hapticEnabled == lastHapticEnabled) return
         if (force || audioEnabled != lastAudioEnabled) {
             lastAudioEnabled = audioEnabled
@@ -1773,9 +1812,7 @@ class DigimonGlyphToyService : Service() {
                 emulatorLoop?.pulseStepBudget((stepSliceMs + BATTLE_STEP_CONNECT_PRIME_MS).coerceAtMost(1_000))
             }
         }
-        // Every mode runs the firmware in real time. Suspending the CPU here
-        // would accumulate simulation debt and stop the pet's clock.
-        acquireCpuWakeLock()
+        syncRuntimePauseResources()
         lastAppliedTimingMode = desiredMode
         Log.d(
             TAG,
@@ -1785,7 +1822,40 @@ class DigimonGlyphToyService : Service() {
         )
     }
 
+    /** Classic pets retain their real-time clock. Only the non-clock Digivice core may suspend. */
+    private fun applyDisplaySuspension() {
+        val loop = emulatorLoop ?: return
+        val phoneOn = (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
+        loop.setBackgroundPaused(emulator is com.digimon.glyph.emulator.DPowerCore && !phoneOn && !toySession.interactive)
+        syncRuntimePauseResources()
+    }
+
+    private fun syncRuntimePauseResources() {
+        val loop = emulatorLoop ?: return
+        val paused = loop.isPaused
+        if (paused) releaseCpuWakeLock() else acquireCpuWakeLock()
+        if (appliedRuntimePause == paused) return
+        appliedRuntimePause = paused
+        if (paused) {
+            inputController?.stop()
+            walkingInput.stop()
+            dpowerAudioEngine?.stop()
+            hapticEngine?.stop()
+            WidgetFramePusher.stop()
+            Log.d(TAG, "Digivice paused: LCD asleep or no active display")
+        } else {
+            dpowerAudioEngine?.start()
+            if (toySession.interactive) inputController?.start()
+            if (DigimonWidgetProvider.getWidgetIds(this).isNotEmpty()) WidgetFramePusher.ensureRunning(this)
+            Log.d(TAG, "Emulator resumed without hidden-time catch-up")
+        }
+        applyAudioHapticSettingsIfChanged(force = true)
+        applyGlyphAwakeSetting()
+    }
+
     private fun handleUserInteractionForTimingBoost() {
+        emulatorLoop?.wakeForInput()
+        applyDisplaySuspension()
         if (EmulatorTimingSettings.isFullAccuracyEnabled() && !EmulatorTimingSettings.isPowerSaveEnabled()) return
         interactionBoostUntilMs = SystemClock.uptimeMillis() + INTERACTION_TIMING_BOOST_MS
         if (lastAppliedTimingMode != EmulatorLoop.TimingMode.FULL_ACCURATE) {

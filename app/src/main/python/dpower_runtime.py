@@ -48,6 +48,10 @@ class Runtime:
             cycles += elapsed
         return cycles
 
+    def display_enabled(self):
+        # Check the hardware LCD gate, never infer sleep from an all-zero image.
+        return bool(self.core._CLK32K_ENABLE and (self.core._LCD_CTRL & 0x02))
+
     def display(self):
         raw = self.core.get_VRAM()
         return [int(bool(raw[a] & mask)) for row in LCD for a, mask in row]
