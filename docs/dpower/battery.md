@@ -112,3 +112,24 @@ battery-percentage savings are not measured.
 Preview21 validation: 143 JVM tests (104 passed, 39 skipped), debug APK assembly
 and lint passed (zero lint errors). Python tests: 11 passed, six private-ROM
 integration tests skipped because `DPOWER_ROM` was unavailable.
+
+## Preview22: queue walking steps during standby
+
+Walking detection now remains registered while the Digivice core is parked,
+superseding preview21's walking-sensor shutdown. Detected steps append to the
+existing snapshot-backed pulse queue without waking firmware. Its count limit
+is now 100,000, using constant memory. Actual wake input resumes playback at the
+normal 80 ms press / 120 ms release cadence; long backlogs take time to drain.
+A wake-up step detector is preferred if available, with the standard detector as
+fallback. No continuous CPU wake lock is held for collection. Walking remains
+opt-in and permission-gated; DND, Stop and classic ROM selection retain their
+existing restrictions. Automatic steps remain stopped during standby.
+
+Worker tests queue 300 steps across twelve paused hours without a firmware clock,
+then check all contact edges after user wake. Pulse tests save/restore and drain
+a 10,000-step backlog. Phone sensor delivery, firmware step crediting and battery
+impact still need device testing.
+
+Preview22 validation: 145 JVM tests (106 passed, 39 skipped), versioned debug APK
+assembly and lint passed with zero lint errors. Package `com.digimon.glyph`,
+version code 26, using the existing debug signing certificate. No phone connected.

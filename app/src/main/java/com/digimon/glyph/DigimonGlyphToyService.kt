@@ -261,7 +261,7 @@ class DigimonGlyphToyService : Service() {
     private val commandPollRunnable = object : Runnable {
         override fun run() {
             applyDisplaySuspension()
-            walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore && emulatorLoop?.isPaused != true && EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING)
+            updateWalkingInput()
             updateEvenStream()
             processPendingCommands()
             applyAudioHapticSettingsIfChanged()
@@ -1838,7 +1838,6 @@ class DigimonGlyphToyService : Service() {
         appliedRuntimePause = paused
         if (paused) {
             inputController?.stop()
-            walkingInput.stop()
             dpowerAudioEngine?.stop()
             hapticEngine?.stop()
             WidgetFramePusher.stop()
@@ -1851,6 +1850,12 @@ class DigimonGlyphToyService : Service() {
         }
         applyAudioHapticSettingsIfChanged(force = true)
         applyGlyphAwakeSetting()
+    }
+
+    private fun updateWalkingInput() {
+        // Step commands only append saved contacts; they never wake the sleeping firmware.
+        walkingInput.update(emulator is com.digimon.glyph.emulator.DPowerCore &&
+            EmulatorStatus.snapshot().run == EmulatorStatus.Run.RUNNING && !DigimonDndSettings.isFrozenNow())
     }
 
     private fun handleUserInteractionForTimingBoost() {

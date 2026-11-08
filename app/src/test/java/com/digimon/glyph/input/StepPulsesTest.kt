@@ -29,13 +29,28 @@ class StepPulsesTest {
     }
     @Test fun queueIsBoundedAndInvalidRestoreIsAtomic() {
         val pulses = StepPulses()
-        repeat(128) { assertTrue(pulses.enqueue()) }
+        repeat(StepPulses.MAX_PENDING) { assertTrue(pulses.enqueue()) }
         assertFalse(pulses.enqueue())
-        try { pulses.restore(129, 0, 0); fail("invalid") } catch (_: IllegalArgumentException) {}
-        assertEquals(128, pulses.pending)
+        try { pulses.restore(StepPulses.MAX_PENDING + 1, 0, 0); fail("invalid") } catch (_: IllegalArgumentException) {}
+        assertEquals(StepPulses.MAX_PENDING, pulses.pending)
         pulses.restore(0, 0, 0)
         val edges = mutableListOf<Boolean>()
         pulses.advance(2200) { edges.add(it) }
         assertTrue(edges.isEmpty())
+    }
+
+    @Test fun walkingBacklogSurvivesSaveAndDrainsWithDistinctContacts() {
+        val pulses = StepPulses()
+        repeat(10_000) { assertTrue(pulses.enqueue()) }
+        val restored = StepPulses().apply { restore(pulses.pending, pulses.phase, pulses.remaining) }
+        var presses = 0
+        var releases = 0
+        repeat(20_001) {
+            restored.advance(264_000) { if (it) presses++ else releases++ }
+        }
+        assertEquals(10_000, presses)
+        assertEquals(presses, releases)
+        assertEquals(0, restored.pending)
+        assertEquals(0, restored.phase)
     }
 }

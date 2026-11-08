@@ -8,6 +8,44 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EmulatorLoopClockTest {
+    @Test fun standbyStepsQueueWithoutWakingFirmwareAndDrainAfterInput() {
+        val now = java.util.concurrent.atomic.AtomicLong(0)
+        val sleeping = AtomicBoolean(true)
+        val base = TimingRom.core()
+        val pulses = com.digimon.glyph.input.StepPulses()
+        var clocks = 0
+        val edges = mutableListOf<Boolean>()
+        val core = object : EmulatorCore by base {
+            override val clockFrequency = 2_200_000
+            override fun clock(): Double {
+                clocks++
+                pulses.advance(2200) { edges += it }
+                return 2200.0
+            }
+            override fun isDisplaySleeping() = sleeping.get()
+        }
+        val paused = CountDownLatch(1)
+        val resumed = CountDownLatch(1)
+        val loop = EmulatorLoop(core, {}, now::get)
+        loop.onPauseChanged = { if (it) paused.countDown() else resumed.countDown() }
+        loop.start()
+        try {
+            assertTrue(paused.await(2, TimeUnit.SECONDS))
+            now.set(TimeUnit.HOURS.toNanos(12))
+            repeat(300) { assertTrue(loop.enqueue { pulses.enqueue() }) }
+            assertEquals(300, loop.executeSync { pulses.pending })
+            assertEquals(0, loop.executeSync { clocks })
+            assertTrue(loop.isPaused)
+            assertTrue(edges.isEmpty())
+            sleeping.set(false)
+            loop.wakeForInput()
+            assertTrue(resumed.await(2, TimeUnit.SECONDS))
+            now.addAndGet(TimeUnit.MILLISECONDS.toNanos(61_000))
+            assertTrue(loop.executeSyncWhen(2000, { pulses.pending == 0 && pulses.phase == 0 }) { true } == true)
+            assertEquals(List(300) { listOf(true, false) }.flatten(), loop.executeSync { edges.toList() })
+        } finally { loop.stop() }
+    }
+
     @Test fun backgroundPauseRunsNoFirmwareAndDoesNotCatchUpHiddenHours() {
         val now = java.util.concurrent.atomic.AtomicLong(0)
         val base = TimingRom.core()

@@ -11,7 +11,7 @@ import android.os.Build
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
-/** Live steps only; never imports historical totals or counts while simulation is paused. */
+/** Live detector events, including standby; firmware queues them until it resumes. */
 class WalkingInput(private val context: Context, private val onStep: () -> Unit) : SensorEventListener {
     companion object {
         fun enabled(context: Context) = context.getSharedPreferences("walking_input", 0).getBoolean("enabled", false)
@@ -27,10 +27,12 @@ class WalkingInput(private val context: Context, private val onStep: () -> Unit)
         val wanted = runningDPower && enabled(context) && permitted(context)
         if (!wanted) { stop(); return }
         if (active) return
-        val sensor = manager?.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) ?: return
+        val sensorManager = manager ?: return
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR, true)
+            ?: sensorManager.getDefaultSensor(Sensor.TYPE_STEP_DETECTOR) ?: return
         sinceNs = SystemClock.elapsedRealtimeNanos()
         lastNs = 0
-        active = try { manager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL) }
+        active = try { sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL) }
             catch (_: SecurityException) { false }
     }
     fun stop() {

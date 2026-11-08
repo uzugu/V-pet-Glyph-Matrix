@@ -2,11 +2,15 @@ package com.digimon.glyph.input
 
 /** Serialises Step contacts using emulated cycles, including a released gap. */
 class StepPulses {
+    companion object {
+        // A walking day must fit while firmware is parked. This is a count, not an event list.
+        const val MAX_PENDING = 100_000
+    }
     var pending = 0; private set
     var phase = 0; private set // idle, pressed, released gap
     var remaining = 0; private set
     fun enqueue(): Boolean {
-        if (pending >= 128) return false
+        if (pending >= MAX_PENDING) return false
         pending++
         return true
     }
@@ -20,7 +24,7 @@ class StepPulses {
         } else phase = 0
     }
     fun restore(pending: Int, phase: Int, remaining: Int) {
-        require(pending in 0..128 && phase in 0..2 && remaining in 0..264_000)
+        require(pending in 0..MAX_PENDING && phase in 0..2 && remaining in 0..264_000)
         require(phase != 0 || remaining == 0)
         this.pending = pending; this.phase = phase; this.remaining = remaining
     }

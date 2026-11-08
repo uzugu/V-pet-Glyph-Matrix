@@ -6,7 +6,17 @@ Enable **D-Power console → Step Training → Enable walking steps** and grant 
 
 The implementation uses Android `TYPE_STEP_DETECTOR`, which reports individual walking events. See [official Android motion sensor documentation](https://developer.android.com/develop/sensors-and-location/sensors/sensors_motion#sensors-motion-stepdetector). There is deliberately no accelerometer shake heuristic or historical step-counter import. Permission revocation, Stop, DND Freeze and a switch to a classic ROM stop collection; an explicitly app-started pet can keep walking input while another Glyph toy is displayed.
 
-Events are serialised into 80 ms high / 120 ms released pulses measured in **emulated cycles**, with up to 128 pending contacts. Batched events remain distinct. Queue/phase/time are saved with the D-Power snapshot; full reset clears them. Registration resets the timestamp boundary and ignores stale/duplicate sensor events. Sensor collection itself is not persisted across process death, so steps taken while stopped are not credited.
+Events are serialised into 80 ms high / 120 ms released pulses measured in **emulated cycles**, with up to 100,000 pending contacts (preview22). Batched events remain distinct. Queue/phase/time are saved with the D-Power snapshot; full reset clears them. Registration resets the timestamp boundary and ignores stale/duplicate sensor events. Sensor collection itself is not persisted across process death, so steps taken while stopped are not credited.
+
+From preview22, walking detection remains registered during Digivice standby,
+including LCD-off and phone-screen-off suspension. A wake-up step detector is
+preferred when the phone provides one; otherwise the standard detector is used,
+whose delivery during phone sleep depends on the device. Sensor events append to
+the saved contact queue without clocking or waking the firmware or acquiring a
+continuous CPU wake lock. Real user input resumes an LCD-sleeping core; queued
+contacts then drain at the normal pulse cadence, so a long walk is credited
+gradually. Automatic steps still pause with firmware time. The walking option
+and Physical activity permission are required; DND Freeze still ignores steps.
 
 These pulse durations are an implementation choice pending physical/firmware calibration, not a measured original switch waveform. Tests verify contact sequencing, release gaps, queue bounds and snapshot continuation. Actual walking detection, pocket behaviour, in-game credited steps and screen-off sensor delivery still require a phone. A missed or unavailable Android detector cannot be corrected by the emulator.
 
