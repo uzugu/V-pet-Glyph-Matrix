@@ -21,8 +21,11 @@ class EvenStreamServerTest {
         }
         fun command(seq:Int,button:String="a")="""{"session":"12345678-1234-1234-1234-123456789abc","seq":$seq,"button":"$button","inputEpoch":"12345678-1234-1234-1234-123456789abc:0","romHash":"${"b".repeat(64)}"}"""
         try {
+            assertFalse(server.observed)
             assertEquals(401,request("v1/frame",auth=false))
+            assertFalse(server.observed)
             assertEquals(200,request("v1/frame"))
+            assertTrue(server.observed)
             assertEquals(204,request("v1/press","OPTIONS",auth=false))
             assertEquals(200,request("v1/press","POST",command(1)))
             assertEquals(409,request("v1/press","POST",command(1)))

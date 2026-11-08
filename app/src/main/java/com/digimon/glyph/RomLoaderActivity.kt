@@ -837,7 +837,7 @@ class RomLoaderActivity : AppCompatActivity() {
     }
 
     private fun renderDebugState() {
-        val frameSnap = FrameDebugState.snapshot()
+        val frameSnap = FrameDebugState.snapshot(observeMemory = ramDebugText.isShown)
         if (frameSnap.updatedAtMs != lastFrameUpdateMs) {
             lastFrameUpdateMs = frameSnap.updatedAtMs
             val state = frameSnap.digimonState

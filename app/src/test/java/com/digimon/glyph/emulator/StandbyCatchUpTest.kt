@@ -21,7 +21,7 @@ class StandbyCatchUpTest {
             now.set(TimeUnit.HOURS.toNanos(8))
             val expectedCycles=reference.runForCycles(8*3600.0*reference.clockFrequency)
             val actual=loop.executeSync(20_000){it.getState()}!!
-            ClassicFirmwareClockTest.assertUnchanged(reference.getState(),actual,skipDebug=true)
+            ClassicFirmwareClockTest.assertUnchanged(reference.getState(),actual,skipDebug=false)
             assertEquals(reference.getState()["DBG_IT1_SET"],actual["DBG_IT1_SET"])
             assertEquals(reference.getState()["DBG_INT_COUNT"],actual["DBG_INT_COUNT"])
             assertTrue(expectedCycles>=8*3600.0*core.clockFrequency)
@@ -47,6 +47,24 @@ class StandbyCatchUpTest {
             loop.requestCatchUp()
             val second=loop.executeSync(10_000){it.getState()}!!
             assertEquals(900,(second["DBG_IT1_SET"] as Int)-(first["DBG_IT1_SET"] as Int))
+        } finally {loop.stop()}
+    }
+    @Test fun lockedPhoneTapCompletesItsReleaseAfterCatchUp() {
+        val now=AtomicLong(0);val base=TimingRom.core();val pressed=CountDownLatch(1);val released=CountDownLatch(1)
+        val core=object:EmulatorCore by base {
+            override fun pinSet(port:String,pin:Int,level:Int) {pressed.countDown()}
+            override fun pinRelease(port:String,pin:Int) {released.countDown()}
+        }
+        val parked=CountDownLatch(1)
+        val loop=EmulatorLoop(core,{},now::get,parkNs={parked.countDown();LockSupport.parkNanos(it)})
+        loop.realTimeCatchUpEnabled=true;loop.setBackgroundIdle(true);loop.start()
+        try {
+            assertTrue(parked.await(2,TimeUnit.SECONDS))
+            now.set(TimeUnit.SECONDS.toNanos(1))
+            assertTrue(loop.tapButton("K0",2,0){true})
+            assertTrue(pressed.await(2,TimeUnit.SECONDS))
+            now.addAndGet(TimeUnit.MILLISECONDS.toNanos(130));loop.requestCatchUp()
+            assertTrue(released.await(2,TimeUnit.SECONDS))
         } finally {loop.stop()}
     }
     @Test fun screenOffWorkerWakeupsDropFromCoalescedPacingToZeroPeriodicPolling() {

@@ -120,16 +120,20 @@ class DPowerPortTest {
         return Class.forName("java.lang.management.ThreadMXBean").getMethod("getCurrentThreadCpuTime").invoke(bean) as Long
     }
     @Test fun syntheticCpuBenchmark() {
-        val r=DPowerRuntime(synthetic());repeat(5000){r.advance();if(it%10==0)r.playback()}
+        val r=DPowerRuntime(synthetic());repeat(2000){r.advance();if(it%10==0)r.playback()}
         val start=cpuNow();var cycles=0.0
         repeat(30000){cycles+=r.advance();if(it%10==0)r.playback()}
         val cpu=(cpuNow()-start)/1e9
         println("SYNTHETIC D-Power Kotlin: $cpu CPU seconds / ${cycles/2200000} emulated seconds")
         val ref=golden("--synthetic","--benchmark","--seconds","30")
         println("SYNTHETIC D-Power Python: ${ref["cpuSeconds"]} CPU seconds / ${ref["cycles"].asDouble/2200000} emulated seconds")
-        val c=TimingRom.core();val t=cpuNow()
-        val seconds=c.runForCycles(600.0*c.clockFrequency)/c.clockFrequency
-        println("SYNTHETIC classic: ${(cpuNow()-t)/1e9} CPU seconds / $seconds emulated seconds")
+        for (skip in listOf(false,true)) {
+            val c=TimingRom.core().apply {idleSkippingEnabled=skip}
+            c.runForCycles(60.0*c.clockFrequency)
+            val t=cpuNow()
+            val seconds=c.runForCycles(600.0*c.clockFrequency)/c.clockFrequency
+            println("SYNTHETIC classic skip=$skip: ${(cpuNow()-t)/1e9} CPU seconds / $seconds emulated seconds")
+        }
     }
     @Test fun realRomCpuBenchmarks() {
         val path=System.getenv("DPOWER_ROM");val dir=System.getenv("CLASSIC_ROM_DIR")
@@ -142,12 +146,12 @@ class DPowerPortTest {
         println("D-Power Kotlin: ${cycles/2200000/cpu} emulated seconds/CPU second; ${cpu/(cycles/2200000)*100}% desktop core")
         val reference=golden("--benchmark","--seconds","30")
         println("D-Power Python reference: ${30/reference["cpuSeconds"].asDouble} emulated seconds/CPU second")
-        for(device in listOf("DigimonV1JA","DigimonV1JB","DigimonV1ES","DigimonV2J","DigimonV3J","DigimonV4J")) {
-            val c=E0C6200(File(dir,"$device.bin").readBytes())
+        for(device in listOf("DigimonV1JA","DigimonV1JB","DigimonV1ES","DigimonV2J","DigimonV3J","DigimonV4J")) for(skip in listOf(false,true)) {
+            val c=E0C6200(File(dir,"$device.bin").readBytes()).apply {idleSkippingEnabled=skip}
             c.runForCycles(c.clockFrequency.toDouble()*60);start=cpuNow()
             val elapsed=c.runForCycles(c.clockFrequency.toDouble()*600)/c.clockFrequency
             val used=(cpuNow()-start)/1e9
-            println("$device: ${elapsed/used} emulated seconds/CPU second")
+            println("$device skip=$skip: ${elapsed/used} emulated seconds/CPU second")
         }
     }
 }

@@ -18,6 +18,8 @@ class EvenStreamServer(private val token: String, private val frame: () -> Strin
         require(it.matches(Regex("[a-f0-9]{32}")))
         ServerSocket(port, 4, InetAddress.getByName("127.0.0.1"))
     }
+    @Volatile private var lastObservedNs = Long.MIN_VALUE
+    val observed: Boolean get() = lastObservedNs != Long.MIN_VALUE && System.nanoTime() - lastObservedNs < 3_000_000_000L
     val port: Int get() = socket.localPort
     @Volatile private var closed = false
     private val workers = ThreadPoolExecutor(2, 2, 0, TimeUnit.SECONDS, ArrayBlockingQueue(4))
@@ -58,7 +60,7 @@ class EvenStreamServer(private val token: String, private val frame: () -> Strin
             val supplied = headers["authorization"].orEmpty()
             if (!MessageDigest.isEqual(supplied.toByteArray(), "Bearer $token".toByteArray())) { respond(client, 401, "{}"); return }
             when {
-                request[0] == "GET" && request[1] == "/v1/frame" -> respond(client, 200, frame())
+                request[0] == "GET" && request[1] == "/v1/frame" -> { lastObservedNs = System.nanoTime(); respond(client, 200, frame()) }
                 request[0] == "POST" && request[1] == "/v1/press" -> {
                     require("transfer-encoding" !in headers)
                     val length = headers["content-length"]?.toIntOrNull() ?: error("Missing length")

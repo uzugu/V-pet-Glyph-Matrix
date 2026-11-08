@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 
 class IdleSkippingTest {
-    private fun compare(a: E0C6200,b: E0C6200) = ClassicFirmwareClockTest.assertUnchanged(a.getState(),b.getState(),skipDebug = true)
+    private fun compare(a: E0C6200,b: E0C6200) = ClassicFirmwareClockTest.assertUnchanged(a.getState(),b.getState(),skipDebug = false)
     @Test fun haltedClassicMatchesReferenceAcrossHoursAndPeripheralEdges() {
         val a=TimingRom.core().apply { idleSkippingEnabled=false }
         val b=TimingRom.core()
@@ -40,13 +40,19 @@ class IdleSkippingTest {
             repeat(1000) {if(!b.isFirmwareClockBoundary())b.runForCycles(.001*b.clockFrequency)}
             assertTrue("$device clock boundary",b.isFirmwareClockBoundary())
             b.overrideFirmwareClock(ClassicFirmwareClock.Time(23,59,59))
-            val a=E0C6200(rom).apply {restoreState(b.getState());idleSkippingEnabled=false}
+            val seed=b.getState()
+            b.resetCpu();b.restoreState(seed) // Both diagnostic counters start at zero.
+            val a=E0C6200(rom).apply {restoreState(seed);idleSkippingEnabled=false}
             repeat(180) {minute ->
-                if(minute%30==0) {a.pinSet("K0",2,0);b.pinSet("K0",2,0)}
+                if(minute>0 && minute%30==0) {a.pinSet("K0",2,0);b.pinSet("K0",2,0)}
                 assertEquals(a.runForCycles(.2*a.clockFrequency),b.runForCycles(.2*b.clockFrequency),0.0)
                 a.pinRelease("K0",2);b.pinRelease("K0",2)
                 assertEquals(a.runForCycles(59.8*a.clockFrequency),b.runForCycles(59.8*b.clockFrequency),0.0)
                 compare(a,b)
+                if(minute==0) {
+                    assertEquals(0,b.readFirmwareClock()!!.hour)
+                    assertEquals(0,b.readFirmwareClock()!!.minute)
+                }
                 assertEquals(a.getState()["DBG_IT1_SET"],b.getState()["DBG_IT1_SET"])
             }
         }

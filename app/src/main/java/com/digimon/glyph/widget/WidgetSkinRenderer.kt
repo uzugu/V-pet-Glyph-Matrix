@@ -12,12 +12,12 @@ import com.digimon.glyph.widget.skins.VpetIconAtlas
 /**
  * Dispatches rendering to the appropriate skin based on the user's choice.
  * Input: raw 25x25 glyph frame or 32x24 debug frame.
- * Output: styled Bitmap ready for RemoteViews (fixed 400x400 output).
+ * Output: styled Bitmap ready for RemoteViews (bounded to 256 px on the long side).
  */
 class WidgetSkinRenderer(context: Context) {
 
     companion object {
-        const val OUTPUT_SIZE = 400  // px — fits well within RemoteViews bitmap limits
+        const val OUTPUT_SIZE = 256  // px — fits well within RemoteViews bitmap limits
     }
 
     private val iconAtlas         = VpetIconAtlas(context)

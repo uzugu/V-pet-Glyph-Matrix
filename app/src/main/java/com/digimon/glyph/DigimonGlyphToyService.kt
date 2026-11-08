@@ -141,7 +141,7 @@ class DigimonGlyphToyService : Service() {
             start = {
                 ensureServiceStarted()
                 ensureWidgetRuntimeStarted()
-                FrameDebugState.snapshot().fullFrame?.let { owlBridge.publish(it) }
+                FrameDebugState.snapshot(observe = false).fullFrame?.let { owlBridge.publish(it) }
             },
             button = ::pressWidgetButton,
             status = {
@@ -1148,7 +1148,7 @@ class DigimonGlyphToyService : Service() {
         lastHapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
         haptic.setEnabled(lastHapticEnabled)
         emu.onBuzzerChange = { on, freqHz, gain ->
-            firmwareToneActive = on
+            firmwareToneActive = on && freqHz > 0 && gain > 0f
             if (emulatorLoop?.isCatchingUp != true) {
             audio?.onBuzzerChange(on, freqHz, gain)
             haptic.onBuzzerChange(on, freqHz, gain)
@@ -1276,29 +1276,24 @@ class DigimonGlyphToyService : Service() {
                     if (emu is com.digimon.glyph.emulator.DPowerCore) com.digimon.glyph.emulator.DPowerOptions.brightness.petColor else null,
                     protectClock = emu is com.digimon.glyph.emulator.DPowerCore)
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
-                if (owlBridge.observed || evenStream != null) {
-                    val full = bridge.renderFullDebugFrame(vram)
-                    if (owlBridge.observed) owlBridge.publish(full)
-                    publishEven(full)
-                }
                 val now = SystemClock.uptimeMillis()
                 val state = emu.getCurrentDigimonState(romName)
                 maybeNotifyNeedsAttention(state)
-                val shouldPublishFramePreview =
-                    debugTelemetryEnabled || standaloneMode ||
-                    FrameDebugState.isObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now) ||
-                    WidgetFramePusher.isRunning
-                if (shouldPublishFramePreview && now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS) {
-                    val fullDebug = bridge.renderFullDebugFrame(vram)
-                    FrameDebugState.update(
-                        glyph = bitmap,
-                        full = fullDebug,
-                        atMs = now,
-                        state = state,
-                        ramData = emu.getRAM(),
-                        vramData = emu.getRawVRAM()
-                    )
-                    lastDebugFramePublishMs = now
+                val debugObserved = debugTelemetryEnabled || FrameDebugState.isMemoryObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now)
+                val previewDue = (debugTelemetryEnabled || standaloneMode ||
+                    FrameDebugState.isObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now) || WidgetFramePusher.isRunning) &&
+                    now - lastDebugFramePublishMs >= DEBUG_FRAME_INTERVAL_MS
+                val needsFull = previewDue || owlBridge.observed || evenStream != null
+                val full = if (needsFull) bridge.renderFullDebugFrame(vram) else null
+                if (full != null) {
+                    if (owlBridge.observed) owlBridge.publish(full)
+                    if (evenStream != null) publishEven(full)
+                    if (previewDue) {
+                        FrameDebugState.update(glyph = bitmap, full = full, atMs = now, state = state,
+                            ramData = if (debugObserved) emu.getRAM() else null,
+                            vramData = if (debugObserved) emu.getRawVRAM() else null)
+                        lastDebugFramePublishMs = now
+                    }
                 }
                 if (debugTelemetryEnabled) {
                     frameHeartbeatCount++
@@ -1876,8 +1871,9 @@ class DigimonGlyphToyService : Service() {
         val stepGate = battleConnected && EmulatorTimingSettings.isBattleStepModeEnabled()
         val audioActive = EmulatorAudioSettings.isAudioEnabled() && (firmwareToneActive ||
             (lastAudiblePcmMs > 0 && SystemClock.elapsedRealtime() - lastAudiblePcmMs < 600))
-        val idle = !phoneOn && !toySession.interactive && !battleConnected && !stepGate && !audioActive
-        loop.backgroundCoalescing = !phoneOn && !battleConnected && !stepGate
+        val remoteObserved = owlBridge.observed || evenStream?.observed == true
+        val idle = !remoteObserved && !phoneOn && !toySession.interactive && !battleConnected && !stepGate && !audioActive
+        loop.backgroundCoalescing = !phoneOn && !battleConnected && !stepGate && !toySession.interactive && !remoteObserved
         loop.setBackgroundPaused(freeze && idle)
         loop.setBackgroundIdle(!freeze && idle)
         scheduleStandbyCatchUp(!freeze && idle)
@@ -2341,7 +2337,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun runOnEmulatorInputAsync(ticket: Long? = inputSession.capture(), block: (EmulatorCore) -> Unit): Boolean =
-        inputSession.enqueue({ action -> emulatorLoop?.enqueueAtTime(command = action) ?: false }, ticket, block)
+        inputSession.enqueue({ action -> emulatorLoop?.enqueueAtTime(input = true, command = action) ?: false }, ticket, block)
 
     private fun runOnEmulatorAsync(block: (EmulatorCore) -> Unit): Boolean {
         val emu = emulator ?: return false

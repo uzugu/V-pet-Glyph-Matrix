@@ -63,13 +63,14 @@ class EmulatorLoop(
             if (value) displaySleeping = false
             LockSupport.unpark(thread)
         }
+    @Volatile private var inputAwakeUntilNs = Long.MIN_VALUE
     @Volatile private var backgroundIdle = false
     @Volatile private var catchUpUntilNs = Long.MIN_VALUE
     @Volatile var isCatchingUp = false; private set
     var onCatchUpChanged: ((Boolean) -> Unit)? = null
     @Volatile var backgroundCoalescing = false
     val isRealtimeStandby: Boolean get() = backgroundIdle
-    val isPaused: Boolean get() = backgroundPaused || displaySleeping || (backgroundIdle && catchUpUntilNs == Long.MIN_VALUE)
+    val isPaused: Boolean get() = backgroundPaused || displaySleeping || (backgroundIdle && catchUpUntilNs == Long.MIN_VALUE && elapsedNs() >= inputAwakeUntilNs)
     private var activePacer: RealtimePacer? = null
     private data class TimedCommand(val atNs: Long, val order: Long, val action: (EmulatorCore) -> Unit)
     private val timelineIncoming = ConcurrentLinkedQueue<TimedCommand>()
@@ -86,10 +87,13 @@ class EmulatorLoop(
         LockSupport.unpark(thread)
     }
     /** Standby sensor events retain their wall-time order without waking firmware. */
-    fun enqueueAtTime(atNs: Long = elapsedNs(), wake: Boolean = true, command: (EmulatorCore) -> Unit): Boolean {
+    fun enqueueAtTime(atNs: Long = elapsedNs(), wake: Boolean = true, input: Boolean = false, command: (EmulatorCore) -> Unit): Boolean {
         if (!realTimeCatchUpEnabled || stepGateEnabled) return enqueue(command)
         if (!running) return false
-        timelineIncoming.offer(TimedCommand(atNs, commandOrder.incrementAndGet(), command))
+        timelineIncoming.offer(TimedCommand(atNs, commandOrder.incrementAndGet()) { core ->
+            if (input) inputAwakeUntilNs = elapsedNs() + 500_000_000L
+            command(core)
+        })
         if (wake) requestCatchUp(atNs) else if (!backgroundIdle) LockSupport.unpark(thread)
         return true
     }
@@ -183,7 +187,7 @@ class EmulatorLoop(
     }
 
     /** Called by remote/widget buttons; queued contacts retain real firmware time even under host load. */
-    fun tapButton(port: String, pin: Int, level: Int, valid: () -> Boolean): Boolean = enqueueAtTime { core ->
+    fun tapButton(port: String, pin: Int, level: Int, valid: () -> Boolean): Boolean = enqueueAtTime(input = true) { core ->
         if (!backgroundPaused && valid()) {
             wakeDisplay()
             buttonPulses.enqueue(valid = valid) { down ->
@@ -338,7 +342,8 @@ class EmulatorLoop(
             while (running && !backgroundPaused && if (stepGateActive) stepRemainingNs > 0 else pacer.debtCycles(nowNs) > 0) {
                 val owed = if (stepGateActive) stepRemainingNs / cycleNs else pacer.debtCycles(nowNs)
                 drainTimeline(pacer)
-                val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge(), nextTimelineCycles(pacer)).coerceAtLeast(1.0))
+                val linkBudget = if (virtualTickEnabled && onVirtualTick != null) 1.0 else Double.POSITIVE_INFINITY
+                val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge(), nextTimelineCycles(pacer), linkBudget).coerceAtLeast(1.0))
                 if (cycles <= 0) break
                 pacer.advance(cycles)
                 buttonPulses.advance(cycles)
@@ -385,7 +390,7 @@ class EmulatorLoop(
                 if (snapshotStepGateBudgetNs() <= 0) SystemClock.sleep(STEP_GATE_IDLE_SLEEP_MS)
                 continue
             }
-            if (isPaused || (backgroundIdle && pacer.debtCycles(catchUpUntilNs) <= 0)) continue
+            if (isPaused || (backgroundIdle && elapsedNs() >= inputAwakeUntilNs && pacer.debtCycles(catchUpUntilNs) <= 0)) continue
             val aheadNs = -pacer.debtNs(elapsedNs())
             if (aheadNs > 1_000) {
                 // All modes run firmware at 1x. Power saving changes rendering/waiting only.
@@ -394,8 +399,8 @@ class EmulatorLoop(
                 // unpark immediately. Link/full-accuracy keeps fine pacing.
                 val coalesceNs = when (mode) {
                     TimingMode.FULL_ACCURATE -> 0L
-                    TimingMode.EXACT -> if (backgroundCoalescing) 500_000_000L else 8_000_000L
-                    TimingMode.POWER_SAVE -> if (backgroundCoalescing) 500_000_000L else 20_000_000L
+                    TimingMode.EXACT -> if (backgroundCoalescing && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 8_000_000L
+                    TimingMode.POWER_SAVE -> if (backgroundCoalescing && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 20_000_000L
                 }
                 val sleepNs = (aheadNs - 20_000).toLong() + coalesceNs
                 if (sleepNs > 0) parkNs(sleepNs)

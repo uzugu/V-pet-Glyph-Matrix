@@ -71,3 +71,10 @@ firmware LCD sleeps, or while the phone screen is off with no interactive Glyph
 toy. Press a real control to wake LCD sleep. Loaded state is kept in memory and
 sleep time is not simulated on return. Classic pets keep their existing clock.
 See [battery behavior](dpower/battery.md#preview21-stop-the-digivice-core-during-standby).
+
+Preview23 replaces widget polling with new-frame notifications and bounds legacy
+RemoteViews images to 256 px while preserving aspect ratio. Pixel-identical
+images are not resent; configuration/resize changes force refresh. Debug RAM
+copies require an actual observer. D-Power standby now defaults to real-time
+catch-up, with the old freeze behavior available in its console. Existing OWL
+protocol and launcher controls are unchanged.

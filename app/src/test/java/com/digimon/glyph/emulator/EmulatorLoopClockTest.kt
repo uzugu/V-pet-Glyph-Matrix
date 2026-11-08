@@ -8,6 +8,23 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class EmulatorLoopClockTest {
+    @Test fun activeBattleClockRetainsIndividualFastOscillatorHaltSlots() {
+        val now=java.util.concurrent.atomic.AtomicLong(0)
+        val core=TimingRom.core().apply {restoreState(getState() + ("CTRL_OSC" to E0C6200.IO_CLKCHG))}
+        val done=CountDownLatch(1)
+        var previous=0.0
+        var largest=0.0
+        val loop=EmulatorLoop(core,{},{now.addAndGet(1000)},parkNs={now.addAndGet(it.coerceAtMost(1_000_000))})
+        loop.virtualTickEnabled=true
+        loop.onVirtualTick={tick ->
+            largest=maxOf(largest,tick-previous);previous=tick
+            if(tick>=20_000_000)done.countDown()
+        }
+        loop.start()
+        try {assertTrue(done.await(2,TimeUnit.SECONDS))} finally {loop.stop()}
+        assertTrue("Active link callbacks must retain seven-cycle HALT slots: $largest",largest<=7e9/core.clockFrequency+0.001)
+    }
+
     @Test fun standbyStepsQueueWithoutWakingFirmwareAndDrainAfterInput() {
         val now = java.util.concurrent.atomic.AtomicLong(0)
         val sleeping = AtomicBoolean(true)

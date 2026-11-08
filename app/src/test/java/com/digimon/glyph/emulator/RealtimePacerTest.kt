@@ -9,6 +9,21 @@ class RealtimePacerTest {
         while (pacer.debtCycles(now) > 0) pacer.advance(core.clock())
     }
 
+    @Test fun eightSuspendedHoursAndPeriodicDebtRepaymentPreserveAllInterrupts() {
+        val core=TimingRom.core()
+        val reference=TimingRom.core().apply {idleSkippingEnabled=false}
+        val pacer=RealtimePacer(core.clockFrequency,0)
+        val hour=3_600_000_000_000L
+        assertEquals(8*3600.0*core.clockFrequency,pacer.debtCycles(8*hour),0.0)
+        for(alarm in 1..32) {
+            val now=alarm*hour/4
+            while(pacer.debtCycles(now)>0)pacer.advance(core.clock(pacer.debtCycles(now)))
+        }
+        reference.runForCycles(8*3600.0*reference.clockFrequency)
+        ClassicFirmwareClockTest.assertUnchanged(reference.getState(),core.getState())
+        assertEquals(8*3600.0,pacer.virtualNs/1e9,.0007)
+    }
+
     @Test fun oneHourOfJitterAndSuspendPreservesEveryFirmwareSecond() {
         val core = TimingRom.core()
         val start = 123_456_789_000_000L

@@ -67,3 +67,12 @@ Preview 4 fixes D-Power display proportions. Switching fit modes refreshes stati
 Preview 6 renders the exact NanoFont 3×4 digits at one LED per pixel below the LCD, avoiding the circular top edge.
 
 Preview23 CPU and differential validation: see [battery investigation](battery.md). Host reference tools require Python 3; private ROM checks skip when their environment variables are unset.
+
+Preview23 final ROM-free measurements: D-Power Python 23.4724 -> Kotlin 0.2782 CPU
+seconds per 30.0027 emulated seconds (84.4x); classic step path 0.04816 -> idle skip
+0.01293 per 600 emulated seconds (3.72x). These are synthetic host workloads, not
+phone power or private-ROM results. Real-ROM comparisons and benchmarks require
+`DPOWER_ROM` / `CLASSIC_ROM_DIR`; both were unset for this implementation run.
+Real-time standby now retains debt for periodic catch-up; the D-Power console
+can opt into freezing instead. See the battery document for compatibility,
+scheduling and validation limits.

@@ -232,3 +232,67 @@ standby one initial indefinite park and **zero periodic worker wakes**. The
 if delivered on time), plus real input/system-triggered requests. These are
 worker/policy counts, not measured whole-phone wakeups; sensor, service and OS
 activity are separate.
+
+### Phase 4: event-driven, bounded widget frames
+
+Legacy widgets now render at at most 256 pixels on the long side, preserving the
+widget's aspect ratio. A 1200x1200 ARGB bitmap's 5.76 MB pixel payload becomes at
+most 256x256 / 262 KB (about 22x smaller, before transport encoding). Native LCD
+sampling retains the skins' nearest-neighbor paint; the launcher controls final
+ImageView upscaling, so nearest-neighbor host scaling is not guaranteed.
+
+`FrameDebugState` notifies the widget worker on new frames; no 120 ms widget poll
+remains. Pending notifications coalesce, and a content hash including geometry,
+skin and freeze state suppresses unchanged RemoteViews pushes. Resize/config/DND
+changes force a refresh. Widget and OWL reads no longer mark debug memory as
+observed. RAM/VRAM previews are copied only for enabled telemetry or an observed
+memory/debug UI. Each service frame renders the full LCD bitmap at most once,
+sharing it between Even, OWL and preview consumers.
+
+Interactive Glyph and actively observed OWL/Even displays retain responsive
+pacing even with the front screen off. Authenticated Even frame requests expire
+after three seconds without a reader; merely enabling its server cannot prevent
+standby indefinitely. Actual button contacts hold a short active window after
+catch-up so a locked-phone widget/remote tap can complete its press/release;
+sensor and alarm events do not open that window.
+
+### Final matched synthetic CPU run
+
+After warmup, a matched full debug test run measured these original ROM-free programs
+on this build host. Results vary with host/JIT state; neither workload is a
+private Digimon ROM.
+
+| Core/workload | Before CPU seconds | After CPU seconds | Emulated seconds | CPU reduction |
+| --- | ---: | ---: | ---: | ---: |
+| D-Power synthetic CPU/timers/DAC | 23.472409 (Python) | 0.278173 (Kotlin) | 30.002745 | 84.4x |
+| Classic synthetic 1 Hz ISR/HALT | 0.048162 (step path) | 0.012934 (idle skip) | 600.000000 | 3.72x |
+
+D-Power used 0.927% of one desktop core in this synthetic run; classic used
+0.00803% before / 0.00216% after. Per-CPU-second throughput was approximately
+1.28 -> 107.86 emulated seconds for D-Power and 12,458 -> 46,388 for classic.
+The real-ROM <3% target remains unverified with `DPOWER_ROM` unset. All six real
+classic before/after measurements likewise remain unavailable with
+`CLASSIC_ROM_DIR` unset. No phone battery numbers are inferred from these tests.
+
+### Validation and remaining measurements
+
+`./gradlew test lint assembleDebug` passed for both variants (163 tests each,
+42 skipped, no failures); after the final battle callback guard the full debug
+suite passed 164 tests (42 skipped) and the focused release clock/standby/idle/
+pacer suite passed 23 tests (one private-ROM skip). Lint and APK packaging were
+rerun with that guard. Lint has existing warnings; it reports no errors.
+`python3 -m unittest discover -s tests -v` passed 11 tests with six private-ROM
+skips. Localization passed 489 values and 42 verified species.
+
+Executed differential coverage includes all 256 opcode slots with four seeds,
+synthetic CPU/timer/RAM/LCD/audio-event traces, PCM hashes/fractional mixer state,
+schema 1/2 round trips and atomic malformed restore, three classic HALT hours,
+eight-hour suspended versus continuous interrupt/state execution, and active
+battle fast-oscillator HALT callback granularity. `DPOWER_ROM` and
+`CLASSIC_ROM_DIR` were unset: the required real-ROM 30-second D-Power input/step
+traces, six-ROM multi-hour/midnight comparisons and real-ROM benchmarks skipped
+cleanly. They remain release-validation work, as do physical audio, Doze alarm
+and battery measurements. Broader D-Power flag/port polling-loop recognition is
+deferred until those traces can establish safe loop behavior; the narrow debug
+optimization stays disabled by default. No private ROM or generated trace is
+committed.

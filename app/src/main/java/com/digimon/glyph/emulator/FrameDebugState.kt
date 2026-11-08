@@ -35,6 +35,9 @@ object FrameDebugState {
     @Volatile
     private var vram: IntArray? = null
 
+    @Volatile var onFrame: (() -> Unit)? = null
+    @Volatile private var lastMemoryReadAtMs = 0L
+
     @Volatile
     private var lastReadAtMs: Long = 0L
 
@@ -55,6 +58,7 @@ object FrameDebugState {
         ram = ramData?.copyOf()
         vram = vramData?.copyOf()
         updatedAtMs = atMs
+        onFrame?.invoke()
     }
 
     @Synchronized
@@ -66,12 +70,18 @@ object FrameDebugState {
         vram = null
         updatedAtMs = 0L
         lastReadAtMs = 0L
+        lastMemoryReadAtMs = 0L
+        onFrame?.invoke()
     }
 
-    fun snapshot(): Snapshot {
-        lastReadAtMs = SystemClock.uptimeMillis()
+    fun snapshot(observe: Boolean = true, observeMemory: Boolean = true): Snapshot {
+        if (observe) lastReadAtMs = SystemClock.uptimeMillis()
+        if (observe && observeMemory) lastMemoryReadAtMs = SystemClock.uptimeMillis()
         return Snapshot(updatedAtMs, glyphFrame, fullFrame, digimonState, ram, vram)
     }
+
+    fun isMemoryObserved(windowMs: Long, nowMs: Long): Boolean =
+        lastMemoryReadAtMs > 0L && nowMs - lastMemoryReadAtMs <= windowMs
 
     fun isObserved(windowMs: Long, nowMs: Long = SystemClock.uptimeMillis()): Boolean {
         val last = lastReadAtMs

@@ -25,3 +25,14 @@ These pulse durations are an implementation choice pending physical/firmware cal
 The console offers an automatic Step toggle and eight rates from **0.5 to 4.0 steps per second**, in 0.5 increments. Both settings persist; automatic input defaults off. It uses the same CD.1 pulse queue, without changing ROM counters or emulation speed. Cadence follows the 2.2 MHz emulated clock and pauses when emulation stops or freezes. Reset/restore starts a fresh cadence, without replaying missed steps.
 
 Walking and manual queued contacts take priority: an automatic contact is skipped while a press or pending contact is present. Automatic input never adds a backlog. Rate changes restart the cadence. Tests run all eight rates through the pulse queue for ten emulated seconds and check disable/reset/rate changes and bounded batch behaviour. In-game crediting still needs hardware testing.
+
+## Preview23 real-time standby
+
+The default now queues detector timestamps without waking firmware and applies
+contacts at those times during periodic catch-up or screen/Glyph wake. An active
+Even/OWL viewer keeps interactive streaming available. The optional **Freeze
+D-Power during standby** console switch retains preview22's save-backed backlog
+and replay-on-wake policy. Automatic steps follow executed firmware time: they
+advance during real-time catch-up and stop during intentional freeze. The pending
+timestamp timeline is memory-resident until catch-up/autosave; process death can
+lose events since the last catch-up. Permission and walking opt-in remain required.

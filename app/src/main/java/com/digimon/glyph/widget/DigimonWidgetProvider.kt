@@ -32,7 +32,12 @@ class DigimonWidgetProvider : AppWidgetProvider() {
             manager.updateAppWidget(id, views)
         }
         ensureServiceRunning(context)
-        WidgetFramePusher.ensureRunning(context)
+        WidgetFramePusher.refreshNow(context)
+    }
+
+    override fun onAppWidgetOptionsChanged(context: Context, manager: AppWidgetManager, widgetId: Int, options: android.os.Bundle) {
+        super.onAppWidgetOptionsChanged(context, manager, widgetId, options)
+        WidgetFramePusher.refreshNow(context)
     }
 
     override fun onEnabled(context: Context) {

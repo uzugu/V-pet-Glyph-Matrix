@@ -13,7 +13,7 @@ import com.digimon.glyph.emulator.FrameDebugState
 import com.digimon.glyph.emulator.EmulatorCommandBus
 
 /**
- * Periodically reads the latest frame from FrameDebugState, renders a styled
+ * Receives new-frame notifications from FrameDebugState, renders a small styled
  * bitmap for each widget instance, and pushes it via AppWidgetManager.
  *
  * Runs on a dedicated background looper so widget bitmap work does not contend
@@ -21,11 +21,11 @@ import com.digimon.glyph.emulator.EmulatorCommandBus
  */
 object WidgetFramePusher {
 
-    private const val UPDATE_INTERVAL_MS = 120L
     val isRunning: Boolean get() = handler != null
     private var thread: HandlerThread? = null
-    private var handler: Handler? = null
+    @Volatile private var handler: Handler? = null
     private var renderer: WidgetSkinRenderer? = null
+    private val lastContentHashes = mutableMapOf<Int, Long>()
     private var lastFrameTs: Long = 0L
     private var lastFrozenState: Boolean? = null
     private var appContext: Context? = null
@@ -33,20 +33,30 @@ object WidgetFramePusher {
     private val pushRunnable = object : Runnable {
         override fun run() {
             pushFrame()
-            handler?.postDelayed(this, UPDATE_INTERVAL_MS)
         }
     }
 
+    @Synchronized
     fun ensureRunning(context: Context) {
         if (handler != null) return
+        lastContentHashes.clear()
         appContext = context.applicationContext
         renderer = WidgetSkinRenderer(appContext!!)
         thread = HandlerThread("WidgetFramePusher").apply { start() }
         handler = Handler(thread!!.looper)
-        handler?.post(pushRunnable)
+        FrameDebugState.onFrame = ::onFrameAvailable
+        handler?.post { pushFrame(force = true) }
     }
 
+    fun onFrameAvailable() {
+        val target = handler ?: return
+        target.removeCallbacks(pushRunnable)
+        target.post(pushRunnable)
+    }
+
+    @Synchronized
     fun stop() {
+        FrameDebugState.onFrame = null
         handler?.removeCallbacks(pushRunnable)
         handler = null
         thread?.quitSafely()
@@ -57,6 +67,7 @@ object WidgetFramePusher {
         lastFrozenState = null
     }
 
+    @Synchronized
     fun refreshNow(context: Context) {
         if (handler == null) {
             ensureRunning(context)
@@ -66,11 +77,12 @@ object WidgetFramePusher {
         handler?.post { pushFrame(force = true) }
     }
 
+    @Synchronized
     private fun pushFrame(force: Boolean = false) {
         val ctx = appContext ?: return
         DigimonDndSettings.init(ctx)
         val frozen = DigimonDndSettings.isFrozenNow()
-        val snap = FrameDebugState.snapshot()
+        val snap = FrameDebugState.snapshot(observe = false)
         if (!force && snap.updatedAtMs == lastFrameTs && frozen == lastFrozenState) return
         lastFrameTs = snap.updatedAtMs
         lastFrozenState = frozen
@@ -86,16 +98,16 @@ object WidgetFramePusher {
         for (id in widgetIds) {
             val skin = WidgetPrefs.getSkin(ctx, id)
 
-            // Render at the widget's actual pixel dimensions — no square-bitmap distortion
             val options = manager.getAppWidgetOptions(id)
-            val maxWdp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0)
-            val maxHdp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
-            val outW = if (maxWdp > 0) (maxWdp * density).toInt().coerceIn(100, 1200)
-                       else WidgetSkinRenderer.OUTPUT_SIZE
-            val outH = if (maxHdp > 0) (maxHdp * density).toInt().coerceIn(100, 1200)
-                       else WidgetSkinRenderer.OUTPUT_SIZE
-
+            val w = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 0) * density).toInt()
+            val h = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0) * density).toInt()
+            val (outW, outH) = WidgetFramePolicy.renderSize(w, h)
             val outputBitmap = renderer?.render(skin, snap.glyphFrame, snap.fullFrame, outW, outH) ?: continue
+            val pixels = IntArray(outW * outH)
+            outputBitmap.getPixels(pixels, 0, outW, 0, 0, outW, outH)
+            val hash = WidgetFramePolicy.contentHash(pixels, outW, outH, skin.ordinal, frozen)
+            if (!force && lastContentHashes[id] == hash) continue
+            lastContentHashes[id] = hash
             val views = RemoteViews(ctx.packageName, R.layout.widget_layout)
             views.setImageViewBitmap(R.id.widget_frame, outputBitmap)
             views.setViewVisibility(R.id.widget_dnd_badge, if (frozen) android.view.View.VISIBLE else android.view.View.GONE)
