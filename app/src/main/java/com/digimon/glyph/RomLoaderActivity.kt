@@ -776,7 +776,7 @@ class RomLoaderActivity : AppCompatActivity() {
             (if (status.importing == EmulatorStatus.Import.SCANNING) getString(R.string.import_scanning) else status.message).takeIf { it.isNotBlank() }, status.error).joinToString("\n")
         statRomValue.text = status.name ?: "—"
         statEmuValue.text = when (status.run) {
-            EmulatorStatus.Run.RUNNING -> getString(R.string.text_running)
+            EmulatorStatus.Run.RUNNING -> getString(if (status.catchingUp) R.string.emulator_catching_up else R.string.text_running)
             EmulatorStatus.Run.FROZEN -> getString(R.string.text_paused)
             EmulatorStatus.Run.STARTING -> getString(R.string.text_starting)
             EmulatorStatus.Run.ERROR -> getString(R.string.text_error)

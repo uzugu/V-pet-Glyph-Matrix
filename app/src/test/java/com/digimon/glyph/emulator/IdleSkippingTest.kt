@@ -17,7 +17,7 @@ class IdleSkippingTest {
             compare(a,b);elapsed+=budget
         }
         assertEquals(a.getState()["DBG_IT1_SET"],b.getState()["DBG_IT1_SET"])
-        assertEquals(a.getState()["DBG_INTERRUPTS"],b.getState()["DBG_INTERRUPTS"])
+        assertEquals(a.getState()["DBG_INT_COUNT"],b.getState()["DBG_INT_COUNT"])
     }
     @Test fun tinyBudgetsAndPendingKeysNeverSkipInterrupts() {
         val a=TimingRom.core().apply { idleSkippingEnabled=false };val b=TimingRom.core()

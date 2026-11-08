@@ -40,7 +40,7 @@ class DPowerMenu(
     private val refresh = object : Runnable {
         override fun run() {
             val state = EmulatorStatus.snapshot()
-            status.text = context.getString(R.string.dp_runtime, com.digimon.glyph.LocalizedText.display(context, state.run.name))
+            status.text = if (state.catchingUp) context.getString(R.string.emulator_catching_up) else context.getString(R.string.dp_runtime, com.digimon.glyph.LocalizedText.display(context, state.run.name))
             val canPress = state.isDPower && !state.busy && state.run != EmulatorStatus.Run.FROZEN
             controls.forEach { it.isEnabled = canPress; it.alpha = if (canPress) 1f else .4f }
             handler.postDelayed(this, 500)
@@ -48,6 +48,7 @@ class DPowerMenu(
     }
 
     init {
+        StandbySettings.init(context)
         panel.addView(text(context.getString(R.string.dp_console_kicker), 12f, amber).apply {
             typeface = if (com.digimon.glyph.LocalizedText.isJapanese(context)) Typeface.DEFAULT else ResourcesCompat.getFont(context, R.font.share_tech_mono)
             letterSpacing = .12f
@@ -96,6 +97,27 @@ class DPowerMenu(
                 EmulatorDebugSettings.setDPowerIdleSkippingEnabled(context, it)
             }
         }
+        toggle(steps, R.string.dp_freeze_standby, StandbySettings.freezeDPower) {
+            StandbySettings.setFreezeDPower(context, it)
+            EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }
+        steps.addView(text(context.getString(R.string.dp_freeze_standby_help), 14f, muted))
+        val intervalLabel = text(context.getString(R.string.standby_interval, StandbySettings.intervalMinutes), 14f, muted)
+        steps.addView(intervalLabel)
+        steps.addView(SeekBar(context).apply {
+            max = 7; progress = StandbySettings.intervalMinutes / 15 - 1
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: SeekBar?, value: Int, user: Boolean) {
+                    if (user) {
+                        StandbySettings.setIntervalMinutes(context, (value + 1) * 15)
+                        intervalLabel.text = context.getString(R.string.standby_interval, StandbySettings.intervalMinutes)
+                        EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+                    }
+                }
+                override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+                override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+            })
+        })
         val display = section(R.string.dp_display_section)
         if (com.digimon.glyph.GlyphAvailability.isAvailable) {
             toggle(display, R.string.glyph_keep_awake, DisplayRenderSettings.isGlyphAwakeEnabled()) {

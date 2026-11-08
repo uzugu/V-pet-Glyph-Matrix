@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
 /** Playback only: firmware timing and mixing are already represented in PCM samples. */
 class DPowerPcmEngine {
     private data class Packet(val epoch: Long, val data: ByteArray)
-    private val queue = ArrayBlockingQueue<Packet>(8)
+    private val queue = ArrayBlockingQueue<Packet>(64)
     @Volatile private var running = false
     @Volatile private var enabled = false
     @Volatile private var epoch = 0L

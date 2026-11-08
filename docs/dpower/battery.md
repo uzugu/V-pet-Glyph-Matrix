@@ -190,3 +190,45 @@ atomic (so they may exceed a fractional budget), but idle skips cannot cross it.
 Non-link sessions do not call the virtual battle clock callback per instruction.
 Tests compare three synthetic classic hours, tiny budgets/key inputs and D-Power
 self-jump timer state, with six-ROM/midnight checks gated by `CLASSIC_ROM_DIR`.
+
+### Phase 3: real-time standby and periodic catch-up
+
+For both cores, a locked phone with no interactive Glyph, battle link, step gate
+or current audible output parks the worker indefinitely and releases the CPU
+wake lock. It retains elapsed-realtime debt; only explicit DND or the persisted
+D-Power freeze option discards simulation time. Screen-on/Glyph activation,
+actual input and save/export barriers repay debt through firmware execution.
+Maintenance saves are suppressed in standby; an inexact
+`AlarmManager.setAndAllowWhileIdle` service action requests catch-up, attention
+checks, DND reconciliation and autosave, then schedules the next alarm. The
+persisted interval defaults to 15 minutes (15–120 minute console control).
+Android can delay inexact/Doze alarms; exact phone delivery is not established by
+host tests. There is no process-death/offline restoration clock recovery added.
+
+Catch-up stays on the emulator worker with command checks in 2 ms work slices.
+Large debts show localized "Catching up" status without discarding time or
+blocking input submission. Synchronous commands wait for their wall-time barrier;
+if their existing timeout expires they fail safely rather than save stale state,
+while catch-up continues. Very long D-Power debt can therefore require a retry of
+a synchronous export/Stop after catch-up completes. Historical audio is mixed for
+state fidelity but not replayed as a burst of old sounds. Active background audio
+keeps execution running with 500 ms emulation coalescing (full-accuracy/link stays
+fine); the PCM queue holds a complete burst. Physical playback needs a phone test.
+
+Walking callbacks carry detector timestamps. During standby they enter an ordered
+worker timeline without waking firmware; catch-up applies them when firmware
+reaches those times. This timeline is memory-resident until catch-up; periodic
+saves then contain the resulting step queue/core state. Intentional freeze keeps
+preview22's queue-and-replay-on-wake behavior. Reset/restore session guards still
+reject stale input.
+
+Fake elapsed-clock tests compare eight suspended hours with a continuously
+executed classic reference, including all timer/interrupt counters and core state;
+they also exercise periodic catch-ups and out-of-order batched sensor timestamps.
+
+Fake-clock worker waits over ten seconds: old normal pacing 1,232 (123.2/s);
+standby one initial indefinite park and **zero periodic worker wakes**. The
+15-minute alarm policy requests at most 4 catch-ups/hour by default (0.00111/s
+if delivered on time), plus real input/system-triggered requests. These are
+worker/policy counts, not measured whole-phone wakeups; sensor, service and OS
+activity are separate.

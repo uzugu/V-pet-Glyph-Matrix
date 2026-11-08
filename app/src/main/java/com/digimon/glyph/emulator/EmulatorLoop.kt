@@ -56,7 +56,51 @@ class EmulatorLoop(
     @Volatile private var timingMode: TimingMode = TimingMode.EXACT
     @Volatile private var backgroundPaused = false
     @Volatile private var displaySleeping = false
-    val isPaused: Boolean get() = backgroundPaused || displaySleeping
+    @Volatile var realTimeCatchUpEnabled = false
+        set(value) {
+            if (field == value) return
+            field = value
+            if (value) displaySleeping = false
+            LockSupport.unpark(thread)
+        }
+    @Volatile private var backgroundIdle = false
+    @Volatile private var catchUpUntilNs = Long.MIN_VALUE
+    @Volatile var isCatchingUp = false; private set
+    var onCatchUpChanged: ((Boolean) -> Unit)? = null
+    @Volatile var backgroundCoalescing = false
+    val isRealtimeStandby: Boolean get() = backgroundIdle
+    val isPaused: Boolean get() = backgroundPaused || displaySleeping || (backgroundIdle && catchUpUntilNs == Long.MIN_VALUE)
+    private var activePacer: RealtimePacer? = null
+    private data class TimedCommand(val atNs: Long, val order: Long, val action: (EmulatorCore) -> Unit)
+    private val timelineIncoming = ConcurrentLinkedQueue<TimedCommand>()
+    private val timeline = java.util.PriorityQueue<TimedCommand>(compareBy<TimedCommand> { it.atNs }.thenBy { it.order })
+    private val commandOrder = java.util.concurrent.atomic.AtomicLong()
+
+    fun setBackgroundIdle(idle: Boolean) {
+        if (backgroundIdle == idle) return
+        backgroundIdle = idle
+        LockSupport.unpark(thread)
+    }
+    @Synchronized fun requestCatchUp(untilNs: Long = elapsedNs()) {
+        catchUpUntilNs = maxOf(catchUpUntilNs, untilNs)
+        LockSupport.unpark(thread)
+    }
+    /** Standby sensor events retain their wall-time order without waking firmware. */
+    fun enqueueAtTime(atNs: Long = elapsedNs(), wake: Boolean = true, command: (EmulatorCore) -> Unit): Boolean {
+        if (!realTimeCatchUpEnabled || stepGateEnabled) return enqueue(command)
+        if (!running) return false
+        timelineIncoming.offer(TimedCommand(atNs, commandOrder.incrementAndGet(), command))
+        if (wake) requestCatchUp(atNs) else if (!backgroundIdle) LockSupport.unpark(thread)
+        return true
+    }
+    private fun drainTimeline(pacer: RealtimePacer) {
+        while (true) timelineIncoming.poll()?.let { timeline.offer(it) } ?: break
+        while (timeline.isNotEmpty() && (!realTimeCatchUpEnabled || pacer.debtCycles(timeline.peek()!!.atNs) <= 0)) {
+            timeline.poll()!!.action(emulator)
+        }
+    }
+    private fun nextTimelineCycles(pacer: RealtimePacer): Double =
+        timeline.peek()?.let { pacer.debtCycles(it.atNs).coerceAtLeast(0.0) } ?: Double.POSITIVE_INFINITY
     private var displayWakeUntilCycles = 0.0
 
     fun setBackgroundPaused(paused: Boolean) {
@@ -66,7 +110,7 @@ class EmulatorLoop(
     }
 
     /** Real user input wakes a sleeping LCD; maintenance/save commands do not. */
-    fun wakeForInput() { enqueue { wakeDisplay() } }
+    fun wakeForInput() { if (realTimeCatchUpEnabled) requestCatchUp(); enqueue { wakeDisplay() } }
 
     private fun wakeDisplay() {
         displaySleeping = false
@@ -127,6 +171,7 @@ class EmulatorLoop(
             try { worker.join(1500) } catch (_: InterruptedException) { Thread.currentThread().interrupt() }
         }
         commandQueue.clear()
+        timelineIncoming.clear(); timeline.clear()
         thread = null
     }
 
@@ -138,7 +183,7 @@ class EmulatorLoop(
     }
 
     /** Called by remote/widget buttons; queued contacts retain real firmware time even under host load. */
-    fun tapButton(port: String, pin: Int, level: Int, valid: () -> Boolean): Boolean = enqueue { core ->
+    fun tapButton(port: String, pin: Int, level: Int, valid: () -> Boolean): Boolean = enqueueAtTime { core ->
         if (!backgroundPaused && valid()) {
             wakeDisplay()
             buttonPulses.enqueue(valid = valid) { down ->
@@ -162,6 +207,8 @@ class EmulatorLoop(
             return if (ready(emulator)) command(emulator) else null
         }
 
+        val requestedAtNs = elapsedNs()
+        if (realTimeCatchUpEnabled && !stepGateEnabled) requestCatchUp(requestedAtNs)
         val latch = CountDownLatch(1)
         val resultRef = AtomicReference<T?>()
         val errorRef = AtomicReference<Throwable?>()
@@ -171,7 +218,8 @@ class EmulatorLoop(
         lateinit var queued: (EmulatorCore) -> Unit
         queued = queued@ { core ->
             if (phase.get() != 0) return@queued
-            val canRun = try { ready(core) } catch (failure: Throwable) {
+            val caughtUp = !realTimeCatchUpEnabled || stepGateEnabled || (activePacer?.debtCycles(requestedAtNs) ?: 0.0) <= 0
+            val canRun = try { caughtUp && ready(core) } catch (failure: Throwable) {
                 if (phase.compareAndSet(0, 1)) {
                     errorRef.set(failure)
                     latch.countDown()
@@ -216,6 +264,9 @@ class EmulatorLoop(
             buttonPulses.clear()
             running = false
             commandQueue.clear()
+            activePacer = null
+            isCatchingUp = false
+            onCatchUpChanged?.invoke(false)
         }
     }
 
@@ -224,6 +275,7 @@ class EmulatorLoop(
         // elapsedRealtime includes Android suspend; nanoTime does not.
         val startNs = elapsedNs()
         val pacer = RealtimePacer(emulator.clockFrequency, startNs)
+        activePacer = pacer
         val cycleNs = 1_000_000_000.0 / emulator.clockFrequency
         var nextFrameNs = startNs
         var lastDriftLogNs = startNs
@@ -231,22 +283,32 @@ class EmulatorLoop(
         var lastDisplayRevision = Long.MIN_VALUE
         var lastMode = timingMode
         var wasPaused = false
+        var wasFrozen = false
 
         while (running) {
             drainCommands()
+            drainTimeline(pacer)
+            if (realTimeCatchUpEnabled && catchUpUntilNs != Long.MIN_VALUE && pacer.debtCycles(catchUpUntilNs) <= 0) {
+                synchronized(this) {
+                    if (pacer.debtCycles(catchUpUntilNs) <= 0) catchUpUntilNs = Long.MIN_VALUE
+                }
+            }
+            val catching = realTimeCatchUpEnabled && pacer.debtNs(elapsedNs()) > 2_000_000_000.0 && !isPaused
+            if (catching != isCatchingUp) { isCatchingUp = catching; onCatchUpChanged?.invoke(catching) }
             if (isPaused) {
                 if (!wasPaused) {
                     buttonPulses.clear()
                     onPauseChanged?.invoke(true)
                 }
                 wasPaused = true
+                wasFrozen = backgroundPaused || displaySleeping
                 // No instruction, render or timer work while paused. Commands/visibility unpark us.
-                pacer.rebase(elapsedNs())
+                if (wasFrozen) pacer.rebase(elapsedNs())
                 parkNs(Long.MAX_VALUE)
                 continue
             }
             if (wasPaused) {
-                pacer.rebase(elapsedNs())
+                if (wasFrozen) pacer.rebase(elapsedNs())
                 nextFrameNs = elapsedNs()
                 wasPaused = false
                 onPauseChanged?.invoke(false)
@@ -275,7 +337,8 @@ class EmulatorLoop(
             var stepUsedNs = 0.0
             while (running && !backgroundPaused && if (stepGateActive) stepRemainingNs > 0 else pacer.debtCycles(nowNs) > 0) {
                 val owed = if (stepGateActive) stepRemainingNs / cycleNs else pacer.debtCycles(nowNs)
-                val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge()).coerceAtLeast(1.0))
+                drainTimeline(pacer)
+                val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge(), nextTimelineCycles(pacer)).coerceAtLeast(1.0))
                 if (cycles <= 0) break
                 pacer.advance(cycles)
                 buttonPulses.advance(cycles)
@@ -305,11 +368,12 @@ class EmulatorLoop(
                 }
                 // Missed display frames are expendable. Firmware time and interrupts are not.
                 nextFrameNs = elapsedNs() + profile.frameTimeNs.toLong()
-                if (emulator.isDisplaySleeping() && pacer.cycles >= displayWakeUntilCycles) {
+                if (!realTimeCatchUpEnabled && emulator.isDisplaySleeping() && pacer.cycles >= displayWakeUntilCycles) {
                     displaySleeping = true
                 }
             }
             drainCommands()
+            drainTimeline(pacer)
             nowNs = elapsedNs()
             if (nowNs - lastDriftLogNs >= DRIFT_LOG_INTERVAL_NS) {
                 val elapsedSeconds = (nowNs - startNs) / 1_000_000_000.0
@@ -321,7 +385,7 @@ class EmulatorLoop(
                 if (snapshotStepGateBudgetNs() <= 0) SystemClock.sleep(STEP_GATE_IDLE_SLEEP_MS)
                 continue
             }
-            if (isPaused) continue
+            if (isPaused || (backgroundIdle && pacer.debtCycles(catchUpUntilNs) <= 0)) continue
             val aheadNs = -pacer.debtNs(elapsedNs())
             if (aheadNs > 1_000) {
                 // All modes run firmware at 1x. Power saving changes rendering/waiting only.
@@ -330,8 +394,8 @@ class EmulatorLoop(
                 // unpark immediately. Link/full-accuracy keeps fine pacing.
                 val coalesceNs = when (mode) {
                     TimingMode.FULL_ACCURATE -> 0L
-                    TimingMode.EXACT -> 8_000_000L
-                    TimingMode.POWER_SAVE -> 20_000_000L
+                    TimingMode.EXACT -> if (backgroundCoalescing) 500_000_000L else 8_000_000L
+                    TimingMode.POWER_SAVE -> if (backgroundCoalescing) 500_000_000L else 20_000_000L
                 }
                 val sleepNs = (aheadNs - 20_000).toLong() + coalesceNs
                 if (sleepNs > 0) parkNs(sleepNs)

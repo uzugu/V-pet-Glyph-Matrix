@@ -489,4 +489,8 @@
     <string name="glyph_keep_awake">Glyphの表示を維持（試験機能）</string>
     <string name="glyph_keep_awake_help">Glyphで操作中は表示のタイムアウトを無効にするよう要求します。Nothing OSによって動作が異なります。トイを離れるかペットを停止すると通常に戻ります。ペット自体の睡眠は変更しません。</string>
     <string name="dp_idle_skip">試験的な待機ループの高速化</string>
+    <string name="emulator_catching_up">経過時間を反映中…</string>
+    <string name="dp_freeze_standby">待機中はD-Powerの時間を停止</string>
+    <string name="dp_freeze_standby_help">オフ：定期的に経過時間を反映します。オン：スリープ中は本体内の時間が止まります。</string>
+    <string name="standby_interval">待機中の時間反映の間隔：%1$d分</string>
 </resources>

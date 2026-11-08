@@ -9,7 +9,7 @@ object EmulatorStatus {
         val revision: Long = 0, val name: String? = null, val hash: String? = null,
         val run: Run = Run.STOPPED, val glyph: Glyph = Glyph.DISCONNECTED,
         val importing: Import = Import.NONE, val request: Long = 0,
-        val message: String = "", val error: String? = null
+        val message: String = "", val catchingUp: Boolean = false, val error: String? = null
     ) {
         val isDPower get() = hash == RomCatalog.DPOWER_HASH
         val hasClassicMetadata get() = name?.let { DigimonDatabase.resolveVersion(it) } != null && !isDPower
@@ -25,6 +25,9 @@ object EmulatorStatus {
     }
     @Synchronized fun runtime(run: Run, error: String? = null) {
         current = current.copy(revision = current.revision + 1, run = run, error = error)
+    }
+    @Synchronized fun catchingUp(value: Boolean) {
+        if (current.catchingUp != value) current = current.copy(revision = current.revision + 1, catchingUp = value)
     }
     @Synchronized fun glyph(state: Glyph) {
         if (current.glyph != state) current = current.copy(revision = current.revision + 1, glyph = state)

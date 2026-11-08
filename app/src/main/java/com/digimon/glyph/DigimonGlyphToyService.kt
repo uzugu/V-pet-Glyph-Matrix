@@ -107,6 +107,7 @@ class DigimonGlyphToyService : Service() {
         const val ACTION_NFC_CARD = "com.digimon.glyph.NFC_CARD"
         const val EXTRA_NFC_REVISION = "nfc_revision"
         const val ACTION_WIDGET_BUTTON = "com.digimon.glyph.WIDGET_BUTTON"
+        const val ACTION_CATCH_UP = "com.digimon.glyph.CATCH_UP"
         const val ACTION_STOP = "com.digimon.glyph.STOP"
         const val ACTION_IMPORT_ROM = "com.digimon.glyph.IMPORT_ROM"
         const val ACTION_DND_START = DigimonDndReceiver.ACTION_DND_START
@@ -121,9 +122,12 @@ class DigimonGlyphToyService : Service() {
     private var glyphManager: Any? = null  // GlyphMatrixManager, typed as Any to avoid class-load on non-Nothing
     private lateinit var stateManager: StateManager
     private val walkingInput by lazy {
-        com.digimon.glyph.input.WalkingInput(this) {
-            if (!DigimonDndSettings.isFrozenNow()) runOnEmulatorInputAsync { core ->
-                (core as? com.digimon.glyph.emulator.DPowerCore)?.step()
+        com.digimon.glyph.input.WalkingInput(this) { timestampNs ->
+            val ticket = inputSession.capture()
+            if (!DigimonDndSettings.isFrozenNow() && ticket != null) {
+                emulatorLoop?.enqueueAtTime(timestampNs, wake = false) { core ->
+                    if (inputSession.accepts(ticket)) (core as? com.digimon.glyph.emulator.DPowerCore)?.step()
+                }
             }
         }
     }
@@ -181,6 +185,8 @@ class DigimonGlyphToyService : Service() {
     private var glyphRegistered = false
     private var frameHeartbeatCount: Long = 0L
     private var lastFrameHeartbeatLogMs: Long = 0L
+    @Volatile private var firmwareToneActive = false
+    @Volatile private var lastAudiblePcmMs = 0L
     private var appliedRuntimePause: Boolean? = null
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) { applyDisplaySuspension() }
@@ -254,7 +260,7 @@ class DigimonGlyphToyService : Service() {
     }
     private val autosaveRunnable = object : Runnable {
         override fun run() {
-            saveState(sync = false, reason = "interval")
+            if (emulatorLoop?.isRealtimeStandby != true) saveState(sync = false, reason = "interval")
             mainHandler.postDelayed(this, AUTOSAVE_INTERVAL_MS)
         }
     }
@@ -307,6 +313,7 @@ class DigimonGlyphToyService : Service() {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
         }, ContextCompat.RECEIVER_NOT_EXPORTED)
+        com.digimon.glyph.emulator.StandbySettings.init(this)
         BattleStateStore.init(this)
         BattleTransportSettings.init(this)
         DigimonAttentionSettings.init(this)
@@ -395,6 +402,25 @@ class DigimonGlyphToyService : Service() {
                 val button = intent.getIntExtra(EXTRA_WIDGET_BUTTON, -1)
                 if (button != -1) {
                     pressWidgetButton(button)
+                }
+            }
+            ACTION_CATCH_UP -> {
+                standbyAlarmScheduled = false
+                val loop = emulatorLoop
+                if (loop != null && loop.isRealtimeStandby) {
+                    tryStartForeground()
+                    acquireCpuWakeLock()
+                    loop.enqueueAtTime { core ->
+                        val state = core.getCurrentDigimonState(romName)
+                        val name = romName
+                        if (name != null) stateManager.saveAutosave(core, name, romHash, sync = false)
+                        mainHandler.post {
+                            maybeNotifyNeedsAttention(state)
+                            syncDndStateWithClock("catch_up")
+                            syncRuntimePauseResources()
+                            scheduleStandbyCatchUp(loop.isRealtimeStandby)
+                        }
+                    }
                 }
             }
             ACTION_STOP -> {
@@ -1100,13 +1126,19 @@ class DigimonGlyphToyService : Service() {
             renderer = null
         }
 
+        firmwareToneActive = false; lastAudiblePcmMs = 0L
         val audio = if (emu is com.digimon.glyph.emulator.DPowerCore) null else BuzzerAudioEngine()
         audio?.start()
         if (emu is com.digimon.glyph.emulator.DPowerCore) {
             val pcm = com.digimon.glyph.audio.DPowerPcmEngine()
             pcm.start()
             pcm.setEnabled(EmulatorAudioSettings.isAudioEnabled())
-            emu.onPcm = pcm::submit
+            emu.onPcm = { data ->
+                if (emulatorLoop?.isCatchingUp != true) {
+                    if (data.isNotEmpty()) lastAudiblePcmMs = SystemClock.elapsedRealtime()
+                    pcm.submit(data)
+                }
+            }
             emu.onAudioReset = pcm::flush
             dpowerAudioEngine = pcm
         }
@@ -1116,8 +1148,11 @@ class DigimonGlyphToyService : Service() {
         lastHapticEnabled = EmulatorAudioSettings.isHapticAudioEnabled()
         haptic.setEnabled(lastHapticEnabled)
         emu.onBuzzerChange = { on, freqHz, gain ->
+            firmwareToneActive = on
+            if (emulatorLoop?.isCatchingUp != true) {
             audio?.onBuzzerChange(on, freqHz, gain)
             haptic.onBuzzerChange(on, freqHz, gain)
+            }
         }
         emu.onSerialTx = { value ->
             Log.d(TAG, "Battle serial tx byte=$value")
@@ -1288,6 +1323,11 @@ class DigimonGlyphToyService : Service() {
         lastAppliedStepGateEnabled = false
         emulatorLoop = loop
 
+        loop.realTimeCatchUpEnabled = emu !is com.digimon.glyph.emulator.DPowerCore || !com.digimon.glyph.emulator.StandbySettings.freezeDPower
+        loop.onCatchUpChanged = { catching ->
+            EmulatorStatus.catchingUp(catching)
+            mainHandler.post { if (emulatorLoop === loop) applyAudioHapticSettingsIfChanged(force = true) }
+        }
         loop.virtualTickEnabled = battleConnected
         loop.onVirtualTick = { totalNs ->
             if (battleConnected) {
@@ -1300,7 +1340,7 @@ class DigimonGlyphToyService : Service() {
             mainHandler.post {
                 if (emulatorLoop === loop) {
                     syncRuntimePauseResources()
-                    if (loop.isPaused) saveState(sync = false, reason = "digivice_standby")
+                    if (loop.isPaused && !loop.isRealtimeStandby) saveState(sync = false, reason = "digivice_standby")
                     applyAudioHapticSettingsIfChanged(force = true)
                 }
             }
@@ -1373,6 +1413,8 @@ class DigimonGlyphToyService : Service() {
         }
         mainHandler.removeCallbacks(autosaveRunnable)
         walkingInput.stop()
+        firmwareToneActive = false; lastAudiblePcmMs = 0L
+        scheduleStandbyCatchUp(false)
         for (i in widgetButtonReleaseTokens.indices) widgetButtonReleaseTokens[i]++
         emulatorLoop?.stop()
         emulatorLoop = null
@@ -1755,7 +1797,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun applyAudioHapticSettingsIfChanged(force: Boolean = false) {
-        val paused = emulatorLoop?.isPaused == true
+        val paused = emulatorLoop?.isPaused == true || emulatorLoop?.isCatchingUp == true
         val hapticEnabled = !paused && EmulatorAudioSettings.isHapticAudioEnabled()
         val audioEnabled = !paused && EmulatorAudioSettings.isAudioEnabled()
         if (!force && audioEnabled == lastAudioEnabled && hapticEnabled == lastHapticEnabled) return
@@ -1824,12 +1866,38 @@ class DigimonGlyphToyService : Service() {
         )
     }
 
-    /** Classic pets retain their real-time clock. Only the non-clock Digivice core may suspend. */
+    /** Sleeping Android keeps debt; explicit D-Power freeze is the only exception. */
     private fun applyDisplaySuspension() {
         val loop = emulatorLoop ?: return
         val phoneOn = (getSystemService(POWER_SERVICE) as? PowerManager)?.isInteractive ?: true
-        loop.setBackgroundPaused(emulator is com.digimon.glyph.emulator.DPowerCore && !phoneOn && !toySession.interactive)
+        val settings = com.digimon.glyph.emulator.StandbySettings
+        val freeze = emulator is com.digimon.glyph.emulator.DPowerCore && settings.freezeDPower
+        loop.realTimeCatchUpEnabled = !freeze
+        val stepGate = battleConnected && EmulatorTimingSettings.isBattleStepModeEnabled()
+        val audioActive = EmulatorAudioSettings.isAudioEnabled() && (firmwareToneActive ||
+            (lastAudiblePcmMs > 0 && SystemClock.elapsedRealtime() - lastAudiblePcmMs < 600))
+        val idle = !phoneOn && !toySession.interactive && !battleConnected && !stepGate && !audioActive
+        loop.backgroundCoalescing = !phoneOn && !battleConnected && !stepGate
+        loop.setBackgroundPaused(freeze && idle)
+        loop.setBackgroundIdle(!freeze && idle)
+        scheduleStandbyCatchUp(!freeze && idle)
         syncRuntimePauseResources()
+    }
+
+    private var standbyAlarmScheduled = false
+    private var scheduledIntervalMinutes = 0
+    private fun scheduleStandbyCatchUp(enabled: Boolean) {
+        val interval = com.digimon.glyph.emulator.StandbySettings.intervalMinutes
+        if (standbyAlarmScheduled == enabled && (!enabled || scheduledIntervalMinutes == interval)) return
+        scheduledIntervalMinutes = interval
+        val manager = getSystemService(ALARM_SERVICE) as android.app.AlarmManager
+        val pending = android.app.PendingIntent.getService(this, 906,
+            Intent(this, DigimonGlyphToyService::class.java).setAction(ACTION_CATCH_UP),
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE)
+        manager.cancel(pending)
+        standbyAlarmScheduled = enabled
+        if (enabled) manager.setAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            android.os.SystemClock.elapsedRealtime() + com.digimon.glyph.emulator.StandbySettings.intervalMinutes * 60_000L, pending)
     }
 
     private fun syncRuntimePauseResources() {
@@ -1848,7 +1916,7 @@ class DigimonGlyphToyService : Service() {
             dpowerAudioEngine?.start()
             if (toySession.interactive) inputController?.start()
             if (DigimonWidgetProvider.getWidgetIds(this).isNotEmpty()) WidgetFramePusher.ensureRunning(this)
-            Log.d(TAG, "Emulator resumed without hidden-time catch-up")
+            Log.d(TAG, "Emulator active; real-time debt is retained unless freeze is selected")
         }
         applyAudioHapticSettingsIfChanged(force = true)
         applyGlyphAwakeSetting()
@@ -2273,7 +2341,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun runOnEmulatorInputAsync(ticket: Long? = inputSession.capture(), block: (EmulatorCore) -> Unit): Boolean =
-        inputSession.enqueue(::runOnEmulatorAsync, ticket, block)
+        inputSession.enqueue({ action -> emulatorLoop?.enqueueAtTime(command = action) ?: false }, ticket, block)
 
     private fun runOnEmulatorAsync(block: (EmulatorCore) -> Unit): Boolean {
         val emu = emulator ?: return false

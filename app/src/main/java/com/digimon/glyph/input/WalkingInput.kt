@@ -12,7 +12,7 @@ import android.os.SystemClock
 import androidx.core.content.ContextCompat
 
 /** Live detector events, including standby; firmware queues them until it resumes. */
-class WalkingInput(private val context: Context, private val onStep: () -> Unit) : SensorEventListener {
+class WalkingInput(private val context: Context, private val onStep: (Long) -> Unit) : SensorEventListener {
     companion object {
         fun enabled(context: Context) = context.getSharedPreferences("walking_input", 0).getBoolean("enabled", false)
         fun setEnabled(context: Context, value: Boolean) { context.getSharedPreferences("walking_input", 0).edit().putBoolean("enabled", value).apply() }
@@ -43,7 +43,7 @@ class WalkingInput(private val context: Context, private val onStep: () -> Unit)
         if (!active || !enabled(context) || !permitted(context) || event.sensor.type != Sensor.TYPE_STEP_DETECTOR) return
         if (event.timestamp < sinceNs || event.timestamp <= lastNs || event.values.firstOrNull() != 1f) return
         lastNs = event.timestamp
-        onStep()
+        onStep(event.timestamp)
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 }
