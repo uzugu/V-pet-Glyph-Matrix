@@ -40,6 +40,7 @@ This project ports the `BrickEmuPy` architecture directly into Android Kotlin fo
 ### Requirements to Build:
 - Android Studio (Hedgehog+ recommended)
 - Android SDK 35, JDK 17
+- Python 3 on the build host for the SDK fetch tool and optional reference tests; the APK contains no Python runtime.
 - Optional for hosting your own internet relay mode: Python 3 (`tools/battle_relay_server.py`) or Docker (`docker-compose.relay.yml`).
 
 ### Build Instructions:

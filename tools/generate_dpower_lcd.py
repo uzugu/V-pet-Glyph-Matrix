@@ -30,4 +30,4 @@ for x, y, address, mask in cells:
     assert abs(x-x0-col*31.76) < 0.3 and abs(y-y0-row*31.375) < 0.3
     grid[row][col] = [address, mask]
 assert all(all(cell is not None for cell in row) for row in grid)
-(Path(__file__).resolve().parents[1]/'app/src/main/python/dpower_lcd.json').write_text(json.dumps(grid))
+(Path(__file__).resolve().parents[1]/'tools/dpower_reference/dpower_lcd.json').write_text(json.dumps(grid))

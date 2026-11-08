@@ -133,3 +133,39 @@ impact still need device testing.
 Preview22 validation: 145 JVM tests (106 passed, 39 skipped), versioned debug APK
 assembly and lint passed with zero lint errors. Package `com.digimon.glyph`,
 version code 26, using the existing debug signing certificate. No phone connected.
+
+## Preview23, phase 1: Kotlin D-Power core
+
+The APK uses an Android-free Kotlin SPL61X core and PCM mixer. Chaquopy and all
+Python/native-runtime packaging are removed. The pinned Python reference now
+lives under `tools/dpower_reference/`, used only by host validation tools.
+Opcode/SFR bodies are reproduced with `tools/port_spl61x.py`; primitive fields,
+a single memory array and direct `when` dispatch keep the instruction loop free
+of allocations. Timer fractions, audio event order and portable schema 1/2 saves
+retain reference semantics. Malformed restores are validated on a fresh runtime
+before replacing the running core.
+
+`DPowerPortTest` compares all 256 opcode slots under four initial flag/register
+states against Python, plus a synthetic program with timers, LCD, DAC and RAM.
+The real-ROM test generates a private 30-second golden trace in `/tmp`, comparing
+all snapshot fields/RAM, cumulative cycles, ordered audio events and PCM SHA-256.
+It includes three front buttons and repeated step contacts. Set `DPOWER_ROM` to
+run it; traces and ROMs must stay outside Git. `tools/dump_dpower_trace.py` can
+also generate traces manually. Host Python remains necessary for these tests,
+but is no longer part of Android execution.
+
+Real-ROM benchmark variables were unset during initial implementation. Therefore
+there are **no measured real-ROM before/after numbers or verified <3% result**
+yet. The earlier desktop sample (Python: 5.873 CPU seconds per 10 emulated seconds)
+is historical, not a matched benchmark against this port. `realRomCpuBenchmarks`
+prints both the pure Python reference and Kotlin D-Power CPU throughput and all
+six classic ROM throughputs when ROMs are supplied. These are software CPU
+measurements; no phone battery improvement is claimed without hardware testing.
+
+ROM-free synthetic benchmark on this host (original test firmware; not a Digimon
+ROM): Python 23.332828 CPU seconds / 30.002745 emulated seconds (77.77% of one
+core), Kotlin 0.271060 / 30.002747 (0.9035%, about 86x less CPU). Classic synthetic
+baseline: 0.057615 CPU seconds / 600.000153 emulated seconds (0.00960%). Values
+use per-thread CPU time for Kotlin and process CPU time for single-threaded
+Python, include regular PCM drains, and exclude warmup. They do not establish
+real-ROM throughput, Android scheduler overhead or phone battery savings.

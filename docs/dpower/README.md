@@ -26,8 +26,8 @@ D-Power snapshots use schema 2 (schema 1 remains readable), bind to the firmware
 
 - Upstream: https://github.com/azya52/BrickEmuPy
 - Pin: `376cca92c6d000ffd6046e5491f2a1c3d1a5eab0`.
-- Vendored GPL191X.py and GPL191Xsound.py are unchanged. SPL61X maps to GPL191X upstream. License: [UPSTREAM-LICENSE](UPSTREAM-LICENSE).
-- Embedded CPython 3.11 via Chaquopy 17.0.0, arm64-v8a for the Nothing Phone and x86_64 for emulator testing.
+- The pinned Python reference lives under `tools/dpower_reference/`. SPL61X maps to GPL191X upstream. License: [UPSTREAM-LICENSE](UPSTREAM-LICENSE).
+- Preview23 runs a Kotlin SPL61X core and Kotlin 48 kHz PCM mixer, with direct opcode/SFR dispatch and no embedded Python or ABI restriction. Existing Python schema 1/2 saves remain readable and writable.
 - Each Kotlin clock call batches approximately 1 ms of firmware and returns actual cycles at 2.2 MHz. The existing elapsed-realtime pacer retains CPU debt. No oscillator-only skipping or guessed speed multiplier.
 - `tools/generate_dpower_lcd.py` derives all 512 pixel addresses/masks from upstream SVG geometry. SVG identifiers contain bit indices, converted to masks during generation.
 - Common `EmulatorCore` runtime contract; classic E0C6200 instruction implementation is unchanged.
@@ -54,7 +54,7 @@ Local verification on 2026-10-23: debug APK and lint passed (lint retains warnin
 
 ## Remaining limits
 
-This is a build-tested preview, not a phone-validated release. No Nothing Phone was connected during implementation, and no Android emulator was installed. Kotlin/CPython interoperability, sustained phone speed, battery usage, gestures and Glyph output still need on-device validation.
+This is a build-tested preview, not a phone-validated release. No Nothing Phone was connected during implementation, and no Android emulator was installed. Sustained phone speed, battery usage, gestures and Glyph output still need on-device validation.
 
 Preview 5 replaces speaker-tone approximation with two-channel 48 kHz PCM, including signed direct samples and upstream sine tones. Haptic feedback still uses a strongest-tone approximation. See [audio implementation and limits](audio.md); original-speaker accuracy is not claimed. D-Power link battles and decoded pet statistics/evolution metadata are unavailable. DND Freeze and explicit Stop pause simulation. An explicitly app-started pet can continue after a Glyph toy unbind; this does not add offline time recovery after process death.
 
@@ -65,3 +65,5 @@ Optional [D-Arc-style Glyph clock](clock.md): enable the saved Glyph clock toggl
 Preview 4 fixes D-Power display proportions. Switching fit modes refreshes static LCDs immediately and does not change emulation speed or firmware state.
 
 Preview 6 renders the exact NanoFont 3×4 digits at one LED per pixel below the LCD, avoiding the circular top edge.
+
+Preview23 CPU and differential validation: see [battery investigation](battery.md). Host reference tools require Python 3; private ROM checks skip when their environment variables are unset.

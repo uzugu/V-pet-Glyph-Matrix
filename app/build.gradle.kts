@@ -1,5 +1,4 @@
 plugins {
-    id("com.chaquo.python")
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -11,10 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.digimon.glyph"
         minSdk = 26
-        ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
         targetSdk = 35
-        versionCode = 26
-        versionName = "1.4-dpower.preview22"
+        versionCode = 27
+        versionName = "1.4-dpower.preview23"
     }
 
     buildTypes {
@@ -55,7 +53,6 @@ dependencies {
     implementation("com.caverock:androidsvg-aar:1.4")
 }
 
-chaquopy { defaultConfig { version = "3.11" } }
 
 // Keep Android's standard build output and provide a versioned download artifact.
 tasks.register<Copy>("packageVersionedDebug") {

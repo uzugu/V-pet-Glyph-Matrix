@@ -12,7 +12,7 @@ import time
 ROOT=Path(__file__).resolve().parents[1]
 
 def run(args):
-    sys.path.insert(0,str(ROOT/'app/src/main/python'))
+    sys.path.insert(0,str(ROOT/'tools/dpower_reference'))
     import dpower_runtime
     spec=importlib.util.spec_from_file_location('exchange',args.frame_checkout/'backend/save_exchange.py')
     e=importlib.util.module_from_spec(spec);spec.loader.exec_module(e)

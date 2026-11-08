@@ -3,7 +3,7 @@ import struct
 import math
 import unittest
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'app/src/main/python'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'tools/dpower_reference'))
 from dpower_audio import Mixer
 
 
