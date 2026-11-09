@@ -71,8 +71,14 @@ Preview23 CPU and differential validation: see [battery investigation](battery.m
 Preview23 final ROM-free measurements: D-Power Python 23.4724 -> Kotlin 0.2782 CPU
 seconds per 30.0027 emulated seconds (84.4x); classic step path 0.04816 -> idle skip
 0.01293 per 600 emulated seconds (3.72x). These are synthetic host workloads, not
-phone power or private-ROM results. Real-ROM comparisons and benchmarks require
-`DPOWER_ROM` / `CLASSIC_ROM_DIR`; both were unset for this implementation run.
+phone power or private-ROM results. The subsequent 2026-11-09 private-ROM run
+passed the 30-second D-Power
+CPU/timer/input/audio/PCM comparison with idle skipping on and off, plus the
+six-classic-ROM three-hour/midnight comparisons. D-Power measured 0.622% of one
+desktop core (about 59x less CPU than Python); classic HALT skipping improved
+throughput about 1.8x on each real ROM. These are host CPU measurements, not
+phone battery results. See the battery document for the complete table and
+reproducible commands using `DPOWER_ROM` / `CLASSIC_ROM_DIR`.
 Real-time standby now retains debt for periodic catch-up; the D-Power console
 can opt into freezing instead. See the battery document for compatibility,
 scheduling and validation limits.

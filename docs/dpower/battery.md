@@ -154,8 +154,8 @@ run it; traces and ROMs must stay outside Git. `tools/dump_dpower_trace.py` can
 also generate traces manually. Host Python remains necessary for these tests,
 but is no longer part of Android execution.
 
-Real-ROM benchmark variables were unset during initial implementation. Therefore
-there are **no measured real-ROM before/after numbers or verified <3% result**
+Real-ROM benchmark variables were unset during initial implementation. At that
+point there were **no measured real-ROM before/after numbers or verified <3% result**
 yet. The earlier desktop sample (Python: 5.873 CPU seconds per 10 emulated seconds)
 is historical, not a matched benchmark against this port. `realRomCpuBenchmarks`
 prints both the pure Python reference and Kotlin D-Power CPU throughput and all
@@ -270,11 +270,10 @@ private Digimon ROM.
 D-Power used 0.927% of one desktop core in this synthetic run; classic used
 0.00803% before / 0.00216% after. Per-CPU-second throughput was approximately
 1.28 -> 107.86 emulated seconds for D-Power and 12,458 -> 46,388 for classic.
-The real-ROM <3% target remains unverified with `DPOWER_ROM` unset. All six real
-classic before/after measurements likewise remain unavailable with
-`CLASSIC_ROM_DIR` unset. No phone battery numbers are inferred from these tests.
+These synthetic measurements preceded the private-ROM run below. No phone
+battery numbers are inferred from either set of host tests.
 
-### Validation and remaining measurements
+### Initial ROM-free validation
 
 `./gradlew test lint assembleDebug` passed for both variants (163 tests each,
 42 skipped, no failures); after the final battle callback guard the full debug
@@ -291,8 +290,65 @@ eight-hour suspended versus continuous interrupt/state execution, and active
 battle fast-oscillator HALT callback granularity. `DPOWER_ROM` and
 `CLASSIC_ROM_DIR` were unset: the required real-ROM 30-second D-Power input/step
 traces, six-ROM multi-hour/midnight comparisons and real-ROM benchmarks skipped
-cleanly. They remain release-validation work, as do physical audio, Doze alarm
-and battery measurements. Broader D-Power flag/port polling-loop recognition is
-deferred until those traces can establish safe loop behavior; the narrow debug
-optimization stays disabled by default. No private ROM or generated trace is
-committed.
+cleanly. Those private-ROM checks were subsequently run as recorded below.
+Physical audio, Doze alarm and battery measurements remain outstanding. Broader D-Power
+flag/port polling-loop recognition still needs loop-specific equivalence proof;
+the narrow debug optimization stays disabled by default. No private ROM or
+generated trace is committed.
+
+### Private-ROM verification, 2026-11-09
+
+All seven firmware files were found outside this checkout. D-Power is the
+96 KiB EU 1.01 image with SHA-256
+`f1f0a92bdcbd87514b7c981ca126713ee7e050ec262fcbfe90e75d2e1bc852ca`;
+the classic files identify as V1JA, V1JB, V1ES, V2J, V3J and V4J.
+
+The full debug and release suites each passed 163 tests with one unrelated
+Syncthing hardware round-trip skip (164 total per variant, zero failures). All 17 Python tests passed with no skips. The D-Power
+30-second scripted trace matched Python exactly at every checkpoint, including
+registers, flags, RAM, fractional timer fields, cumulative cycles, ordered audio
+events and PCM SHA-256, with idle skipping disabled and enabled. All six classic
+ROMs matched the per-step reference for three emulated hours each, including
+button inputs and midnight rollover; timer/interrupt diagnostic counters also
+matched. Existing six-ROM firmware clock and snapshot regressions passed.
+
+In the full debug test run, after two emulated seconds of warmup, the D-Power
+Kotlin runtime achieved
+160.90 emulated seconds per CPU second (**0.6215% of one desktop core**).
+The matched Python reference achieved 2.7094 emulated seconds per CPU second
+(about 36.91% of one core), a **59.4x CPU improvement** on this workload. This
+meets the desktop <3% target for the measured startup/idle firmware workload;
+it does not measure every gameplay state. Both ran 30,000 advances with regular
+PCM drains. The Kotlin benchmark uses the default disabled D-Power idle skip.
+
+Classic real-ROM benchmarks ran 600 emulated seconds after 60 seconds of warmup,
+with identical firmware and the HALT optimization disabled/enabled:
+
+| Firmware | Before emu seconds / CPU second | After | CPU reduction | Before core usage | After |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| DigimonV1JA | 7,407.4 | 13,421.1 | 1.81x | 0.01350% | 0.00745% |
+| DigimonV1JB | 7,549.8 | 13,521.4 | 1.79x | 0.01325% | 0.00740% |
+| DigimonV1ES | 7,282.3 | 13,085.5 | 1.80x | 0.01373% | 0.00764% |
+| DigimonV2J | 7,464.0 | 13,617.7 | 1.82x | 0.01340% | 0.00734% |
+| DigimonV3J | 7,499.2 | 13,521.6 | 1.80x | 0.01333% | 0.00740% |
+| DigimonV4J | 7,575.0 | 13,445.9 | 1.78x | 0.01320% | 0.00744% |
+
+CPU time uses JVM thread CPU time and Python process CPU time on the build host;
+it excludes JIT/reference warmup. These software measurements do not establish
+Android scheduler costs, physical audio behavior or phone battery life. The
+conservative D-Power debug skip remains off by default; general polling-loop
+recognition is still deferred.
+
+Reproduce with local private paths (Gradle's rerun flag prevents cached tests
+from hiding a change in environment variables):
+
+```bash
+DPOWER_ROM=/private/DPowerDigiviceEU101.bin \
+CLASSIC_ROM_DIR=/private/classic \
+./gradlew test --rerun-tasks
+
+DPOWER_ROM=/private/DPowerDigiviceEU101.bin \
+python3 -m unittest discover -s tests -v
+```
+
+No ROM or generated golden trace was added to Git.
