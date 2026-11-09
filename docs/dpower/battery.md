@@ -352,3 +352,56 @@ python3 -m unittest discover -s tests -v
 ```
 
 No ROM or generated golden trace was added to Git.
+
+## Preview24: bounded D-Power polling-loop skipping
+
+The real firmware's hot wait loop writes the unmapped `$0f` sink, loads an
+ISR-owned RAM flag, compares it and branches backwards. It does not write the
+DAC: `$0f` has no SFR handler in the pinned core. Preview24 extends the existing
+experimental debug switch beyond a JMP-to-self to a deliberately small grammar:
+optional `STA $0f`, `LDA zp/abs`, optional immediate `AND` or `CMP`, and a taken
+`BPL/BMI/BCC/BCS/BNE/BEQ` back to the start. Reads are limited to pure port,
+interrupt/time-base/timer registers and RAM flags. Other instructions, stores,
+SFR accesses and code crossing the bank boundary take the normal path.
+
+A candidate must already be at a register/flag fixed point. The skipper advances
+only whole iterations strictly before the next IREQ/NMI/time-base event and
+inside the caller's budget. Reading a timer counter additionally bounds the skip
+at its next increment. Timer increments that cannot overflow still execute in
+the existing timer routine, keeping the pinned peripheral ordering. Firmware
+button/step boundaries remain bounded by the caller. Skipped instructions still
+contribute to the portable instruction count; the separate skipped-instruction
+diagnostic is not part of snapshots. No opcode/SFR dispatch allocation is added.
+
+Batch arithmetic is admitted only for counters/divisors on the hardware's exact
+binary clock grid and within conservative magnitude bounds. Arbitrary fractional
+values in imported schema 1/2 saves fall back to instruction execution, preserving
+reference rounding rather than changing legacy timer state.
+
+The 30-second real-ROM scripted Python differential passed with skipping off and
+on; the enabled run skipped **6,895,764 instructions**, with identical registers,
+RAM, timers, cycles, audio events and PCM hash at the comparison points. Focused
+unit tests also compare all six conditional branches, page-crossing cycle costs,
+port changes, RAM flags, timer-register reads, interrupt entries and tiny budgets;
+side-effecting stores and non-grid fractional counters must use the reference.
+
+The full debug validation benchmark measured 138.15 -> 178.65 emulated seconds
+per CPU second (**0.7238% -> 0.5597% of one desktop core**, about **23% less CPU**)
+with the switch off/on. The benchmark skipped 9,185,896 instructions including
+warmup. Python achieved 2.7940 emulated seconds per CPU second in that same run
+(about 35.79% of one core; roughly 64x more CPU than Kotlin with skipping). An
+earlier matched sample measured 0.5943% -> 0.4668% (21% less CPU); host/JIT
+variation affects absolute throughput. These are host software measurements for
+the startup/idle workload; phone battery and
+physical playback behavior remain unmeasured. The debug switch remains **off by
+default**; unrecognized polling loops continue to execute normally.
+
+Final preview24 verification: `./gradlew test lint assembleDebug
+:app:packageVersionedDebug` passed with both ROM variables supplied. Each JVM
+variant ran 168 tests: 167 passed, one unrelated Syncthing hardware test skipped,
+zero failures. Lint reported zero errors; existing warnings remain. Localization
+passed 489 values and 42 verified species. The Python reference suite passed all
+17 tests with the private ROM. CPU/field regeneration reproduces the committed
+source exactly. Package `com.digimon.glyph` is version code 28 /
+`1.4-dpower.preview24`, signed with the existing debug certificate; no embedded
+Python or native runtime is present.

@@ -266,3 +266,8 @@ Open **D-Power console** after loading D-Power EU 1.01. The Digivice-themed menu
 Preview 9 validation: 64 JVM tests, debug APK build and Android lint. Phone menu layout, physical LED brightness and firmware step crediting still need on-device verification.
 
 Preview 10 adds **Scan NFC card** to the D-Power console. While the app is open and unlocked, one NFC tag detection sends the existing Card input. Tag contents do not select a power. See [NFC operation and limits](docs/dpower/nfc.md).
+
+D-Power preview24 runs the CPU and PCM mixer in Kotlin. Private-ROM differential
+tests cover inputs, timers, portable saves and audio; optional experimental idle
+skipping remains disabled by default. Host CPU benchmarks and phone-validation
+limits are recorded in [the battery investigation](docs/dpower/battery.md).

@@ -72,6 +72,10 @@ class DPowerPortTest {
         assertEquals(expected.size(),events.size())
         for(i in 0 until events.size()) for(j in 0..2) same("audio $i/$j",expected[i].asJsonArray[j],events[i].asJsonArray[j])
         assertEquals(trace["pcmSha256"].asString,digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) })
+        if (idleSkip) {
+            assertTrue("Real firmware polling optimization must be exercised", r.core.idleSkippedInstructions > 0)
+            println("D-Power differential skipped ${r.core.idleSkippedInstructions} proven idle instructions")
+        }
     }
     @Test fun syntheticTimersDacRamAndSnapshotsMatchPython() = compare(synthetic(),golden("--synthetic","--seconds","1"),1)
     @Test fun privateRomThirtySecondDifferential() {
@@ -139,16 +143,19 @@ class DPowerPortTest {
         val path=System.getenv("DPOWER_ROM");val dir=System.getenv("CLASSIC_ROM_DIR")
         assumeTrue("Set DPOWER_ROM and CLASSIC_ROM_DIR for both real-core benchmarks",path!=null && dir!=null)
 
-        val r=DPowerRuntime(File(path).readBytes());repeat(2000){r.advance();if(it%10==0)r.playback()}
-        var start=cpuNow();var cycles=0.0
-        repeat(30000){cycles+=r.advance();if(it%10==0)r.playback()}
-        val cpu=(cpuNow()-start)/1e9
-        println("D-Power Kotlin: ${cycles/2200000/cpu} emulated seconds/CPU second; ${cpu/(cycles/2200000)*100}% desktop core")
+        for (skip in listOf(false, true)) {
+            val r=DPowerRuntime(File(path).readBytes());r.core.idleSkippingEnabled=skip
+            repeat(2000){r.advance();if(it%10==0)r.playback()}
+            val start=cpuNow();var cycles=0.0
+            repeat(30000){cycles+=r.advance();if(it%10==0)r.playback()}
+            val cpu=(cpuNow()-start)/1e9
+            println("D-Power Kotlin skip=$skip: ${cycles/2200000/cpu} emulated seconds/CPU second; ${cpu/(cycles/2200000)*100}% desktop core; skipped ${r.core.idleSkippedInstructions} instructions")
+        }
         val reference=golden("--benchmark","--seconds","30")
         println("D-Power Python reference: ${30/reference["cpuSeconds"].asDouble} emulated seconds/CPU second")
         for(device in listOf("DigimonV1JA","DigimonV1JB","DigimonV1ES","DigimonV2J","DigimonV3J","DigimonV4J")) for(skip in listOf(false,true)) {
             val c=E0C6200(File(dir,"$device.bin").readBytes()).apply {idleSkippingEnabled=skip}
-            c.runForCycles(c.clockFrequency.toDouble()*60);start=cpuNow()
+            c.runForCycles(c.clockFrequency.toDouble()*60);val start=cpuNow()
             val elapsed=c.runForCycles(c.clockFrequency.toDouble()*600)/c.clockFrequency
             val used=(cpuNow()-start)/1e9
             println("$device skip=$skip: ${elapsed/used} emulated seconds/CPU second")

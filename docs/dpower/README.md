@@ -82,3 +82,11 @@ reproducible commands using `DPOWER_ROM` / `CLASSIC_ROM_DIR`.
 Real-time standby now retains debt for periodic catch-up; the D-Power console
 can opt into freezing instead. See the battery document for compatibility,
 scheduling and validation limits.
+
+Preview24 extends the disabled-by-default experimental idle switch to proven
+load/compare/back-branch loops, including the firmware's ISR flag wait. The
+real-ROM Python differential still matches timers, audio and PCM exactly. A
+full-debug desktop run used 0.724% of one core with skipping off and 0.560%
+with it on (about 23% less CPU). Non-grid fractional saves and side-effecting loops use
+the instruction path. See [battery investigation](battery.md) for the bounds
+and benchmark scope.
