@@ -31,7 +31,7 @@
     <string name="cancel_import">読み込みをキャンセル</string>
     <string name="walking_enable">歩行検知を有効にする</string>
     <string name="walking_disable">歩行検知を無効にする</string>
-    <string name="walking_help">スマートフォンの歩行検知センサーで歩数を入力します。D-Powerの動作中のみ数えます。停止中やおやすみ時間の一時停止中は数えません。画面消灯中も使う場合はペットを起動したままにしてください。過去の歩数は取り込みません。</string>
+    <string name="walking_help">D-Powerを起動している間、スマートフォンの歩行検知センサーで歩数を入力します。待機中に検知した歩数は次の時間反映時に処理します。停止中やおやすみ時間の一時停止中は新しい歩数を受け付けません。ペットの起動前の歩数は取り込みません。</string>
     <string name="walking_unavailable">歩行検知センサーがありません。自動歩数、手動の歩数ボタン、またはGlyphボタンを押しながら振る操作を使ってください。</string>
     <string name="walking_permission_denied">歩行検知には「身体活動」の権限が必要です。手動の歩数入力は引き続き使えます。</string>
     <string name="dpower_clock">Glyph時計</string>
@@ -49,7 +49,7 @@
     <string name="dp_auto_step">自動歩数</string>
     <string name="dp_step_rate">毎秒 %1$.1f 歩</string>
     <string name="dp_rate_accessibility">自動歩数の速度（毎秒0.5〜4歩）</string>
-    <string name="dp_auto_help">歩行検知と同じ歩数入力を送ります。ペットの動作中のみ有効で、停止中やおやすみ時間の一時停止中は休止します。ペットを起動すると再開します。歩行や手動入力を優先し、自動歩数をため込みません。</string>
+    <string name="dp_auto_help">歩行検知と同じ歩数入力を送ります。歩行や手動入力を優先します。待機中の経過時間を反映するときも自動歩数を処理します。停止中、おやすみ時間の一時停止中、ペットの時間を止めている間は自動歩数も止まります。</string>
     <string name="dp_fit_help">オフ：元のドットサイズで表示し、左右を切り取ります。オン：正しい縦横比でLCD全体を縮小表示します。</string>
     <string name="dp_brightness">明るさのバランス</string>
     <string name="dp_pet_preview">デジモン</string>
@@ -92,8 +92,8 @@
     <string name="ui_system_config">システム設定</string>
     <string name="ui_emulator_runtime">エミュレーター動作設定</string>
     <string name="ui_emulator_audio_engine">ゲーム音を再生</string>
-    <string name="ui_power_saving_4_fps_idle_overrides_smoother_display">省電力（待機中4 FPS・滑らかな表示より優先）</string>
-    <string name="ui_smoother_display_30_fps_instead_of_15">滑らかな表示（15 FPSから30 FPSに変更）</string>
+    <string name="ui_power_saving_4_fps_idle_overrides_smoother_display">待機時の表示更新を減らす（4 FPS）</string>
+    <string name="ui_smoother_display_30_fps_instead_of_15">滑らかな表示（最大30 FPS）</string>
     <string name="ui_haptic_pulse_synthesis">音に合わせて振動</string>
     <string name="ui_pet_assistant">お世話アシスタント</string>
     <string name="ui_needs_attention_notifications">呼び出しを通知</string>
@@ -490,7 +490,12 @@
     <string name="glyph_keep_awake_help">Glyphで操作中は表示のタイムアウトを無効にするよう要求します。Nothing OSによって動作が異なります。トイを離れるかペットを停止すると通常に戻ります。ペット自体の睡眠は変更しません。</string>
     <string name="dp_idle_skip">試験的な待機ループの高速化</string>
     <string name="emulator_catching_up">経過時間を反映中…</string>
-    <string name="dp_freeze_standby">待機中はD-Powerの時間を停止</string>
-    <string name="dp_freeze_standby_help">オフ：定期的に経過時間を反映します。オン：スリープ中は本体内の時間が止まります。</string>
+    <string name="dp_freeze_standby">待機中はD-Powerの時間を止める</string>
+    <string name="dp_freeze_standby_help">オフ：経過時間を反映して実時間に追いつきます。オン：本体の液晶が消灯したときやアプリが待機状態になったときにペットの時間を止めます。検知した歩数は再開時に処理します。</string>
     <string name="standby_interval">待機中の時間反映の間隔：%1$d分</string>
+    <string name="standby_settings">待機とバッテリー</string>
+    <string name="standby_help">標準では、スマートフォンの画面が消え、表示・バトル・音声を使っていないときにスマートフォンをスリープさせます。ペットの時間は定期更新時や操作に戻ったときに追いつきます。表示更新を減らす設定に関係なく、自動的に待機状態に入ります。</string>
+    <string name="standby_interval_help">Androidによりバックグラウンド更新が遅れる場合があります。ペットの操作に戻るとすぐに経過時間を反映します。停止とおやすみ時間の一時停止では、引き続きペットの時間が止まります。</string>
+    <string name="runtime_display_help">待機時の表示更新を減らす設定は、滑らかな表示より優先され、待機中のジェスチャー検知も減らします。入力すると一時的に更新頻度が上がります。どの表示モードでもペットの時間は通常の速さで進み、待機時には自動的にスマートフォンをスリープさせます。</string>
+    <string name="dp_idle_skip_help">確認済みの待機ループを省略し、ペットの時間は通常どおり進めます。試験機能のため、動作がおかしい場合はオフにしてください。</string>
 </resources>

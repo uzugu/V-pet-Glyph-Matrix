@@ -11,8 +11,8 @@ android {
         applicationId = "com.digimon.glyph"
         minSdk = 26
         targetSdk = 35
-        versionCode = 28
-        versionName = "1.4-dpower.preview24"
+        versionCode = 29
+        versionName = "1.4-dpower.preview25"
     }
 
     buildTypes {

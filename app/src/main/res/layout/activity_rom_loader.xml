@@ -434,6 +434,19 @@
                     android:thumbTint="@null"
                     android:trackTint="@null" />
 
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/runtime_display_help"
+                    android:textAppearance="@style/TextAppearance.Cyber.Muted" />
+                <Button
+                    android:id="@+id/btn_standby_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/standby_settings"
+                    android:textAppearance="@style/TextAppearance.Cyber.Button" />
+
                 <Switch
                     android:id="@+id/switch_haptic"
                     android:layout_width="match_parent"

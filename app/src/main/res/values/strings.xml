@@ -31,7 +31,7 @@
     <string name="cancel_import">Cancel import</string>
     <string name="walking_enable">Enable walking steps</string>
     <string name="walking_disable">Disable walking steps</string>
-    <string name="walking_help">Walking steps use your phone’s step detector to press the emulated Step input. Counts only while D-Power is running; Stop and DND Freeze pause it. Keep the pet started for screen-off walking. No past steps are imported.</string>
+    <string name="walking_help">Walking steps use your phone’s step detector while D-Power is started. Steps detected in standby wait for the next update. Stop and DND Freeze ignore new steps. Steps from before you started the pet are not imported.</string>
     <string name="walking_unavailable">No step detector is available. Use automatic steps, the manual Step button or Glyph hold-and-flick.</string>
     <string name="walking_permission_denied">Walking steps need Physical activity permission. Manual Step still works.</string>
     <string name="dpower_clock">Glyph clock</string>
@@ -49,7 +49,7 @@
     <string name="dp_auto_step">Automatic steps</string>
     <string name="dp_step_rate">%1$.1f steps / second</string>
     <string name="dp_rate_accessibility">Automatic step rate, 0.5 to 4 steps per second</string>
-    <string name="dp_auto_help">Sends the same Step input as walking. Runs only while the pet runs; Stop and DND Freeze pause it. Resumes when you start the pet. Walking and manual steps take priority; automatic steps do not build a backlog.</string>
+    <string name="dp_auto_help">Sends the same Step input as walking. Walking and manual steps take priority. Real-time standby catch-up includes automatic steps. Stop, DND Freeze and paused pet time also pause automatic stepping.</string>
     <string name="dp_fit_help">Off: original-size pixels, cropped sides. On: the entire LCD, smaller with correct proportions.</string>
     <string name="dp_brightness">Brightness balance</string>
     <string name="dp_pet_preview">DIGIMON</string>
@@ -92,8 +92,8 @@
     <string name="ui_system_config">SYSTEM CONFIG</string>
     <string name="ui_emulator_runtime">EMULATOR RUNTIME</string>
     <string name="ui_emulator_audio_engine">EMULATOR AUDIO ENGINE</string>
-    <string name="ui_power_saving_4_fps_idle_overrides_smoother_display">Power saving (4 FPS idle; overrides smoother display)</string>
-    <string name="ui_smoother_display_30_fps_instead_of_15">Smoother display (30 FPS instead of 15)</string>
+    <string name="ui_power_saving_4_fps_idle_overrides_smoother_display">Lower idle refresh (4 FPS)</string>
+    <string name="ui_smoother_display_30_fps_instead_of_15">Smoother display (up to 30 FPS)</string>
     <string name="ui_haptic_pulse_synthesis">HAPTIC PULSE SYNTHESIS</string>
     <string name="ui_pet_assistant">PET ASSISTANT</string>
     <string name="ui_needs_attention_notifications">NEEDS ATTENTION NOTIFICATIONS</string>
@@ -490,7 +490,12 @@
     <string name="glyph_keep_awake_help">Request no display timeout while playing V-pet on Glyph. Nothing OS support varies. Leaving the toy or stopping the pet restores normal timeout. This does not change the pet’s sleep.</string>
     <string name="dp_idle_skip">Experimental idle-loop skipping</string>
     <string name="emulator_catching_up">Catching up…</string>
-    <string name="dp_freeze_standby">Freeze D-Power during standby</string>
-    <string name="dp_freeze_standby_help">Off: keep real time through periodic catch-up. On: pause firmware time while asleep.</string>
+    <string name="dp_freeze_standby">Pause D-Power time when idle</string>
+    <string name="dp_freeze_standby_help">Off: keep real time through catch-up. On: pause pet time when the device LCD turns off or the app enters standby. Walking steps wait until you resume.</string>
     <string name="standby_interval">Standby catch-up interval: %1$d minutes</string>
+    <string name="standby_settings">Standby &amp; battery</string>
+    <string name="standby_help">By default, the phone can sleep when its screen is off and no display, battle or sound is active. Pet time catches up during background updates and when you return. Lower idle refresh is optional; automatic standby works in every display mode.</string>
+    <string name="standby_interval_help">Android may delay background updates. Returning to the pet updates it immediately. Stop and quiet-hours Freeze still pause pet time.</string>
+    <string name="runtime_display_help">Lower idle refresh overrides smoother display and reduces idle gesture sensing. Input temporarily raises the refresh rate. All display modes keep normal pet time; standby lets the phone sleep automatically.</string>
+    <string name="dp_idle_skip_help">Skip verified waiting loops while keeping normal pet time. Experimental: turn this off if the pet behaves unexpectedly.</string>
 </resources>

@@ -230,6 +230,9 @@ class RomLoaderActivity : AppCompatActivity() {
         }
         val btnPickRom = findViewById<Button>(R.id.btn_pick_rom)
         findViewById<Button>(R.id.btn_dpower_controls).setOnClickListener { showDPowerControls() }
+        findViewById<Button>(R.id.btn_standby_settings).setOnClickListener {
+            com.digimon.glyph.ui.StandbySettingsDialog.show(this, EmulatorStatus.snapshot().isDPower)
+        }
         findViewById<Button>(R.id.btn_cancel_import).setOnClickListener { cancelImport() }
         val btnStartEmu = findViewById<Button>(R.id.btn_start_emu)
         val btnStopEmu = findViewById<Button>(R.id.btn_stop_emu)
@@ -440,9 +443,11 @@ class RomLoaderActivity : AppCompatActivity() {
         switchPowerSave.isChecked = EmulatorTimingSettings.isPowerSaveEnabled()
         switchPowerSave.setOnCheckedChangeListener { _, isChecked ->
             EmulatorTimingSettings.setPowerSaveEnabled(this@RomLoaderActivity, isChecked)
+            switchExactTiming.isEnabled = !isChecked
             EmulatorCommandBus.post(this@RomLoaderActivity, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         }
 
+        switchExactTiming.isEnabled = !EmulatorTimingSettings.isPowerSaveEnabled()
         switchExactTiming.isChecked = EmulatorTimingSettings.isFullAccuracyEnabled()
         switchExactTiming.setOnCheckedChangeListener { _, isChecked ->
             EmulatorTimingSettings.setFullAccuracyEnabled(this@RomLoaderActivity, isChecked)

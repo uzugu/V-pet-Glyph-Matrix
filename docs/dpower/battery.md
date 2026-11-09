@@ -405,3 +405,34 @@ passed 489 values and 42 verified species. The Python reference suite passed all
 source exactly. Package `com.digimon.glyph` is version code 28 /
 `1.4-dpower.preview24`, signed with the existing debug certificate; no embedded
 Python or native runtime is present.
+
+## Preview25: settings aligned with real-time standby
+
+The main runtime panel and D-Power console now open the same **Standby & battery**
+dialog. The catch-up interval is available for classic pets as well as D-Power;
+D-Power alone can opt into paused time. The experimental idle-loop switch is in
+that dialog when debug controls are enabled. Standby options no longer sit in
+Step Training. The pause description explicitly covers the device LCD going off
+and the app entering standby; it also explains queued walking contacts. Interval
+controls are disabled while D-Power pause mode is selected.
+
+The old broad “Power saving” label is now **Lower idle refresh (4 FPS)**. It still
+uses the same saved preference and runtime policy, and the UI explains that
+phone standby works automatically in every display mode. Smoother display is
+disabled while lower idle refresh overrides it; its saved choice is retained for
+when the override is turned off. The D-Power console exposes both display
+choices, avoiding an unseen override from the main screen. All display modes
+retain normal pet time. Walking/automatic-step help now describes standby
+catch-up and frozen time rather than implying that nothing queues in standby.
+
+English and Japanese strings are updated together. Existing preference keys,
+DND behavior, saves and emulation policies are preserved. This is a settings
+clarification, with no new CPU or phone battery claim.
+
+Preview25 verification: both full JVM variants passed 167 tests each, with the
+single Syncthing hardware round-trip skipped (168 total each, no failures).
+All private-ROM differential, clock and benchmark tests ran. Localization passed
+494 values and 42 verified species. No emulator or save-format changes were
+needed for this settings cleanup.
+Lint completed with zero errors, and the signed preview25 debug APK was built
+and verified as package `com.digimon.glyph`, version code 29.

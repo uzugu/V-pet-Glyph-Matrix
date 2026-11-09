@@ -90,3 +90,9 @@ full-debug desktop run used 0.724% of one core with skipping off and 0.560%
 with it on (about 23% less CPU). Non-grid fractional saves and side-effecting loops use
 the instruction path. See [battery investigation](battery.md) for the bounds
 and benchmark scope.
+
+Preview25 groups standby options under **Standby & battery**, shared with the
+main runtime panel. Lower idle refresh and smoother display are presented
+together; the latter is disabled while overridden, retaining its saved choice.
+Help distinguishes real-time catch-up, optional paused time and queued steps.
+Existing saves and preferences are preserved.

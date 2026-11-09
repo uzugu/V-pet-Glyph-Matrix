@@ -92,32 +92,12 @@ class DPowerMenu(
         steps.addView(walkingButton)
         steps.addView(text(context.getString(if (WalkingInput.available(context)) R.string.walking_help else R.string.walking_unavailable), 14f, muted))
 
-        if (EmulatorDebugSettings.isDebugEnabled()) {
-            toggle(steps, R.string.dp_idle_skip, EmulatorDebugSettings.isDPowerIdleSkippingEnabled()) {
-                EmulatorDebugSettings.setDPowerIdleSkippingEnabled(context, it)
-            }
-        }
-        toggle(steps, R.string.dp_freeze_standby, StandbySettings.freezeDPower) {
-            StandbySettings.setFreezeDPower(context, it)
-            EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-        }
-        steps.addView(text(context.getString(R.string.dp_freeze_standby_help), 14f, muted))
-        val intervalLabel = text(context.getString(R.string.standby_interval, StandbySettings.intervalMinutes), 14f, muted)
-        steps.addView(intervalLabel)
-        steps.addView(SeekBar(context).apply {
-            max = 7; progress = StandbySettings.intervalMinutes / 15 - 1
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(bar: SeekBar?, value: Int, user: Boolean) {
-                    if (user) {
-                        StandbySettings.setIntervalMinutes(context, (value + 1) * 15)
-                        intervalLabel.text = context.getString(R.string.standby_interval, StandbySettings.intervalMinutes)
-                        EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
-                    }
-                }
-                override fun onStartTrackingTouch(bar: SeekBar?) = Unit
-                override fun onStopTrackingTouch(bar: SeekBar?) = Unit
-            })
+        val standby = section(R.string.standby_settings)
+        standby.addView(button(context.getString(R.string.standby_settings)) {
+            StandbySettingsDialog.show(context, isDPower = true)
         })
+        standby.addView(text(context.getString(R.string.standby_help), 14f, muted))
+
         val display = section(R.string.dp_display_section)
         if (com.digimon.glyph.GlyphAvailability.isAvailable) {
             toggle(display, R.string.glyph_keep_awake, DisplayRenderSettings.isGlyphAwakeEnabled()) {
@@ -150,7 +130,17 @@ class DPowerMenu(
             })
         }
         display.addView(group)
-        toggle(display, R.string.dp_smooth_display, EmulatorTimingSettings.isFullAccuracyEnabled()) { EmulatorTimingSettings.setFullAccuracyEnabled(context, it) }
+        var smoothToggle: SwitchCompat? = null
+        toggle(display, R.string.ui_power_saving_4_fps_idle_overrides_smoother_display, EmulatorTimingSettings.isPowerSaveEnabled()) {
+            EmulatorTimingSettings.setPowerSaveEnabled(context, it)
+            smoothToggle?.isEnabled = !it
+            EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }
+        smoothToggle = toggle(display, R.string.dp_smooth_display, EmulatorTimingSettings.isFullAccuracyEnabled()) {
+            EmulatorTimingSettings.setFullAccuracyEnabled(context, it)
+            EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
+        }.apply { isEnabled = !EmulatorTimingSettings.isPowerSaveEnabled() }
+        display.addView(text(context.getString(R.string.runtime_display_help), 14f, muted))
         display.addView(text(context.getString(R.string.dp_smooth_help), 14f, muted))
 
         val sound = section(R.string.dp_sound_section)
@@ -183,12 +173,14 @@ class DPowerMenu(
         card.addView(text(context.getString(title), 22f, cyan).apply { typeface = if (com.digimon.glyph.LocalizedText.isJapanese(context)) Typeface.DEFAULT else ResourcesCompat.getFont(context, R.font.teko) })
         return card
     }
-    private fun toggle(parent: LinearLayout, label: Int, initial: Boolean, changed: (Boolean) -> Unit) {
-        parent.addView(SwitchCompat(context).apply {
+    private fun toggle(parent: LinearLayout, label: Int, initial: Boolean, changed: (Boolean) -> Unit): SwitchCompat {
+        val control = SwitchCompat(context).apply {
             text = context.getString(label); textSize = 15f; setTextColor(ink); minHeight = dp(52)
             isChecked = initial; setPadding(0, dp(6), 0, dp(6))
             setOnCheckedChangeListener { _, checked -> changed(checked) }
-        })
+        }
+        parent.addView(control)
+        return control
     }
     private fun row(parent: LinearLayout, actions: List<Pair<String, () -> Unit>>, manual: Boolean = false) {
         val row = LinearLayout(context)
