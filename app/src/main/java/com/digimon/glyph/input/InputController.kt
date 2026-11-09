@@ -202,12 +202,12 @@ class InputController(
         setInputRateMode(InputRateMode.IDLE)
     }
 
-    fun stop() {
+    fun stop(releaseUnheldButtons: Boolean = true) {
         started = false
         mainHandler.removeCallbacks(idleTimeout)
         sensorManager.unregisterListener(this)
         sensorsRegistered = false
-        releaseAll()
+        releaseAll(releaseUnheldButtons)
     }
 
     fun onGlyphButtonDown() {
@@ -258,7 +258,10 @@ class InputController(
 
     fun cancelPendingInput() { releaseAll() }
 
-    private fun releaseAll() {
+    private fun releaseAll(releaseUnheldButtons: Boolean = true) {
+        val releaseA = releaseUnheldButtons || buttonAActive
+        val releaseB = releaseUnheldButtons || buttonBActive
+        val releaseC = releaseUnheldButtons || buttonCActive
         dpHeld.toList().forEach { pinRelease(it.port, it.pin) }
         dpHeld.clear()
         dpGeneration++
@@ -272,9 +275,9 @@ class InputController(
         buttonCActive = false
         buttonALatchedByB = false
         buttonCLatchedByB = false
-        pinRelease("K0", BUTTON_A_PIN)
-        pinRelease("K0", BUTTON_B_PIN)
-        pinRelease("K0", BUTTON_C_PIN)
+        if (releaseA) pinRelease("K0", BUTTON_A_PIN)
+        if (releaseB) pinRelease("K0", BUTTON_B_PIN)
+        if (releaseC) pinRelease("K0", BUTTON_C_PIN)
 
         pendingAxis = FlickAxis.NONE
         pendingDirection = 0

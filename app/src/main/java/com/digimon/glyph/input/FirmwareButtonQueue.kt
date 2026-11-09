@@ -7,6 +7,7 @@ class FirmwareButtonQueue(private val clockFrequency: Int) {
     private var active: Pulse? = null
     private var remaining = 0.0
     private var releasedGap = 0.0
+    val isIdle: Boolean get() = active == null && waiting.isEmpty() && releasedGap == 0.0
 
     fun enqueue(holdMs: Long = 120, gapMs: Long = 80, valid: () -> Boolean = { true }, contact: (Boolean) -> Unit): Boolean {
         require(holdMs in 1..1000 && gapMs in 1..1000)

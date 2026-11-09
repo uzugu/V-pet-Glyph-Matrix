@@ -78,3 +78,21 @@ images are not resent; configuration/resize changes force refresh. Debug RAM
 copies require an actual observer. D-Power standby now defaults to real-time
 catch-up, with the old freeze behavior available in its console. Existing OWL
 protocol and launcher controls are unchanged.
+
+## Preview25: classic standby care calls
+
+The V-pet backend now predicts classic pets' next care call while the phone is
+asleep. It requests an exact wake five seconds before the call and runs live for
+at least a minute after catching up, allowing the firmware beep and configured
+attention notification to occur. Lookahead uses a separate core and cannot
+change game progress. Widget input cancels the old forecast and plans again
+from the resulting live state; the OWL protocol and launcher need no update.
+
+In V-pet's **Standby & battery**, classic pets have a 60-minute default lookahead
+and **Always live (uses more battery)**. If exact alarms are denied, the dialog
+warns that periodic updates can notify too late and links to Android's access
+screen. Android idle quotas/vendor restrictions still apply even with access;
+Always live avoids standby alarms at the cost of a continuous CPU wake lock.
+DND Freeze and attention notification preferences remain in effect. D-Power
+standby is unchanged. Hardware wake delivery, beeps and battery use still need
+phone verification; see [the validation notes](dpower/battery.md#preview25-predictive-classic-care-call-wakes).

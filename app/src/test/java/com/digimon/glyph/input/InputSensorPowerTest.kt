@@ -125,6 +125,21 @@ class InputSensorPowerTest {
         f.scheduler.advance(120_000)
         verifyNoInteractions(f.sensors)
     }
+    @Test fun classicStandbyStopDoesNotCreateInputsButStillReleasesAHeldContact() {
+        val f = Fixture()
+        f.controller.start()
+        f.controller.stop(releaseUnheldButtons = false)
+        assertTrue("Idle cleanup must not wake firmware or invalidate a forecast", f.pins.isEmpty())
+        f.controller.start()
+        f.controller.onGlyphButtonDown()
+        f.controller.stop(releaseUnheldButtons = false)
+        assertEquals(listOf("K0:1=0", "K0:1=release"), f.pins)
+        f.pins.clear()
+        f.controller.stop(releaseUnheldButtons = false)
+        f.scheduler.advance(120_000)
+        assertTrue(f.pins.isEmpty())
+    }
+
     @Test fun fallbackAccelerometerAlsoStopsInIdleAndReturnsOnGlyphInput() {
         val f = Fixture(fallback = true)
         f.controller.setPowerSaveEnabled(true)

@@ -406,7 +406,7 @@ source exactly. Package `com.digimon.glyph` is version code 28 /
 `1.4-dpower.preview24`, signed with the existing debug certificate; no embedded
 Python or native runtime is present.
 
-## Preview25: settings aligned with real-time standby
+## Preview25: initial settings cleanup
 
 The main runtime panel and D-Power console now open the same **Standby & battery**
 dialog. The catch-up interval is available for classic pets as well as D-Power;
@@ -429,10 +429,98 @@ English and Japanese strings are updated together. Existing preference keys,
 DND behavior, saves and emulation policies are preserved. This is a settings
 clarification, with no new CPU or phone battery claim.
 
-Preview25 verification: both full JVM variants passed 167 tests each, with the
+Initial settings-cleanup verification: both full JVM variants passed 167 tests each, with the
 single Syncthing hardware round-trip skipped (168 total each, no failures).
 All private-ROM differential, clock and benchmark tests ran. Localization passed
 494 values and 42 verified species. No emulator or save-format changes were
 needed for this settings cleanup.
 Lint completed with zero errors, and the signed preview25 debug APK was built
 and verified as package `com.digimon.glyph`, version code 29.
+
+## Preview25: predictive classic care-call wakes
+
+Classic E0C6200 pets now plan standby wakes from their firmware's actual call
+indicator (VRAM byte 0, bit 0). On the emulator worker, a fresh core restores a
+copy of the live snapshot and runs without input, with idle skipping enabled,
+until the next new call or the lookahead horizon. An already active call must
+clear before another onset qualifies. The default horizon is 60 minutes,
+configurable from 15 to 240 minutes in **Standby & battery**. Scratch state is
+never installed into the live pet.
+
+With exact-alarm access, an elapsed-realtime wake is requested five seconds before
+the predicted onset, or at the horizon if no call is found. The live core first
+repays its real-time debt with historical audio and haptics muted, then runs at
+normal fine pacing for at least 60 firmware seconds after debt clears. New live
+call edges use the existing attention notification preferences and DND checks.
+Inputs, DND transitions, timing/settings changes, restore and ROM changes discard
+the old prediction. DND Freeze stops the core and cancels predictive wakes.
+Classic standby input cleanup releases held contacts only, avoiding redundant
+release events that would cancel a plan and wake the worker again.
+
+Verified V4 firmware is now recognized as a classic pet for care state decoding,
+even though its species-name database is not populated. Previously its care bit
+could rise while `getCurrentDigimonState().needsAttention` remained false.
+
+The sideload build declares `SCHEDULE_EXACT_ALARM` and `USE_EXACT_ALARM` and checks
+`canScheduleExactAlarms()`. If access is denied or revoked during scheduling, it
+uses the existing inexact periodic interval. English and Japanese settings show
+a warning and an exact-alarm access button. **Always live (uses more battery)**
+is a persisted classic-only alternative: continuous emulation and CPU wake lock,
+including with the screen off. DND Freeze still takes precedence.
+
+D-Power has no care calls. Its existing periodic alarm, freeze option, queued
+steps, audio behavior and standby pacing are unchanged.
+
+Exact alarms are still subject to Android's idle quotas and vendor restrictions;
+requesting an exact wake cannot guarantee delivery within ten seconds on a real
+phone, particularly when calls occur close together. The fake-clock regression
+measures firmware/scheduler correctness under timely alarm delivery. Physical
+Doze delivery, call playback, notifications and battery use need device testing;
+these software checks do not establish phone battery savings.
+
+### Software validation and lookahead cost
+
+The debug JVM run used the six private ROMs from `CLASSIC_ROM_DIR`, an Intel
+Pentium Gold 8505 host and JDK 17. Each ROM ran for 24 idle firmware hours from
+07:00, crossing midnight, against a continuous instruction-by-instruction
+reference with idle skipping off. Each produced two new care-call onsets; all
+12 onsets had a live wake and notification at the same firmware time as the
+reference (0 ms observed delay, with a test limit of 10 seconds). Each simulated
+day needed 25 live windows, including horizon maintenance wakes. Every forecast
+also compared complete live-state hashes before and after cloning/lookahead.
+
+Lookahead CPU time includes cloning and scanning, measured with thread CPU time,
+divided by the actual forecast horizon scanned. It excludes live catch-up and
+the 60-second live windows:
+
+| Private ROM | CPU seconds per hour of scanned horizon |
+| --- | ---: |
+| V1JA | 0.750 |
+| V1JB | 0.732 |
+| V1ES | 0.703 |
+| V2J | 0.612 |
+| V3J | 0.621 |
+| V4J | 0.558 |
+
+Fake-clock/mock-AlarmManager checks also cover a seven-minute call requesting a
+wake at 6:55 instead of 15:00; input cancellation/replanning; existing-call
+clear/new-onset detection; no-onset horizons; denied and concurrently revoked
+exact access; unchanged D-Power periodic policy; and a full 60-second live window
+after muted historical debt. Input-controller tests cover idempotent classic
+standby cleanup and release of a held contact. These tests assume alarms are
+delivered at their requested fake-clock time.
+
+Both debug and release JVM variants passed 176 tests, with one unrelated
+Syncthing hardware round-trip skipped per variant (177 total each, zero
+failures). No private-ROM tests were skipped: both ROM environment variables
+were supplied. Release lookahead cost ranged from 0.560 to 0.809 CPU seconds per
+hour. The existing D-Power Python differential (skipping off/on, including audio
+and PCM), classic clock/link/save checks and benchmarks also passed. The Python
+suite passed all 17 tests, and localization passed 500 values / 42 species.
+
+The combined test/lint/build run completed both test variants, then stopped at
+a lint API-guard diagnostic for the alarm adapter's injected SDK level. A scoped
+lint annotation documents the existing runtime guard; scheduling logic did not
+change. Re-running lint and assembly passed: zero lint errors (165 warnings),
+and the signed debug APK was verified as `com.digimon.glyph`, version code 29 /
+`1.4-dpower.preview25`, with no private ROM or Python/native emulator runtime.

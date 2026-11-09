@@ -498,4 +498,10 @@
     <string name="standby_interval_help">Android may delay background updates. Returning to the pet updates it immediately. Stop and quiet-hours Freeze still pause pet time.</string>
     <string name="runtime_display_help">Lower idle refresh overrides smoother display and reduces idle gesture sensing. Input temporarily raises the refresh rate. All display modes keep normal pet time; standby lets the phone sleep automatically.</string>
     <string name="dp_idle_skip_help">Skip verified waiting loops while keeping normal pet time. Experimental: turn this off if the pet behaves unexpectedly.</string>
+    <string name="classic_always_live">Always live (uses more battery)</string>
+    <string name="classic_prediction_horizon">Care-call lookahead: %1$d minutes</string>
+    <string name="classic_fallback_interval">Fallback update interval: %1$d minutes</string>
+    <string name="classic_exact_warning">Exact alarms are not allowed. Care-call notifications may arrive too late with periodic updates. Allow exact alarms, or choose Always live.</string>
+    <string name="classic_exact_allow">Allow exact care-call alarms</string>
+    <string name="classic_predictive_help">While the phone sleeps, classic pets wake just before their next predicted care call and stay live for at least a minute so the call beep can play. Predictions never change your pet. Always live keeps the phone awake instead; quiet-hours Freeze still pauses it.</string>
 </resources>

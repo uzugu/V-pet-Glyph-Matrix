@@ -888,6 +888,16 @@ class E0C6200(
 
     // ========== State serialization ==========
 
+    /** Worker-only lookahead: ROM and every mutable field belong to a fresh core. */
+    internal fun createLookaheadCore(): E0C6200 =
+        E0C6200(rom, clock, portPullupK0, portPullupK1, p3Dedicated).also {
+            it.restoreState(getState())
+            it.idleSkippingEnabled = true
+        }
+
+    /** Same firmware signal as DigimonState.needsAttention, without allocating decoded stats. */
+    internal fun careCallActive(): Boolean = VRAM[0] and 1 != 0
+
     @Synchronized
     override fun getState(): Map<String, Any> = mapOf(
         "STATE_VERSION" to 2,
@@ -937,7 +947,8 @@ class E0C6200(
     @Synchronized
     override fun getCurrentDigimonState(romName: String?): DigimonState? {
         if (romName == null) return null
-        val isClassicVpet = DigimonDatabase.resolveVersion(romName) != null
+        // Verified V4 firmware has care calls even though its species database is not yet populated.
+        val isClassicVpet = verifiedClassicClockId != null || DigimonDatabase.resolveVersion(romName) != null
         val speciesId = RAM[0x0B]
         val age = RAM[0x5E]
         val weightTens = RAM[0x57]

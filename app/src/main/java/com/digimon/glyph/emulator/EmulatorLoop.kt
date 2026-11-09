@@ -69,13 +69,47 @@ class EmulatorLoop(
     @Volatile var isCatchingUp = false; private set
     var onCatchUpChanged: ((Boolean) -> Unit)? = null
     @Volatile var backgroundCoalescing = false
+    var onInputQueued: (() -> Unit)? = null
+    var onInputApplied: (() -> Unit)? = null
+    var onLiveWindowChanged: ((Boolean) -> Unit)? = null
+    var onHistoricalReplayChanged: ((Boolean) -> Unit)? = null
+    var onClassicAttentionChanged: ((Boolean) -> Unit)? = null
+    @Volatile var trackHistoricalReplay = false
+    @Volatile var isReplayingHistory = false; private set
+    @Volatile var isLiveWindow = false; private set
+    private var liveWindowCycles = 0.0
+    private var liveUntilCycles = Double.POSITIVE_INFINITY
+    @Volatile private var classicContactsPending = false
     val isRealtimeStandby: Boolean get() = backgroundIdle
-    val isPaused: Boolean get() = backgroundPaused || displaySleeping || (backgroundIdle && catchUpUntilNs == Long.MIN_VALUE && elapsedNs() >= inputAwakeUntilNs)
+    val isPaused: Boolean get() = backgroundPaused || displaySleeping || (backgroundIdle && !isLiveWindow &&
+        !(trackHistoricalReplay && classicContactsPending) && catchUpUntilNs == Long.MIN_VALUE && elapsedNs() >= inputAwakeUntilNs)
     private var activePacer: RealtimePacer? = null
     private data class TimedCommand(val atNs: Long, val order: Long, val action: (EmulatorCore) -> Unit)
     private val timelineIncoming = ConcurrentLinkedQueue<TimedCommand>()
     private val timeline = java.util.PriorityQueue<TimedCommand>(compareBy<TimedCommand> { it.atNs }.thenBy { it.order })
     private val commandOrder = java.util.concurrent.atomic.AtomicLong()
+
+    /** Called before a classic standby catch-up; the latch lasts through the entire debt. */
+    fun beginHistoricalReplay() {
+        if (!trackHistoricalReplay || isReplayingHistory) return
+        isReplayingHistory = true
+        onHistoricalReplayChanged?.invoke(true)
+    }
+
+    /** Worker-only. Start counting the live interval after historical debt is fully repaid. */
+    fun holdLiveForFirmwareSeconds(seconds: Double) {
+        check(Thread.currentThread() === thread)
+        liveWindowCycles = maxOf(liveWindowCycles, seconds * emulator.clockFrequency)
+        liveUntilCycles = Double.POSITIVE_INFINITY
+        if (!isLiveWindow) { isLiveWindow = true; onLiveWindowChanged?.invoke(true) }
+    }
+
+    /** Worker-only wall-time coordinate of the actual live firmware, including any remaining debt. */
+    fun firmwareElapsedRealtimeNs(): Long {
+        check(Thread.currentThread() === thread)
+        val now = elapsedNs()
+        return (now - (activePacer?.debtNs(now) ?: 0.0)).toLong()
+    }
 
     fun setBackgroundIdle(idle: Boolean) {
         if (backgroundIdle == idle) return
@@ -88,11 +122,13 @@ class EmulatorLoop(
     }
     /** Standby sensor events retain their wall-time order without waking firmware. */
     fun enqueueAtTime(atNs: Long = elapsedNs(), wake: Boolean = true, input: Boolean = false, command: (EmulatorCore) -> Unit): Boolean {
+        if (input) onInputQueued?.invoke()
         if (!realTimeCatchUpEnabled || stepGateEnabled) return enqueue(command)
         if (!running) return false
         timelineIncoming.offer(TimedCommand(atNs, commandOrder.incrementAndGet()) { core ->
             if (input) inputAwakeUntilNs = elapsedNs() + 500_000_000L
             command(core)
+            if (input) onInputApplied?.invoke()
         })
         if (wake) requestCatchUp(atNs) else if (!backgroundIdle) LockSupport.unpark(thread)
         return true
@@ -192,8 +228,10 @@ class EmulatorLoop(
             wakeDisplay()
             buttonPulses.enqueue(valid = valid) { down ->
                 if (down) core.pinSet(port, pin, level) else core.pinRelease(port, pin)
+                onInputApplied?.invoke()
             }
             buttonPulses.advance(0.0)
+            classicContactsPending = !buttonPulses.isIdle
         }
     }
 
@@ -288,10 +326,17 @@ class EmulatorLoop(
         var lastMode = timingMode
         var wasPaused = false
         var wasFrozen = false
+        val classic = emulator as? E0C6200
+        var attention = classic?.careCallActive() == true
 
         while (running) {
             drainCommands()
             drainTimeline(pacer)
+            if (trackHistoricalReplay && !isPaused && pacer.debtNs(elapsedNs()) > 50_000_000.0) beginHistoricalReplay()
+            if (isLiveWindow && pacer.cycles >= liveUntilCycles) {
+                isLiveWindow = false; liveWindowCycles = 0.0
+                onLiveWindowChanged?.invoke(false)
+            }
             if (realTimeCatchUpEnabled && catchUpUntilNs != Long.MIN_VALUE && pacer.debtCycles(catchUpUntilNs) <= 0) {
                 synchronized(this) {
                     if (pacer.debtCycles(catchUpUntilNs) <= 0) catchUpUntilNs = Long.MIN_VALUE
@@ -346,7 +391,15 @@ class EmulatorLoop(
                 val cycles = emulator.clock(minOf(owed, buttonPulses.cyclesUntilEdge(), nextTimelineCycles(pacer), linkBudget).coerceAtLeast(1.0))
                 if (cycles <= 0) break
                 pacer.advance(cycles)
+                if (classic != null && onClassicAttentionChanged != null) {
+                    val current = classic.careCallActive()
+                    if (current != attention) {
+                        attention = current
+                        onClassicAttentionChanged?.invoke(current)
+                    }
+                }
                 buttonPulses.advance(cycles)
+                if (trackHistoricalReplay) classicContactsPending = !buttonPulses.isIdle
                 val advanceNs = cycles * cycleNs
                 if (stepGateActive) {
                     stepRemainingNs -= advanceNs
@@ -362,6 +415,10 @@ class EmulatorLoop(
             if (stepGateActive && stepUsedNs > 0) consumeStepGateBudget(kotlin.math.ceil(stepUsedNs).toLong())
 
             nowNs = elapsedNs()
+            if (pacer.debtCycles(nowNs) <= 0) {
+                if (isReplayingHistory) { isReplayingHistory = false; onHistoricalReplayChanged?.invoke(false) }
+                if (isLiveWindow && liveUntilCycles == Double.POSITIVE_INFINITY) liveUntilCycles = pacer.cycles + liveWindowCycles
+            }
             if (nowNs >= nextFrameNs || (stepGateActive && stepUsedNs > 0)) {
                 val revision = displayRevision()
                 if (revision != lastDisplayRevision) lastDisplayGeneration = Long.MIN_VALUE
@@ -390,7 +447,9 @@ class EmulatorLoop(
                 if (snapshotStepGateBudgetNs() <= 0) SystemClock.sleep(STEP_GATE_IDLE_SLEEP_MS)
                 continue
             }
-            if (isPaused || (backgroundIdle && elapsedNs() >= inputAwakeUntilNs && pacer.debtCycles(catchUpUntilNs) <= 0)) continue
+            if (isPaused || (backgroundIdle && !isLiveWindow &&
+                !(trackHistoricalReplay && classicContactsPending) &&
+                elapsedNs() >= inputAwakeUntilNs && pacer.debtCycles(catchUpUntilNs) <= 0)) continue
             val aheadNs = -pacer.debtNs(elapsedNs())
             if (aheadNs > 1_000) {
                 // All modes run firmware at 1x. Power saving changes rendering/waiting only.
@@ -399,8 +458,8 @@ class EmulatorLoop(
                 // unpark immediately. Link/full-accuracy keeps fine pacing.
                 val coalesceNs = when (mode) {
                     TimingMode.FULL_ACCURATE -> 0L
-                    TimingMode.EXACT -> if (backgroundCoalescing && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 8_000_000L
-                    TimingMode.POWER_SAVE -> if (backgroundCoalescing && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 20_000_000L
+                    TimingMode.EXACT -> if (backgroundCoalescing && !isLiveWindow && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 8_000_000L
+                    TimingMode.POWER_SAVE -> if (backgroundCoalescing && !isLiveWindow && elapsedNs() >= inputAwakeUntilNs) 500_000_000L else 20_000_000L
                 }
                 val sleepNs = (aheadNs - 20_000).toLong() + coalesceNs
                 if (sleepNs > 0) parkNs(sleepNs)

@@ -108,6 +108,7 @@ class DigimonGlyphToyService : Service() {
         const val EXTRA_NFC_REVISION = "nfc_revision"
         const val ACTION_WIDGET_BUTTON = "com.digimon.glyph.WIDGET_BUTTON"
         const val ACTION_CATCH_UP = "com.digimon.glyph.CATCH_UP"
+        const val ACTION_CLASSIC_WAKE = "com.digimon.glyph.CLASSIC_CARE_WAKE"
         const val ACTION_STOP = "com.digimon.glyph.STOP"
         const val ACTION_IMPORT_ROM = "com.digimon.glyph.IMPORT_ROM"
         const val ACTION_DND_START = DigimonDndReceiver.ACTION_DND_START
@@ -404,21 +405,26 @@ class DigimonGlyphToyService : Service() {
                     pressWidgetButton(button)
                 }
             }
+            ACTION_CLASSIC_WAKE -> handleClassicWake(intent)
             ACTION_CATCH_UP -> {
-                standbyAlarmScheduled = false
-                val loop = emulatorLoop
-                if (loop != null && loop.isRealtimeStandby) {
-                    tryStartForeground()
-                    acquireCpuWakeLock()
-                    loop.enqueueAtTime { core ->
-                        val state = core.getCurrentDigimonState(romName)
-                        val name = romName
-                        if (name != null) stateManager.saveAutosave(core, name, romHash, sync = false)
-                        mainHandler.post {
-                            maybeNotifyNeedsAttention(state)
-                            syncDndStateWithClock("catch_up")
-                            syncRuntimePauseResources()
-                            scheduleStandbyCatchUp(loop.isRealtimeStandby)
+                if (emulator is E0C6200) {
+                    handleClassicWake(Intent(intent).putExtra("prediction_revision", classicPredictionRevision.get()))
+                } else {
+                    standbyAlarmScheduled = false
+                    val loop = emulatorLoop
+                    if (loop != null && loop.isRealtimeStandby) {
+                        tryStartForeground()
+                        acquireCpuWakeLock()
+                        loop.enqueueAtTime { core ->
+                            val state = core.getCurrentDigimonState(romName)
+                            val name = romName
+                            if (name != null) stateManager.saveAutosave(core, name, romHash, sync = false)
+                            mainHandler.post {
+                                maybeNotifyNeedsAttention(state)
+                                syncDndStateWithClock("catch_up")
+                                syncRuntimePauseResources()
+                                scheduleStandbyCatchUp(loop.isRealtimeStandby)
+                            }
                         }
                     }
                 }
@@ -541,6 +547,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun enterDoNotDisturb(trigger: String) {
+        invalidateClassicPrediction(replan = true)
         DigimonDndSettings.init(this)
         if (!DigimonDndSettings.isEnabled()) return
         if (!DigimonDndSettings.isFreezeMode()) {
@@ -573,6 +580,7 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun exitDoNotDisturb(trigger: String) {
+        invalidateClassicPrediction(replan = true)
         DigimonDndSettings.init(this)
         val shouldResume = DigimonDndSettings.isResumePending() && DigimonDndSettings.isAutoResumeEnabled()
         DigimonDndSettings.clearFrozenState(this)
@@ -833,6 +841,7 @@ class DigimonGlyphToyService : Service() {
                     check(emulator === core && romHash == expected && !EmulatorStatus.snapshot().busy) { localizedString(R.string.l10n_rom_changed_during_handoff) }
                     val previous = core.getState()
                     try {
+                        invalidateClassicPrediction(replan = true)
                         core.restoreState(incoming)
                         releaseHandoffButtons(core)
                         stateManager.saveAutosave(core, romName ?: profile, expected, sync = true)
@@ -1149,7 +1158,7 @@ class DigimonGlyphToyService : Service() {
         haptic.setEnabled(lastHapticEnabled)
         emu.onBuzzerChange = { on, freqHz, gain ->
             firmwareToneActive = on && freqHz > 0 && gain > 0f
-            if (emulatorLoop?.isCatchingUp != true) {
+            if (emulatorLoop?.isCatchingUp != true && !(emu is E0C6200 && emulatorLoop?.isReplayingHistory == true)) {
             audio?.onBuzzerChange(on, freqHz, gain)
             haptic.onBuzzerChange(on, freqHz, gain)
             }
@@ -1278,7 +1287,7 @@ class DigimonGlyphToyService : Service() {
                 this@DigimonGlyphToyService.glyphRenderer?.pushFrame(bitmap)
                 val now = SystemClock.uptimeMillis()
                 val state = emu.getCurrentDigimonState(romName)
-                maybeNotifyNeedsAttention(state)
+                if (emu !is E0C6200 || emulatorLoop?.isReplayingHistory != true) maybeNotifyNeedsAttention(state)
                 val debugObserved = debugTelemetryEnabled || FrameDebugState.isMemoryObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now)
                 val previewDue = (debugTelemetryEnabled || standaloneMode ||
                     FrameDebugState.isObserved(FRAME_PREVIEW_OBSERVER_WINDOW_MS, now) || WidgetFramePusher.isRunning) &&
@@ -1323,6 +1332,39 @@ class DigimonGlyphToyService : Service() {
             EmulatorStatus.catchingUp(catching)
             mainHandler.post { if (emulatorLoop === loop) applyAudioHapticSettingsIfChanged(force = true) }
         }
+        if (emu is E0C6200) {
+            loop.trackHistoricalReplay = true
+            loop.onClassicAttentionChanged = { current ->
+                if (emulator === emu && !DigimonDndSettings.isFrozenNow()) {
+                    if (loop.isReplayingHistory) {
+                        // Record clears, but never post a stale historical onset.
+                        if (!current) lastNeedsAttention = false
+                    } else maybeNotifyNeedsAttention(emu.getCurrentDigimonState(romName))
+                }
+            }
+            loop.onHistoricalReplayChanged = { historical ->
+                if (historical) {
+                    audio?.onBuzzerChange(false, 0, 0f)
+                    haptic.onBuzzerChange(false, 0, 0f)
+                }
+                mainHandler.post { if (emulatorLoop === loop) applyAudioHapticSettingsIfChanged(force = true) }
+            }
+            loop.onInputQueued = {
+                if (loop.isRealtimeStandby) loop.beginHistoricalReplay()
+                invalidateClassicPrediction(replan = true)
+            }
+            loop.onInputApplied = { invalidateClassicPrediction(replan = true) }
+            loop.onLiveWindowChanged = { live ->
+                mainHandler.post {
+                    if (emulatorLoop === loop) {
+                        if (!live) loop.enqueueAtTime { core ->
+                            romName?.let { stateManager.saveAutosave(core, it, romHash, sync = false) }
+                        }
+                        applyDisplaySuspension()
+                    }
+                }
+            }
+        }
         loop.virtualTickEnabled = battleConnected
         loop.onVirtualTick = { totalNs ->
             if (battleConnected) {
@@ -1335,6 +1377,7 @@ class DigimonGlyphToyService : Service() {
             mainHandler.post {
                 if (emulatorLoop === loop) {
                     syncRuntimePauseResources()
+                    if (emu is E0C6200 && loop.isRealtimeStandby && loop.isPaused) scheduleClassicStandby(true)
                     if (loop.isPaused && !loop.isRealtimeStandby) saveState(sync = false, reason = "digivice_standby")
                     applyAudioHapticSettingsIfChanged(force = true)
                 }
@@ -1402,6 +1445,8 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun stopEmulator(clearFrameState: Boolean = true, preserveWidgetPreview: Boolean = false) {
+        invalidateClassicPrediction()
+        classicAlarmWork = false
         inputSession.reset()
         if (!preserveWidgetPreview) {
             WidgetFramePusher.stop()
@@ -1554,6 +1599,7 @@ class DigimonGlyphToyService : Service() {
     private fun processPendingCommands() {
         val cmd = EmulatorCommandBus.readPending(this, lastHandledCommandId) ?: return
         lastHandledCommandId = cmd.id
+        invalidateClassicPrediction(replan = true)
         if (cmd.romHash != null && cmd.romHash != romHash) {
             EmulatorCommandBus.ack(this, cmd.id, "cancelled: the selected ROM changed")
             return
@@ -1591,6 +1637,7 @@ class DigimonGlyphToyService : Service() {
                 EmulatorAudioSettings.init(this)
                 EmulatorDebugSettings.init(this)
                 EmulatorTimingSettings.init(this)
+                com.digimon.glyph.emulator.StandbySettings.init(this)
                 BattleTransportSettings.init(this)
                 DigimonDndSettings.init(this)
                 DigimonDndScheduler.reschedule(this)
@@ -1792,7 +1839,8 @@ class DigimonGlyphToyService : Service() {
     }
 
     private fun applyAudioHapticSettingsIfChanged(force: Boolean = false) {
-        val paused = emulatorLoop?.isPaused == true || emulatorLoop?.isCatchingUp == true
+        val paused = emulatorLoop?.isPaused == true || emulatorLoop?.isCatchingUp == true ||
+            (emulator is E0C6200 && emulatorLoop?.isReplayingHistory == true)
         val hapticEnabled = !paused && EmulatorAudioSettings.isHapticAudioEnabled()
         val audioEnabled = !paused && EmulatorAudioSettings.isAudioEnabled()
         if (!force && audioEnabled == lastAudioEnabled && hapticEnabled == lastHapticEnabled) return
@@ -1842,6 +1890,7 @@ class DigimonGlyphToyService : Service() {
         ) return
         lastFullAccuracyEnabled = fullAccuracyEnabled
         if (force || desiredMode != lastAppliedTimingMode) {
+            invalidateClassicPrediction(replan = true)
             emulatorLoop?.setTimingMode(desiredMode)
         }
         if (force || battleStepGateActive != lastAppliedStepGateEnabled) {
@@ -1868,21 +1917,120 @@ class DigimonGlyphToyService : Service() {
         val settings = com.digimon.glyph.emulator.StandbySettings
         val freeze = emulator is com.digimon.glyph.emulator.DPowerCore && settings.freezeDPower
         loop.realTimeCatchUpEnabled = !freeze
+        val classicActive = emulator is E0C6200 && (settings.classicAlwaysLive || loop.isLiveWindow)
+        if (emulator is E0C6200 && loop.isRealtimeStandby && phoneOn) loop.beginHistoricalReplay()
         val stepGate = battleConnected && EmulatorTimingSettings.isBattleStepModeEnabled()
-        val audioActive = EmulatorAudioSettings.isAudioEnabled() && (firmwareToneActive ||
+        val audioActive = !(emulator is E0C6200 && loop.isReplayingHistory) &&
+            EmulatorAudioSettings.isAudioEnabled() && (firmwareToneActive ||
             (lastAudiblePcmMs > 0 && SystemClock.elapsedRealtime() - lastAudiblePcmMs < 600))
         val remoteObserved = owlBridge.observed || evenStream?.observed == true
-        val idle = !remoteObserved && !phoneOn && !toySession.interactive && !battleConnected && !stepGate && !audioActive
-        loop.backgroundCoalescing = !phoneOn && !battleConnected && !stepGate && !toySession.interactive && !remoteObserved
+        val idle = !classicActive && !remoteObserved && !phoneOn && !toySession.interactive && !battleConnected && !stepGate && !audioActive
+        loop.backgroundCoalescing = !classicActive && !phoneOn && !battleConnected && !stepGate && !toySession.interactive && !remoteObserved
         loop.setBackgroundPaused(freeze && idle)
         loop.setBackgroundIdle(!freeze && idle)
         scheduleStandbyCatchUp(!freeze && idle)
         syncRuntimePauseResources()
     }
 
+    private val classicPredictionRevision = java.util.concurrent.atomic.AtomicLong()
+    private var classicPlanPending = false
+    private var classicAlarmScheduled = false
+    private var classicAlarmWork = false
+
+    private fun classicWakeAlarm(revision: Long = classicPredictionRevision.get()): com.digimon.glyph.emulator.ClassicWakeAlarm {
+        val pending = PendingIntent.getService(this, 907,
+            Intent(this, DigimonGlyphToyService::class.java).setAction(ACTION_CLASSIC_WAKE).putExtra("prediction_revision", revision),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return com.digimon.glyph.emulator.ClassicWakeAlarm(getSystemService(ALARM_SERVICE) as android.app.AlarmManager, pending)
+    }
+
+    private fun invalidateClassicPrediction(replan: Boolean = false) {
+        if (emulator !is E0C6200 && !classicPlanPending && !classicAlarmScheduled) return
+        val revision = classicPredictionRevision.incrementAndGet()
+        val cleanup = {
+            if (classicPredictionRevision.get() == revision) {
+                classicWakeAlarm().cancel()
+                classicPlanPending = false
+                classicAlarmScheduled = false
+                if (replan) mainHandler.post { applyDisplaySuspension() }
+            }
+        }
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) cleanup() else mainHandler.post { cleanup() }
+    }
+
+    private fun scheduleClassicStandby(enabled: Boolean) {
+        val core = emulator as? E0C6200 ?: return
+        val loop = emulatorLoop ?: return
+        val settings = com.digimon.glyph.emulator.StandbySettings
+        if (!enabled || settings.classicAlwaysLive || DigimonDndSettings.isFrozenNow()) {
+            if (classicPlanPending || classicAlarmScheduled) invalidateClassicPrediction()
+            return
+        }
+        if (classicPlanPending || classicAlarmScheduled || classicAlarmWork || !loop.isPaused) return
+        classicPlanPending = true
+        val revision = classicPredictionRevision.get()
+        val horizon = settings.classicHorizonMinutes
+        loop.beginHistoricalReplay()
+        acquireCpuWakeLock()
+        val accepted = loop.enqueueAtTime { active ->
+            if (active !== core || classicPredictionRevision.get() != revision) return@enqueueAtTime
+            val firmwareAtMs = loop.firmwareElapsedRealtimeNs() / 1_000_000L
+            if (lastNeedsAttention == null) lastNeedsAttention = core.careCallActive()
+            val prediction = try {
+                com.digimon.glyph.emulator.ClassicAttentionPredictor.predict(core, horizon) {
+                    classicPredictionRevision.get() != revision || Thread.currentThread().isInterrupted
+                }
+            } catch (failure: Exception) {
+                Log.w(TAG, "Classic lookahead failed; retry in one minute", failure)
+                com.digimon.glyph.emulator.ClassicAttentionPredictor.Prediction(60_000, false)
+            }
+            mainHandler.post {
+                if (emulatorLoop !== loop || classicPredictionRevision.get() != revision) return@post
+                classicPlanPending = false
+                if (prediction != null && loop.isRealtimeStandby && !settings.classicAlwaysLive && !DigimonDndSettings.isFrozenNow()) {
+                    classicWakeAlarm(revision).schedule(SystemClock.elapsedRealtime(), firmwareAtMs, prediction, settings.intervalMinutes)
+                    classicAlarmScheduled = true
+                }
+                syncRuntimePauseResources()
+            }
+        }
+        if (!accepted) { classicPlanPending = false; syncRuntimePauseResources() }
+    }
+
+    private fun handleClassicWake(intent: Intent) {
+        val core = emulator as? E0C6200 ?: return
+        val loop = emulatorLoop ?: return
+        if (intent.getLongExtra("prediction_revision", -1) != classicPredictionRevision.get() ||
+            !loop.isRealtimeStandby || DigimonDndSettings.isFrozenNow() ||
+            com.digimon.glyph.emulator.StandbySettings.classicAlwaysLive) return
+        classicAlarmScheduled = false
+        val revision = classicPredictionRevision.get()
+        classicAlarmWork = true
+        tryStartForeground()
+        acquireCpuWakeLock()
+        loop.beginHistoricalReplay()
+        if (!loop.enqueueAtTime { active ->
+            if (active !== core || classicPredictionRevision.get() != revision) {
+                mainHandler.post { if (emulatorLoop === loop) { classicAlarmWork = false; applyDisplaySuspension() } }
+                return@enqueueAtTime
+            }
+            loop.holdLiveForFirmwareSeconds(60.0)
+            romName?.let { stateManager.saveAutosave(core, it, romHash, sync = false) }
+            maybeNotifyNeedsAttention(core.getCurrentDigimonState(romName))
+            mainHandler.post {
+                if (emulatorLoop === loop) {
+                    classicAlarmWork = false
+                    syncDndStateWithClock("classic_care_wake")
+                    applyDisplaySuspension()
+                }
+            }
+        }) { classicAlarmWork = false; syncRuntimePauseResources() }
+    }
+
     private var standbyAlarmScheduled = false
     private var scheduledIntervalMinutes = 0
     private fun scheduleStandbyCatchUp(enabled: Boolean) {
+        if (emulator is E0C6200) { scheduleClassicStandby(enabled); return }
         val interval = com.digimon.glyph.emulator.StandbySettings.intervalMinutes
         if (standbyAlarmScheduled == enabled && (!enabled || scheduledIntervalMinutes == interval)) return
         scheduledIntervalMinutes = interval
@@ -1898,12 +2046,13 @@ class DigimonGlyphToyService : Service() {
 
     private fun syncRuntimePauseResources() {
         val loop = emulatorLoop ?: return
-        val paused = loop.isPaused
+        val paused = loop.isPaused && !(emulator is E0C6200 && (classicPlanPending || classicAlarmWork))
         if (paused) releaseCpuWakeLock() else acquireCpuWakeLock()
         if (appliedRuntimePause == paused) return
         appliedRuntimePause = paused
         if (paused) {
-            inputController?.stop()
+            // Redundant releases are inputs too: they would cancel and wake a classic standby plan.
+            inputController?.stop(releaseUnheldButtons = emulator !is E0C6200)
             dpowerAudioEngine?.stop()
             hapticEngine?.stop()
             WidgetFramePusher.stop()

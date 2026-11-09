@@ -28,6 +28,27 @@ object StandbySettingsDialog {
         }
         fun refresh() = EmulatorCommandBus.post(context, EmulatorCommandBus.CMD_REFRESH_SETTINGS)
         help(R.string.standby_help)
+        val alwaysLive = if (!isDPower) SwitchCompat(context).apply {
+            setText(R.string.classic_always_live)
+            isChecked = StandbySettings.classicAlwaysLive
+            panel.addView(this)
+        } else null
+        val horizonLabel = if (!isDPower) TextView(context).also { panel.addView(it) } else null
+        val horizon = if (!isDPower) SeekBar(context).apply {
+            max = 15; progress = StandbySettings.classicHorizonMinutes / 15 - 1
+            minimumHeight = (48 * context.resources.displayMetrics.density).toInt()
+            panel.addView(this)
+        } else null
+        val warning = if (!isDPower) help(R.string.classic_exact_warning) else null
+        val requestExact = if (!isDPower) android.widget.Button(context).apply {
+            setText(R.string.classic_exact_allow)
+            setOnClickListener {
+                context.startActivity(android.content.Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                    android.net.Uri.parse("package:" + context.packageName)))
+            }
+            panel.addView(this)
+        } else null
+        if (!isDPower) help(R.string.classic_predictive_help)
         val freeze = if (isDPower) SwitchCompat(context).apply {
             setText(R.string.dp_freeze_standby)
             isChecked = StandbySettings.freezeDPower
@@ -44,9 +65,16 @@ object StandbySettingsDialog {
             panel.addView(this)
         }
         fun updateInterval() {
-            intervalLabel.text = context.getString(R.string.standby_interval, StandbySettings.intervalMinutes)
+            intervalLabel.text = context.getString(if (isDPower) R.string.standby_interval else R.string.classic_fallback_interval, StandbySettings.intervalMinutes)
             interval.contentDescription = intervalLabel.text
-            interval.isEnabled = freeze?.isChecked != true
+            interval.isEnabled = freeze?.isChecked != true && alwaysLive?.isChecked != true
+            horizon?.isEnabled = alwaysLive?.isChecked != true
+            horizonLabel?.text = context.getString(R.string.classic_prediction_horizon, StandbySettings.classicHorizonMinutes)
+            horizon?.contentDescription = horizonLabel?.text
+            val exact = com.digimon.glyph.emulator.DigimonDndScheduler.canScheduleExactAlarms(context)
+            val warningVisibility = if (exact || alwaysLive?.isChecked == true) android.view.View.GONE else android.view.View.VISIBLE
+            warning?.visibility = warningVisibility
+            requestExact?.visibility = warningVisibility
             intervalLabel.alpha = if (interval.isEnabled) 1f else .5f
         }
         updateInterval()
@@ -66,6 +94,17 @@ object StandbySettingsDialog {
             updateInterval()
             refresh()
         }
+        alwaysLive?.setOnCheckedChangeListener { _, enabled ->
+            StandbySettings.setClassicAlwaysLive(context, enabled)
+            updateInterval(); refresh()
+        }
+        horizon?.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, value: Int, user: Boolean) {
+                if (user) { StandbySettings.setClassicHorizonMinutes(context, (value + 1) * 15); updateInterval(); refresh() }
+            }
+            override fun onStartTrackingTouch(bar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(bar: SeekBar?) = Unit
+        })
         help(R.string.standby_interval_help)
         if (isDPower && EmulatorDebugSettings.isDebugEnabled()) {
             panel.addView(SwitchCompat(context).apply {
@@ -77,8 +116,13 @@ object StandbySettingsDialog {
             })
             help(R.string.dp_idle_skip_help)
         }
-        AlertDialog.Builder(context).setTitle(R.string.standby_settings)
+        val dialog = AlertDialog.Builder(context).setTitle(R.string.standby_settings)
             .setView(ScrollView(context).apply { addView(panel) })
             .setPositiveButton(R.string.dp_close, null).show()
+        val focus = android.view.ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+            if (focused) { updateInterval(); refresh() }
+        }
+        dialog.window?.decorView?.viewTreeObserver?.addOnWindowFocusChangeListener(focus)
+        dialog.setOnDismissListener { dialog.window?.decorView?.viewTreeObserver?.removeOnWindowFocusChangeListener(focus) }
     }
 }
